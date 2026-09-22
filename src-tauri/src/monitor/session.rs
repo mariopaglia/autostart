@@ -155,7 +155,7 @@ pub fn now_ms() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AppItem, OnClose, Trigger, UrlItem};
+    use crate::models::{AppItem, OnClose, ProcessNameMode, Trigger, UrlItem};
 
     fn app(name: &str, on_close: OnClose, enabled: bool) -> LaunchItem {
         LaunchItem::App(AppItem {
@@ -165,9 +165,12 @@ mod tests {
             args: None,
             working_dir: None,
             process_name: format!("{name}.exe"),
+            process_name_mode: ProcessNameMode::Auto,
             icon_base64: None,
             delay_ms: 0,
             run_as_admin: false,
+            start_minimized: false,
+            wait_for_sim_connect: false,
             on_close,
             enabled,
         })

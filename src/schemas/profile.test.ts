@@ -59,6 +59,26 @@ describe("launchItemSchema", () => {
     expect(item.type === "app" && item.args).toBeUndefined();
   });
 
+  it("accepts an app item saved by v0.1.0 with the new launch options defaulted", () => {
+    const itemFromV010 = {
+      type: "app",
+      id: ITEM_ID,
+      name: "Volanta",
+      exePath: "C:\\Apps\\Volanta\\Launcher.exe",
+      processName: "Volanta.exe",
+      delayMs: 0,
+      runAsAdmin: false,
+      onClose: "graceful",
+      enabled: true,
+    };
+
+    expect(profileSchema.parse(buildProfile({ items: [itemFromV010] })).items[0]).toMatchObject({
+      processNameMode: "auto",
+      startMinimized: false,
+      waitForSimConnect: false,
+    });
+  });
+
   it("accepts only http and https urls", () => {
     const base = { type: "url", id: ITEM_ID, name: "SimBrief" };
 

@@ -5,6 +5,7 @@ use std::process::Command;
 
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, Signal, System};
 
+use super::LaunchOptions;
 use crate::error::{AppError, AppResult};
 
 pub fn product_name(_exe_path: &Path) -> Option<String> {
@@ -15,18 +16,24 @@ pub fn icon_png_base64(_exe_path: &Path) -> Option<String> {
     None
 }
 
-pub fn configure_launch(command: &mut Command, args: Option<&str>) {
-    if let Some(args) = args {
-        command.args(args.split_whitespace());
+pub fn launch(
+    exe_path: &Path,
+    args: Option<&str>,
+    working_dir: &Path,
+    options: LaunchOptions,
+) -> AppResult<Option<u32>> {
+    if options.elevated {
+        return Err(AppError::Unsupported("run as administrator"));
     }
-}
-
-pub fn launch_elevated(
-    _exe_path: &Path,
-    _args: Option<&str>,
-    _working_dir: &Path,
-) -> AppResult<()> {
-    Err(AppError::Unsupported("run as administrator"))
+    Command::new(exe_path)
+        .current_dir(working_dir)
+        .args(args.unwrap_or_default().split_whitespace())
+        .spawn()
+        .map(|child| Some(child.id()))
+        .map_err(|error| AppError::LaunchFailed {
+            name: exe_path.display().to_string(),
+            reason: error.to_string(),
+        })
 }
 
 pub fn is_elevated() -> bool {

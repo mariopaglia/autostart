@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::Duration;
 
 use tauri::{AppHandle, Runtime};
@@ -7,6 +6,7 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::error::{AppError, AppResult};
 use crate::models::{AppItem, ItemRuntime, ItemStatus, LaunchItem, UrlItem};
+use crate::platform::LaunchOptions;
 use crate::{platform, processes};
 
 const PROCESS_DETECTION_TIMEOUT: Duration = Duration::from_secs(10);
@@ -38,29 +38,20 @@ async fn launch_app(item: &AppItem) -> AppResult<LaunchOutcome> {
     }
     let working_dir = resolve_working_dir(item, &exe_path);
     let args = item.args.clone();
+    let options = LaunchOptions {
+        elevated: item.run_as_admin,
+        minimized: item.start_minimized,
+    };
 
-    if item.run_as_admin {
-        // The UAC prompt blocks the calling thread until the user answers.
-        let exe = exe_path.clone();
-        tauri::async_runtime::spawn_blocking(move || {
-            platform::launch_elevated(&exe, args.as_deref(), &working_dir)
-        })
-        .await
-        .map_err(|error| launch_failed(item, error))??;
-    } else {
-        spawn_detached(&exe_path, args.as_deref(), &working_dir)
-            .map_err(|error| launch_failed(item, error))?;
-    }
+    // The UAC prompt blocks the calling thread until the user answers.
+    tauri::async_runtime::spawn_blocking(move || {
+        platform::launch(&exe_path, args.as_deref(), &working_dir, options)
+    })
+    .await
+    .map_err(|error| launch_failed(item, error))??;
 
     wait_for_process(&item.process_name).await?;
     Ok(LaunchOutcome::Launched)
-}
-
-fn spawn_detached(exe_path: &Path, args: Option<&str>, working_dir: &Path) -> std::io::Result<()> {
-    let mut command = Command::new(exe_path);
-    command.current_dir(working_dir);
-    platform::configure_launch(&mut command, args);
-    command.spawn().map(drop)
 }
 
 fn resolve_working_dir(item: &AppItem, exe_path: &Path) -> PathBuf {

@@ -1,10 +1,11 @@
 use ::windows::core::BOOL;
-use ::windows::Win32::Foundation::{CloseHandle, E_ACCESSDENIED, HANDLE, HWND, LPARAM, WPARAM};
+use ::windows::Win32::Foundation::{E_ACCESSDENIED, HWND, LPARAM, WPARAM};
 use ::windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
 use ::windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetWindowThreadProcessId, PostMessageW, WM_CLOSE,
 };
 
+use super::OwnedHandle;
 use crate::error::{AppError, AppResult};
 
 struct WindowSearch {
@@ -63,13 +64,4 @@ fn map_terminate_error(error: ::windows::core::Error, process_name: &str) -> App
         return AppError::AccessDenied(process_name.to_owned());
     }
     AppError::Io(std::io::Error::other(error))
-}
-
-struct OwnedHandle(HANDLE);
-
-impl Drop for OwnedHandle {
-    fn drop(&mut self) {
-        // SAFETY: the handle was returned by OpenProcess and is closed exactly once.
-        let _ = unsafe { CloseHandle(self.0) };
-    }
 }

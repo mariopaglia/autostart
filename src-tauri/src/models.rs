@@ -27,6 +27,15 @@ pub enum OnClose {
     Keep,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum ProcessNameMode {
+    #[default]
+    Auto,
+    Manual,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -41,6 +50,8 @@ pub struct AppItem {
     #[ts(optional)]
     pub working_dir: Option<String>,
     pub process_name: String,
+    #[serde(default)]
+    pub process_name_mode: ProcessNameMode,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub icon_base64: Option<String>,
@@ -48,6 +59,10 @@ pub struct AppItem {
     pub delay_ms: u32,
     #[serde(default)]
     pub run_as_admin: bool,
+    #[serde(default)]
+    pub start_minimized: bool,
+    #[serde(default)]
+    pub wait_for_sim_connect: bool,
     #[serde(default)]
     pub on_close: OnClose,
     #[serde(default = "default_true")]
@@ -174,6 +189,8 @@ impl Default for Settings {
 #[ts(export)]
 pub enum ItemStatus {
     Pending,
+    #[serde(rename = "waitingSimConnect")]
+    WaitingSimConnect,
     Launching,
     Running,
     Skipped,
@@ -226,6 +243,8 @@ pub enum TimelineKind {
     ClosedGracefully,
     ForceClosed,
     Kept,
+    SimConnectReady,
+    SimConnectWaitSkipped,
     Error,
     SessionEnded,
 }
@@ -306,6 +325,9 @@ mod tests {
         assert_eq!(app.on_close, OnClose::Graceful);
         assert!(app.enabled);
         assert!(!app.run_as_admin);
+        assert_eq!(app.process_name_mode, ProcessNameMode::Auto);
+        assert!(!app.start_minimized);
+        assert!(!app.wait_for_sim_connect);
     }
 
     #[test]

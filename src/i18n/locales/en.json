@@ -83,6 +83,7 @@
     "missingExe": "Executable not found",
     "status": {
       "pending": "Queued",
+      "waitingSimConnect": "Waiting for SimConnect",
       "launching": "Opening…",
       "running": "Running",
       "skipped": "Already open",
@@ -164,6 +165,8 @@
       "closedGracefully": "Closed gracefully",
       "forceClosed": "Force closed",
       "kept": "Kept open",
+      "simConnectReady": "SimConnect available",
+      "simConnectWaitSkipped": "SimConnect wait skipped in test",
       "error": "Error",
       "sessionEnded": "Session ended"
     }

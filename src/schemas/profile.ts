@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { AppItem } from "@/bindings/AppItem";
 import type { LaunchItem } from "@/bindings/LaunchItem";
 import type { OnClose } from "@/bindings/OnClose";
+import type { ProcessNameMode } from "@/bindings/ProcessNameMode";
 import type { Profile } from "@/bindings/Profile";
 import type { Trigger } from "@/bindings/Trigger";
 import type { UrlItem } from "@/bindings/UrlItem";
@@ -30,6 +31,11 @@ const optionalTextSchema = z
   .optional()
   .transform((value) => (value === "" ? undefined : value));
 
+export const processNameModeSchema = z.enum([
+  "auto",
+  "manual",
+]) satisfies z.ZodType<ProcessNameMode>;
+
 export const onCloseSchema = z.enum(["graceful", "force", "keep"]) satisfies z.ZodType<OnClose>;
 
 export const triggerSchema = z.object({
@@ -44,9 +50,12 @@ export const appItemSchema = z.object({
   args: optionalTextSchema,
   workingDir: optionalTextSchema,
   processName: processNameSchema,
+  processNameMode: processNameModeSchema.default("auto"),
   iconBase64: z.string().optional(),
   delayMs: delaySchema,
   runAsAdmin: z.boolean().default(false),
+  startMinimized: z.boolean().default(false),
+  waitForSimConnect: z.boolean().default(false),
   onClose: onCloseSchema.default("graceful"),
   enabled: z.boolean().default(true),
 }) satisfies z.ZodType<AppItem>;

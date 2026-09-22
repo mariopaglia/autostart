@@ -83,6 +83,7 @@
     "missingExe": "Executável não encontrado",
     "status": {
       "pending": "Na fila",
+      "waitingSimConnect": "Aguardando SimConnect",
       "launching": "Abrindo…",
       "running": "Rodando",
       "skipped": "Já estava aberto",
@@ -164,6 +165,8 @@
       "closedGracefully": "Fechado graciosamente",
       "forceClosed": "Encerrado à força",
       "kept": "Mantido aberto",
+      "simConnectReady": "SimConnect disponível",
+      "simConnectWaitSkipped": "Espera pelo SimConnect ignorada no teste",
       "error": "Erro",
       "sessionEnded": "Sessão encerrada"
     }

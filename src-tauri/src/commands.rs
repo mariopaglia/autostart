@@ -6,6 +6,7 @@ use tauri_plugin_opener::OpenerExt;
 use crate::error::{AppError, AppResult};
 use crate::models::{ExeInfo, MonitorSnapshot, ProcessInfo, Profile, SessionLog, Settings};
 use crate::monitor::MonitorHandle;
+use crate::platform::LaunchOptions;
 use crate::state::AppState;
 use crate::{exe_inspection, launch_args, platform, processes, system_autostart, tray};
 
@@ -93,8 +94,12 @@ pub async fn relaunch_as_admin(app: AppHandle) -> AppResult<()> {
     let working_dir = exe_path.parent().map(PathBuf::from).unwrap_or_default();
     let args = launch_args::wait_for_pid_args(std::process::id());
 
+    let options = LaunchOptions {
+        elevated: true,
+        minimized: false,
+    };
     tauri::async_runtime::spawn_blocking(move || {
-        platform::launch_elevated(&exe_path, Some(&args), &working_dir)
+        platform::launch(&exe_path, Some(&args), &working_dir, options)
     })
     .await??;
     app.exit(0);

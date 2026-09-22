@@ -7,3 +7,9 @@ mod windows;
 pub use self::windows::*;
 #[cfg(not(windows))]
 pub use fallback::*;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct LaunchOptions {
+    pub elevated: bool,
+    pub minimized: bool,
+}
