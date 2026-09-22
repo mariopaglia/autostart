@@ -9,6 +9,13 @@ concurrency:
   group: preview-${{ github.ref }}
   cancel-in-progress: true
 
+# Previews trade binary size/speed for build time; the release workflow keeps the full optimizations.
+env:
+  CARGO_PROFILE_RELEASE_LTO: "false"
+  CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "16"
+  CARGO_PROFILE_RELEASE_OPT_LEVEL: "1"
+  CARGO_PROFILE_RELEASE_INCREMENTAL: "true"
+
 jobs:
   build:
     runs-on: windows-latest
