@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, FolderOpen } from "lucide-react";
+import { ExternalLink, FolderOpen, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Language } from "@/bindings/Language";
 import type { Settings } from "@/bindings/Settings";
@@ -16,11 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { notifyError } from "@/lib/notify";
 import { commands, system } from "@/lib/tauri";
 import { languageSchema, themeSchema } from "@/schemas/settings";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useUpdatesStore } from "@/stores/updates-store";
 
 const REPOSITORY_URL = "https://github.com/mariopaglia/autostart";
 const THEMES: readonly Theme[] = themeSchema.options;
@@ -40,6 +42,8 @@ export function SettingsScreen() {
   const settings = useSettingsStore((state) => state.settings);
   const saveSettings = useSettingsStore((state) => state.save);
   const version = useAppVersion();
+  const updateStatus = useUpdatesStore((state) => state.status);
+  const checkUpdates = useUpdatesStore((state) => state.check);
 
   if (!settings) return null;
 
@@ -167,6 +171,19 @@ export function SettingsScreen() {
                 save({ checkUpdatesOnStartup });
               }}
             />
+          </SettingRow>
+          <Separator />
+          <SettingRow id="check-updates-now" label={t("updates.checkNow")}>
+            <Button
+              id="check-updates-now"
+              variant="outline"
+              size="sm"
+              disabled={updateStatus !== "idle"}
+              onClick={() => void checkUpdates({ silent: false })}
+            >
+              {updateStatus === "checking" ? <Spinner /> : <RefreshCw />}
+              {t("updates.checkNow")}
+            </Button>
           </SettingRow>
           <Separator />
           <SettingRow

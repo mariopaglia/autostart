@@ -223,5 +223,17 @@
     "next": "Next",
     "finish": "Finish",
     "progress": "Step {{current}} of {{total}}"
+  },
+  "updates": {
+    "available": "AutoStart {{version}} is available",
+    "currentVersion": "You are on version {{version}}.",
+    "install": "Update",
+    "later": "Later",
+    "installing": "Downloading and installing…",
+    "progress": "Downloading… {{progress}}%",
+    "checkNow": "Check for updates now",
+    "upToDate": "You are already on the latest version",
+    "checkFailed": "Could not check for updates",
+    "installFailed": "The update failed and was cancelled"
   }
 }

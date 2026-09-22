@@ -1,7 +1,10 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { warn } from "@tauri-apps/plugin-log";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import type { ErrorKind } from "@/bindings/ErrorKind";
 import type { ErrorPayload } from "@/bindings/ErrorPayload";
 import type { ExeInfo } from "@/bindings/ExeInfo";
@@ -41,6 +44,14 @@ export const commands = {
 export const system = {
   getAppVersion: () => getVersion(),
   openUrl: (url: string) => openUrl(url),
+  relaunch: () => relaunch(),
+  logWarning: (message: string) => warn(message),
+};
+
+export type { Update };
+
+export const updater = {
+  check: () => check(),
 };
 
 export const monitorEvents = {

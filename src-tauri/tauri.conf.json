@@ -36,6 +36,24 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Mario Paglia",
+    "homepage": "https://github.com/mariopaglia/autostart",
+    "copyright": "© 2026 Mario Paglia. MIT License.",
+    "category": "Utility",
+    "shortDescription": "Launches your flight sim helper apps with the simulator",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["PortugueseBR", "English"]
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGNTk1NjIyMThBODFBMzEKUldReEdxZ1lJbFpaZjN0ekxTTUNXSnZybXhnYkYydEtSOGlRSVRFd09rcEM3ZHN1WFhtR0tnMzAK",
+      "endpoints": ["https://github.com/mariopaglia/autostart/releases/latest/download/latest.json"]
+    }
   }
 }

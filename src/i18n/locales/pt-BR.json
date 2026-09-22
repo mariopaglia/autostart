@@ -223,5 +223,17 @@
     "next": "Próximo",
     "finish": "Concluir",
     "progress": "Passo {{current}} de {{total}}"
+  },
+  "updates": {
+    "available": "AutoStart {{version}} disponível",
+    "currentVersion": "Você está na versão {{version}}.",
+    "install": "Atualizar",
+    "later": "Depois",
+    "installing": "Baixando e instalando…",
+    "progress": "Baixando… {{progress}}%",
+    "checkNow": "Verificar atualizações agora",
+    "upToDate": "Você já está na versão mais recente",
+    "checkFailed": "Não foi possível verificar atualizações",
+    "installFailed": "A atualização falhou e foi cancelada"
   }
 }
