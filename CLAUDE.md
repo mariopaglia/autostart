@@ -13,7 +13,7 @@ Windows tray app (Tauri 2 + React 19) that launches a profile's helper apps when
 - Intention-revealing names; no abbreviations except well-known ones (`id`, `url`, `pid`, `exe`).
 - Small functions that do one thing; early returns over nested conditionals.
 - No dead code, no commented-out code, no speculative abstractions.
-- **Comments only when necessary**: explain *why*, never *what*. Expected places: `unsafe` blocks (state the invariant), WinAPI quirks, non-obvious workarounds. No doc comments that restate the signature.
+- **Comments only when necessary**: explain _why_, never _what_. Expected places: `unsafe` blocks (state the invariant), WinAPI quirks, non-obvious workarounds. No doc comments that restate the signature.
 - Prefer pure functions for logic (e.g., the monitor state machine) so they are unit-testable without the OS.
 
 ## TypeScript / React

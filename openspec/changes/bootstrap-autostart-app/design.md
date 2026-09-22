@@ -33,7 +33,7 @@ Projeto greenfield (repositório `mariopaglia/autostart`, público). Motivação
 | Vite / `@vitejs/plugin-react` | 8.3.x / 6.1.x | |
 | TypeScript | 5.9.x | Mais maduro no ecossistema (typescript-eslint, ts-rs) que o 7.x nativo |
 | Tailwind CSS / `@tailwindcss/vite` | 4.3.x | Configuração CSS-first, sem `tailwind.config.js` |
-| shadcn (CLI) | 4.x | Estilo new-york, base color zinc |
+| shadcn (CLI) | 4.x | Preset `radix-nova` (Radix + Lucide + Geist), base color neutral; `cn` vem do pacote oficial `cn` |
 | lucide-react | 1.x | |
 | Zustand | 5.0.x | |
 | `@dnd-kit/core` / `@dnd-kit/sortable` | 6.3.x / 10.0.x | |
@@ -46,7 +46,7 @@ Projeto greenfield (repositório `mariopaglia/autostart`, público). Motivação
 | `tokio` | 1.x | Via runtime do Tauri (`tauri::async_runtime`) |
 | `serde` / `serde_json` | 1.x | |
 | `thiserror` | 2.x | |
-| `ts-rs` | latest 11.x | Gera tipos TS a partir do Rust |
+| `ts-rs` | 12.x | Gera tipos TS a partir do Rust |
 | `uuid` | 1.x (v4) | |
 | `image` | latest, só feature `png` | Codifica o ícone extraído |
 
@@ -185,7 +185,7 @@ Os structs em `models.rs` derivam `TS` (ts-rs), com `#[serde(rename_all = "camel
 ### D12. Frontend
 - Sem router: `App.tsx` alterna entre as telas `main | logs | settings` com um estado do Zustand. O onboarding é um `Dialog` sobre a tela principal.
 - Stores: `profiles-store` (CRUD otimista + `invoke`), `settings-store` e `monitor-store` (alimentado pelo hook `useMonitorEvents`, que faz `get_monitor_state` na montagem e depois `listen`).
-- Formulários com `react-hook-form` + `@hookform/resolvers/zod` (a forma que o shadcn `Form` usa), reaproveitando os schemas.
+- Formulários com `react-hook-form` + `@hookform/resolvers/zod` e os componentes `Field` do shadcn v4 (substituto do antigo `Form`) via `Controller`, reaproveitando os schemas.
 - dnd-kit: `DndContext` + `SortableContext` + `KeyboardSensor` com `sortableKeyboardCoordinates`, para atender o requisito de acessibilidade.
 - Tema: classe `dark` no `<html>`, com `matchMedia('(prefers-color-scheme: dark)')` quando o tema é `system`.
 - i18n: `i18next` com `fallbackLng: 'pt-BR'`. A troca de idioma chama `save_settings`, que dispara `tray::refresh`.

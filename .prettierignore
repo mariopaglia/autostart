@@ -1,0 +1,7 @@
+dist
+src-tauri/target
+src-tauri/gen
+src/bindings
+pnpm-lock.yaml
+openspec
+.claude
