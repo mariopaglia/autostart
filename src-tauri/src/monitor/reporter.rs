@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use tauri::{AppHandle, Emitter, Manager};
 
 use super::session::Session;
+use crate::error::AppError;
 use crate::models::{ItemRuntime, MonitorSnapshot, MonitorState, SessionLog, TimelineKind};
 use crate::state::AppState;
 
@@ -52,6 +53,7 @@ impl Reporter {
             published.snapshot.clone()
         };
         self.emit(STATE_EVENT, snapshot);
+        crate::tray::refresh(&self.app);
     }
 
     pub fn attach(&self, session: &SharedSession) {
@@ -90,19 +92,21 @@ impl Reporter {
         session: &SharedSession,
         kind: TimelineKind,
         item_id: Option<&str>,
-        message: String,
+        error: Option<&AppError>,
     ) {
         let entry = {
             let mut session = lock(session);
-            let entry = session.record(kind, item_id, message);
+            let entry = session.record(kind, item_id, error);
             self.published().session_log = Some(session.log().clone());
             entry
         };
-        log::info!(
-            "{kind:?} {} {}",
-            entry.item_name.as_deref().unwrap_or(""),
-            entry.message
-        );
+        match error {
+            Some(error) => log::warn!(
+                "{kind:?} {}: {error}",
+                entry.item_name.as_deref().unwrap_or("")
+            ),
+            None => log::info!("{kind:?} {}", entry.item_name.as_deref().unwrap_or("")),
+        }
         self.emit(LOG_EVENT, entry);
     }
 

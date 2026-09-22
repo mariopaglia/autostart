@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
+use tauri_plugin_opener::OpenerExt;
 
-use crate::error::AppResult;
-use crate::exe_inspection;
+use crate::error::{AppError, AppResult};
 use crate::models::{ExeInfo, MonitorSnapshot, ProcessInfo, Profile, SessionLog, Settings};
 use crate::monitor::MonitorHandle;
 use crate::state::AppState;
-use crate::{platform, processes};
+use crate::{exe_inspection, launch_args, platform, processes, system_autostart, tray};
 
 #[tauri::command]
 pub fn get_profiles(state: State<'_, AppState>) -> Vec<Profile> {
@@ -15,28 +15,57 @@ pub fn get_profiles(state: State<'_, AppState>) -> Vec<Profile> {
 }
 
 #[tauri::command]
-pub fn save_profile(state: State<'_, AppState>, profile: Profile) -> AppResult<Profile> {
-    state.save_profile(profile)
+pub fn save_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    profile: Profile,
+) -> AppResult<Profile> {
+    let saved = state.save_profile(profile)?;
+    tray::refresh(&app);
+    Ok(saved)
 }
 
 #[tauri::command]
-pub fn delete_profile(state: State<'_, AppState>, profile_id: String) -> AppResult<Settings> {
-    state.delete_profile(&profile_id)
+pub fn delete_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    profile_id: String,
+) -> AppResult<Settings> {
+    let settings = state.delete_profile(&profile_id)?;
+    tray::refresh(&app);
+    Ok(settings)
 }
 
 #[tauri::command]
-pub fn set_active_profile(state: State<'_, AppState>, profile_id: String) -> AppResult<Settings> {
-    state.set_active_profile(&profile_id)
+pub fn set_active_profile(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    profile_id: String,
+) -> AppResult<Settings> {
+    let settings = state.set_active_profile(&profile_id)?;
+    tray::refresh(&app);
+    Ok(settings)
+}
+
+/// The startup entry can be removed outside AutoStart (e.g. Task Manager), so the system wins.
+#[tauri::command]
+pub fn get_settings(app: AppHandle, state: State<'_, AppState>) -> AppResult<Settings> {
+    state.sync_start_with_windows(system_autostart::is_enabled(&app))
 }
 
 #[tauri::command]
-pub fn get_settings(state: State<'_, AppState>) -> Settings {
-    state.settings()
-}
-
-#[tauri::command]
-pub fn save_settings(state: State<'_, AppState>, settings: Settings) -> AppResult<Settings> {
-    state.save_settings(settings)
+pub fn save_settings(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    settings: Settings,
+) -> AppResult<Settings> {
+    let saved = state.save_settings(settings)?;
+    tray::refresh(&app);
+    if let Err(error) = system_autostart::apply(&app, saved.start_with_windows) {
+        state.sync_start_with_windows(system_autostart::is_enabled(&app))?;
+        return Err(error);
+    }
+    Ok(saved)
 }
 
 #[tauri::command]
@@ -55,6 +84,30 @@ pub fn find_missing_executables(paths: Vec<String>) -> Vec<String> {
 #[tauri::command]
 pub fn is_elevated() -> bool {
     platform::is_elevated()
+}
+
+/// Returns only when the UAC prompt was refused; on success this instance exits.
+#[tauri::command]
+pub async fn relaunch_as_admin(app: AppHandle) -> AppResult<()> {
+    let exe_path = std::env::current_exe()?;
+    let working_dir = exe_path.parent().map(PathBuf::from).unwrap_or_default();
+    let args = launch_args::wait_for_pid_args(std::process::id());
+
+    tauri::async_runtime::spawn_blocking(move || {
+        platform::launch_elevated(&exe_path, Some(&args), &working_dir)
+    })
+    .await??;
+    app.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_log_dir(app: AppHandle) -> AppResult<()> {
+    let log_dir = app.path().app_log_dir()?;
+    std::fs::create_dir_all(&log_dir)?;
+    app.opener()
+        .open_path(log_dir.to_string_lossy(), None::<&str>)
+        .map_err(|error| AppError::Io(std::io::Error::other(error.to_string())))
 }
 
 #[tauri::command]

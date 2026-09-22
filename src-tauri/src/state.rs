@@ -97,6 +97,17 @@ impl AppState {
         Ok(settings)
     }
 
+    pub fn sync_start_with_windows(&self, registered: bool) -> AppResult<Settings> {
+        let settings = self.settings();
+        if settings.start_with_windows == registered {
+            return Ok(settings);
+        }
+        self.save_settings(Settings {
+            start_with_windows: registered,
+            ..settings
+        })
+    }
+
     pub fn set_active_profile(&self, id: &str) -> AppResult<Settings> {
         let settings = Settings {
             active_profile_id: Some(id.to_owned()),

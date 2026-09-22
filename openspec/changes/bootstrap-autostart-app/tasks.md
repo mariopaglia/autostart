@@ -49,6 +49,7 @@ Entrega: arquivos completos, nunca "resto igual".
 - [ ] 3.8 Configurar o i18n (i18next, pt-BR padrão, en, fallback) cobrindo 100% dos textos da UI e das mensagens de erro por `kind`, além do tema `system | light | dark` com reação a `prefers-color-scheme`. Verificar com teste Vitest comparando as chaves de pt-BR e en e alternando idioma/tema em tempo real
 - [ ] 3.9 Montar o OnboardingWizard (3–4 passos, presets de simulador aplicados ao perfil de exemplo, pular/concluir → `onboardingCompleted`). Verificar apagando o app data dir e abrindo o app
 - [ ] 3.10 Revisar acessibilidade e movimento: foco visível, `prefers-reduced-motion`, contraste nos dois temas e animações sutis nos cards. Verificar navegando só pelo teclado
+<!-- 3.1–3.10: código implementado (branch feat/phase-3-system-integration), typecheck/lint/testes/clippy ok no macOS. Falta a verificação manual (UI no macOS) e o checkpoint 3.11 no Windows com o build de preview. O botão manual de "verificar atualizações" entra com o updater na 4.2. -->
 - [ ] 3.11 CHECKPOINT Fase 3: apresentar o resumo e o checklist de validação manual no Windows (bandeja, single-instance, autostart após reboot, elevação, logs, idioma, onboarding) e aguardar a validação do mantenedor
 
 ## 4. Fase 4 — Distribuição e documentação

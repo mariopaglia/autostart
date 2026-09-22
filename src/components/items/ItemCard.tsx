@@ -65,7 +65,7 @@ export function ItemCard({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "group flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-xs transition-[opacity,box-shadow,border-color]",
+        "group flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-xs transition-[opacity,box-shadow,border-color] animate-in fade-in duration-300",
         "hover:border-primary/40 hover:shadow-md motion-reduce:transition-none",
         !item.enabled && "opacity-50",
         isDragging && "z-10 shadow-lg ring-2 ring-primary/40",

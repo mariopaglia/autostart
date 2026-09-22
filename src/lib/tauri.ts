@@ -1,5 +1,7 @@
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { ErrorKind } from "@/bindings/ErrorKind";
 import type { ErrorPayload } from "@/bindings/ErrorPayload";
 import type { ExeInfo } from "@/bindings/ExeInfo";
@@ -23,6 +25,8 @@ export const commands = {
     invoke<string[]>("find_missing_executables", { paths }),
   listRunningProcesses: () => invoke<ProcessInfo[]>("list_running_processes"),
   isElevated: () => invoke<boolean>("is_elevated"),
+  relaunchAsAdmin: () => invoke<null>("relaunch_as_admin"),
+  openLogDir: () => invoke<null>("open_log_dir"),
   importProfile: (path: string) => invoke<unknown>("import_profile", { path }),
   exportProfile: (profileId: string, path: string) =>
     invoke<null>("export_profile", { profileId, path }),
@@ -32,6 +36,11 @@ export const commands = {
   resumeMonitor: () => invoke<null>("resume_monitor"),
   testLaunch: (profileId: string) => invoke<null>("test_launch", { profileId }),
   testClose: (profileId: string) => invoke<null>("test_close", { profileId }),
+};
+
+export const system = {
+  getAppVersion: () => getVersion(),
+  openUrl: (url: string) => openUrl(url),
 };
 
 export const monitorEvents = {
@@ -45,6 +54,13 @@ export const monitorEvents = {
     }),
   onLog: (handler: (entry: TimelineEntry) => void): Promise<UnlistenFn> =>
     listen<TimelineEntry>("monitor://log", (event) => {
+      handler(event.payload);
+    }),
+};
+
+export const settingsEvents = {
+  onChanged: (handler: (settings: Settings) => void): Promise<UnlistenFn> =>
+    listen<Settings>("settings://changed", (event) => {
       handler(event.payload);
     }),
 };

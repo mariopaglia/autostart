@@ -1,6 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::closer::CloseTarget;
+use crate::error::AppError;
 use crate::models::{
     ItemRuntime, ItemStatus, LaunchItem, Profile, SessionLog, TimelineEntry, TimelineKind,
 };
@@ -22,7 +23,7 @@ impl Session {
                 item_id: item.id().to_owned(),
                 status: ItemStatus::Pending,
                 launched_by_app: false,
-                message: None,
+                error: None,
             })
             .collect();
         let log = SessionLog {
@@ -39,7 +40,7 @@ impl Session {
             items,
             log,
         };
-        session.record(TimelineKind::SessionStarted, None, String::new());
+        session.record(TimelineKind::SessionStarted, None, None);
         session
     }
 
@@ -87,21 +88,21 @@ impl Session {
         &mut self,
         kind: TimelineKind,
         item_id: Option<&str>,
-        message: String,
+        error: Option<&AppError>,
     ) -> TimelineEntry {
         let entry = TimelineEntry {
             timestamp_ms: now_ms(),
             kind,
             item_id: item_id.map(str::to_owned),
             item_name: item_id.and_then(|id| self.item_name(id)),
-            message,
+            error: error.map(Into::into),
         };
         self.log.entries.push(entry.clone());
         entry
     }
 
     pub fn finish(&mut self) -> TimelineEntry {
-        let entry = self.record(TimelineKind::SessionEnded, None, String::new());
+        let entry = self.record(TimelineKind::SessionEnded, None, None);
         self.log.ended_at_ms = Some(entry.timestamp_ms);
         entry
     }
@@ -202,7 +203,7 @@ mod tests {
             item_id: item_id.into(),
             status,
             launched_by_app,
-            message: None,
+            error: None,
         }
     }
 
@@ -274,7 +275,7 @@ mod tests {
     #[test]
     fn timeline_resolves_item_names_and_finish_sets_end_time() {
         let mut session = Session::start(profile(), false);
-        let entry = session.record(TimelineKind::Launched, Some("launched"), String::new());
+        let entry = session.record(TimelineKind::Launched, Some("launched"), None);
         session.finish();
 
         assert_eq!(entry.item_name.as_deref(), Some("launched"));

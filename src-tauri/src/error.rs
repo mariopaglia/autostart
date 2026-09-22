@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use ts_rs::TS;
 
 #[derive(Debug, thiserror::Error)]
@@ -40,6 +40,9 @@ pub enum AppError {
     #[error("a session is in progress")]
     SessionInProgress,
 
+    #[error("could not update the Windows startup entry: {0}")]
+    Autostart(String),
+
     #[cfg_attr(windows, allow(dead_code))]
     #[error("not supported on this platform: {0}")]
     Unsupported(&'static str),
@@ -48,7 +51,7 @@ pub enum AppError {
     Tauri(#[from] tauri::Error),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub enum ErrorKind {
@@ -64,11 +67,12 @@ pub enum ErrorKind {
     AccessDenied,
     CloseTimedOut,
     SessionInProgress,
+    Autostart,
     Unsupported,
     Internal,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct ErrorPayload {
     pub kind: ErrorKind,
@@ -90,19 +94,25 @@ impl AppError {
             Self::AccessDenied(_) => ErrorKind::AccessDenied,
             Self::CloseTimedOut(_) => ErrorKind::CloseTimedOut,
             Self::SessionInProgress => ErrorKind::SessionInProgress,
+            Self::Autostart(_) => ErrorKind::Autostart,
             Self::Unsupported(_) => ErrorKind::Unsupported,
             Self::Tauri(_) => ErrorKind::Internal,
         }
     }
 }
 
+impl From<&AppError> for ErrorPayload {
+    fn from(error: &AppError) -> Self {
+        Self {
+            kind: error.kind(),
+            message: error.to_string(),
+        }
+    }
+}
+
 impl Serialize for AppError {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        ErrorPayload {
-            kind: self.kind(),
-            message: self.to_string(),
-        }
-        .serialize(serializer)
+        ErrorPayload::from(self).serialize(serializer)
     }
 }
 

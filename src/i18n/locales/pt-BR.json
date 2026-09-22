@@ -6,8 +6,7 @@
   },
   "common": {
     "save": "Salvar",
-    "cancel": "Cancelar",
-    "comingSoon": "Disponível na próxima fase do desenvolvimento."
+    "cancel": "Cancelar"
   },
   "monitor": {
     "state": {
@@ -123,6 +122,7 @@
     "exe": "Informe um executável, ex.: App.exe",
     "url": "Informe uma URL http ou https",
     "delay": "Use um número entre 0 e 60000",
+    "timeout": "Use um valor entre 1000 e 60000 ms",
     "invalid": "Valor inválido"
   },
   "errors": {
@@ -138,7 +138,90 @@
     "accessDenied": "Acesso negado: execute o AutoStart como administrador",
     "closeTimedOut": "O app não fechou a tempo",
     "sessionInProgress": "Há uma sessão em andamento",
+    "autostart": "Não foi possível atualizar a inicialização com o Windows",
     "unsupported": "Não suportado nesta plataforma",
     "internal": "Erro inesperado"
+  },
+  "elevation": {
+    "title": "Alguns apps podem não ser fechados",
+    "description": "O perfil \"{{profile}}\" tem apps executados como administrador. Sem o AutoStart elevado, o Windows impede que eles sejam fechados. Os apps abertos pelo AutoStart elevado também herdam a elevação.",
+    "relaunch": "Reiniciar como administrador",
+    "relaunchCancelled": "Elevação cancelada. O AutoStart continua sem privilégios de administrador."
+  },
+  "logs": {
+    "title": "Logs",
+    "openFolder": "Abrir pasta de logs",
+    "test": "Teste",
+    "startedAt": "Iniciada em {{date}}",
+    "inProgress": "Em andamento",
+    "emptyTitle": "Nenhuma sessão registrada",
+    "emptyDescription": "Quando o simulador abrir, ou ao usar os botões de teste, a linha do tempo aparece aqui.",
+    "kind": {
+      "sessionStarted": "Sessão iniciada",
+      "launched": "Aberto",
+      "skipped": "Pulado: já estava aberto",
+      "notRunning": "Não estava em execução",
+      "closedGracefully": "Fechado graciosamente",
+      "forceClosed": "Encerrado à força",
+      "kept": "Mantido aberto",
+      "error": "Erro",
+      "sessionEnded": "Sessão encerrada"
+    }
+  },
+  "settings": {
+    "title": "Configurações",
+    "sections": {
+      "startup": "Inicialização",
+      "closing": "Fechamento",
+      "appearance": "Aparência",
+      "maintenance": "Manutenção",
+      "about": "Sobre"
+    },
+    "startWithWindows": "Iniciar com o Windows",
+    "startWithWindowsHint": "Abre o AutoStart ao entrar no Windows, sem privilégios de administrador.",
+    "startMinimized": "Iniciar minimizado",
+    "startMinimizedHint": "Abre apenas o ícone na bandeja, sem mostrar a janela.",
+    "gracefulTimeout": "Tempo para fechar normalmente (ms)",
+    "gracefulTimeoutHint": "Depois desse prazo, os apps que não fecharem são encerrados à força.",
+    "closeOnlyIfLaunchedByApp": "Fechar apenas o que o AutoStart abriu",
+    "closeOnlyIfLaunchedByAppHint": "Apps que já estavam abertos antes do simulador continuam abertos.",
+    "theme": "Tema",
+    "themes": {
+      "system": "Seguir o sistema",
+      "light": "Claro",
+      "dark": "Escuro"
+    },
+    "language": "Idioma",
+    "checkUpdatesOnStartup": "Verificar atualizações ao iniciar",
+    "checkUpdatesOnStartupHint": "Procura uma nova versão sempre que o AutoStart abre.",
+    "logs": "Logs técnicos",
+    "logsHint": "Arquivos usados para diagnosticar problemas.",
+    "version": "Versão",
+    "license": "Licença",
+    "repository": "Repositório"
+  },
+  "onboarding": {
+    "trigger": {
+      "title": "Bem-vindo ao AutoStart",
+      "description": "O AutoStart observa o processo do seu simulador (o gatilho). Quando ele abre, seus apps auxiliares abrem na ordem que você definir; quando ele fecha, eles são fechados."
+    },
+    "simulator": {
+      "title": "Qual simulador você usa?",
+      "description": "Vamos configurar o perfil de exemplo com o gatilho certo. Você pode mudar isso depois.",
+      "custom": "Outro (personalizado)"
+    },
+    "items": {
+      "title": "Adicione seus apps",
+      "description": "Na tela principal, use \"Adicionar app\" para escolher um executável ou \"Adicionar URL\" para abrir um site. Arraste os cards para definir a ordem e use os botões de teste para conferir sem abrir o simulador."
+    },
+    "startup": {
+      "title": "Deixe tudo automático",
+      "description": "Com o AutoStart iniciando junto com o Windows, basta abrir o simulador. Ele fica discreto na bandeja do sistema."
+    },
+    "skip": "Pular",
+    "back": "Voltar",
+    "next": "Próximo",
+    "finish": "Concluir",
+    "progress": "Passo {{current}} de {{total}}"
   }
 }

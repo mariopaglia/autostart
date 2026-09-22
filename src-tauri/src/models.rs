@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::error::ErrorPayload;
+
 pub const DEFAULT_DELAY_MS: u32 = 800;
 pub const MAX_DELAY_MS: u32 = 60_000;
 pub const DEFAULT_GRACEFUL_TIMEOUT_MS: u32 = 5_000;
@@ -189,7 +191,7 @@ pub struct ItemRuntime {
     pub launched_by_app: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
-    pub message: Option<String>,
+    pub error: Option<ErrorPayload>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -220,6 +222,7 @@ pub enum TimelineKind {
     SessionStarted,
     Launched,
     Skipped,
+    NotRunning,
     ClosedGracefully,
     ForceClosed,
     Kept,
@@ -240,7 +243,9 @@ pub struct TimelineEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub item_name: Option<String>,
-    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub error: Option<ErrorPayload>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]

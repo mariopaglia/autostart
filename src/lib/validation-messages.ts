@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 import type { FieldError } from "react-hook-form";
 
-const VALIDATION_KEYS = ["required", "name", "exe", "url", "delay", "invalid"] as const;
+const VALIDATION_KEYS = ["required", "name", "exe", "url", "delay", "timeout", "invalid"] as const;
 type ValidationKey = (typeof VALIDATION_KEYS)[number];
 
 function isValidationKey(value: string): value is ValidationKey {

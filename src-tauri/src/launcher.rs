@@ -100,16 +100,16 @@ fn launch_failed(item: &AppItem, error: impl std::fmt::Display) -> AppError {
 
 impl LaunchOutcome {
     pub fn into_runtime(self, item_id: &str) -> ItemRuntime {
-        let (status, launched_by_app, message) = match self {
+        let (status, launched_by_app, error) = match self {
             Self::Launched => (ItemStatus::Running, true, None),
             Self::AlreadyRunning => (ItemStatus::Skipped, false, None),
-            Self::Failed(error) => (ItemStatus::Error, false, Some(error.to_string())),
+            Self::Failed(error) => (ItemStatus::Error, false, Some((&error).into())),
         };
         ItemRuntime {
             item_id: item_id.to_owned(),
             status,
             launched_by_app,
-            message,
+            error,
         }
     }
 }

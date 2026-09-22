@@ -132,18 +132,18 @@ fn terminate_all(pids: &[u32], process_name: &str) -> AppResult<()> {
 
 impl CloseOutcome {
     pub fn into_runtime(self, item_id: &str) -> ItemRuntime {
-        let (status, message) = match self {
+        let (status, error) = match self {
             Self::ClosedGracefully | Self::ForceClosed | Self::NotRunning => {
                 (ItemStatus::Closed, None)
             }
             Self::Kept => (ItemStatus::Skipped, None),
-            Self::Failed(error) => (ItemStatus::Error, Some(error.to_string())),
+            Self::Failed(error) => (ItemStatus::Error, Some((&error).into())),
         };
         ItemRuntime {
             item_id: item_id.to_owned(),
             status,
             launched_by_app: false,
-            message,
+            error,
         }
     }
 }

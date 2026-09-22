@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAppearance } from "@/hooks/use-appearance";
 import { useMonitorEvents } from "@/hooks/use-monitor-events";
+import { useSettingsEvents } from "@/hooks/use-settings-events";
 import { notifyError } from "@/lib/notify";
 import { useProfilesStore } from "@/stores/profiles-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -14,7 +16,9 @@ async function loadInitialData() {
 
 export function App() {
   const [ready, setReady] = useState(false);
+  const theme = useAppearance();
   useMonitorEvents();
+  useSettingsEvents();
 
   useEffect(() => {
     loadInitialData()
@@ -27,7 +31,7 @@ export function App() {
   return (
     <TooltipProvider>
       {ready && <AppShell />}
-      <Toaster position="bottom-right" />
+      <Toaster position="bottom-right" theme={theme} />
     </TooltipProvider>
   );
 }

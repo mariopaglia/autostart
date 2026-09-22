@@ -3,6 +3,7 @@ import { AppWindow, Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { LaunchItem } from "@/bindings/LaunchItem";
 import type { Profile } from "@/bindings/Profile";
+import { ElevationBanner } from "@/components/common/ElevationBanner";
 import { EmptyItems } from "@/components/items/EmptyItems";
 import { ItemFormDialog, type ItemFormTarget } from "@/components/items/ItemFormDialog";
 import { ItemList } from "@/components/items/ItemList";
@@ -62,6 +63,7 @@ export function MainScreen() {
       <TopBar profile={profile} />
 
       <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+        <ElevationBanner />
         {profile.items.length === 0 ? (
           <EmptyItems
             onAddApp={() => {
