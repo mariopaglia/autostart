@@ -200,6 +200,9 @@ Os structs em `models.rs` derivam `TS` (ts-rs), com `#[serde(rename_all = "camel
 - Azure Trusted Signing: `bundle.windows.signCommand` com `trusted-signing-cli` documentado no README e passo `azure/login` + variáveis (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_CLIENT_SECRET`, endpoint, account, certificate profile) comentados no workflow.
 - Identifier: `com.mariopaglia.autostart`. Licença: MIT.
 
+### D16. Builds de preview para validação no Windows
+O mantenedor valida no Windows como usuário final, sem toolchain instalada. O workflow `preview-build.yml` roda em todo push fora da `main` e gera um artifact do GitHub Actions (retido por 14 dias) com o instalador NSIS e o `.exe` portátil, sem assinatura e sem artefatos do updater. Os checkpoints de cada fase são validados com esse artifact. Ele é independente do `release.yml` (D14), que continua sendo o único caminho para publicar versões.
+
 ### D15. Desenvolvimento no macOS
 `platform/fallback.rs` implementa a mesma API: close via `sysinfo::Process::kill_with(Signal::Term)` e depois `kill()`, ícone `None`, `is_elevated = false`, `runas` retorna erro "não suportado". O `sysinfo` funciona no macOS, então dá para testar o monitor de ponta a ponta usando um processo qualquer como gatilho (ex.: `TextEdit`). O `CommandExt::raw_arg` e as `creation_flags` ficam atrás de `#[cfg(windows)]`.
 
