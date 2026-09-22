@@ -19,6 +19,7 @@ Entrega: arquivos completos, nunca "resto igual".
 - [ ] 1.11 Implementar `launcher.rs` (Command com `raw_arg`, workingDir, flags detached, `runas` via `ShellExecuteExW`, URL via opener e confirmação do processo em 10 s) e `closer.rs` + `platform/windows/windows_close.rs` (WM_CLOSE em todas as janelas top-level, polling, TerminateProcess, AccessDenied, fechamento paralelo com timeout global). Verificar no Windows abrindo e fechando o Notepad pelos comandos de teste
 - [ ] 1.12 Expor os comandos em `commands.rs`: get_profiles, save_profile, delete_profile, set_active_profile, get_settings, save_settings, inspect_exe, list_running_processes, import_profile, export_profile, test_launch e test_close (ainda sem monitor). Criar os wrappers tipados em `src/lib/tauri.ts`. Verificar chamando cada comando por uma página de debug temporária e confirmando as respostas tipadas
 - [x] 1.13 Criar `.github/workflows/ci.yml` (windows-latest: pnpm install, typecheck, lint, test, clippy `-D warnings`, cargo test e `git diff --exit-code src/bindings`). Verificar com o workflow verde após o push
+<!-- 1.10–1.12: código implementado e compilando no CI (windows-latest). Falta só a validação manual no Windows (checklist da 1.14). Em 22/09/2026 o mantenedor autorizou seguir para a Fase 2 e fazer essa validação depois. -->
 - [ ] 1.14 CHECKPOINT Fase 1: apresentar o resumo e o checklist de validação manual no Windows (inspect_exe, test_launch/test_close com Notepad e com um app de launcher) e aguardar a validação do mantenedor
 
 ## 2. Fase 2 — Monitor e UI principal
