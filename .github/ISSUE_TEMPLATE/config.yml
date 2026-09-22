@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Relatar uma vulnerabilidade / Report a vulnerability
+    url: https://github.com/mariopaglia/autostart/security/advisories/new
+    about: Relate falhas de segurança de forma privada. / Report security issues privately.

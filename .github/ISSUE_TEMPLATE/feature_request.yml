@@ -1,0 +1,21 @@
+name: Sugerir uma funcionalidade / Suggest a feature
+description: Uma ideia para melhorar o AutoStart. / An idea to improve AutoStart.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qual problema isso resolve? / What problem does it solve?
+      placeholder: "Quando eu voo com ..., preciso ... / When I fly with ..., I need ..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solução sugerida / Suggested solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas / Alternatives considered
