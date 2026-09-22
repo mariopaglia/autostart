@@ -9,6 +9,7 @@ mod monitor;
 mod platform;
 mod process_tracker;
 mod processes;
+mod simconnect;
 mod state;
 mod storage;
 mod system_autostart;

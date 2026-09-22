@@ -39,6 +39,11 @@ pub fn launch(
 
 pub fn minimize_new_windows(_pids: &HashSet<u32>, _already_minimized: &mut HashSet<isize>) {}
 
+/// Lets the SimConnect launch phase run end to end on development hosts.
+pub fn is_simconnect_available() -> bool {
+    true
+}
+
 pub fn is_elevated() -> bool {
     false
 }

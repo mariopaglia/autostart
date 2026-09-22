@@ -43,6 +43,9 @@ pub enum AppError {
     #[error("could not update the Windows startup entry: {0}")]
     Autostart(String),
 
+    #[error("SimConnect did not become available in time")]
+    SimConnectUnavailable,
+
     #[cfg_attr(windows, allow(dead_code))]
     #[error("not supported on this platform: {0}")]
     Unsupported(&'static str),
@@ -68,6 +71,7 @@ pub enum ErrorKind {
     CloseTimedOut,
     SessionInProgress,
     Autostart,
+    SimConnectUnavailable,
     Unsupported,
     Internal,
 }
@@ -95,6 +99,7 @@ impl AppError {
             Self::CloseTimedOut(_) => ErrorKind::CloseTimedOut,
             Self::SessionInProgress => ErrorKind::SessionInProgress,
             Self::Autostart(_) => ErrorKind::Autostart,
+            Self::SimConnectUnavailable => ErrorKind::SimConnectUnavailable,
             Self::Unsupported(_) => ErrorKind::Unsupported,
             Self::Tauri(_) => ErrorKind::Internal,
         }

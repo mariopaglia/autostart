@@ -151,6 +151,7 @@
     "closeTimedOut": "O app não fechou a tempo",
     "sessionInProgress": "Há uma sessão em andamento",
     "autostart": "Não foi possível atualizar a inicialização com o Windows",
+    "simConnectUnavailable": "SimConnect não ficou disponível",
     "unsupported": "Não suportado nesta plataforma",
     "internal": "Erro inesperado"
   },

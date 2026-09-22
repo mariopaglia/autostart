@@ -6,6 +6,18 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
+## [0.2.0] - 2026-09-22
+
+### Adicionado
+
+- O nome do processo de cada app é detectado automaticamente, inclusive em apps que usam launcher; a configuração manual continua disponível em "Avançado".
+- Opção "Abrir minimizado" por app.
+- Opção "Aguardar o SimConnect" por app (MSFS 2020 e 2024): esses itens abrem depois dos demais, quando o simulador aceita conexões de addons.
+
+### Alterado
+
+- Todos os apps passam a ser iniciados pelo shell do Windows, o que permite acompanhar os processos iniciados e abrir minimizado.
+
 ## [0.1.0] - 2026-09-22
 
 Primeira versão pública.
@@ -25,5 +37,6 @@ Primeira versão pública.
 - Assistente de primeira execução.
 - Instalador por usuário (sem administrador) e atualização automática assinada.
 
-[Não lançado]: https://github.com/mariopaglia/autostart/compare/v0.1.0...HEAD
+[Não lançado]: https://github.com/mariopaglia/autostart/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mariopaglia/autostart/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mariopaglia/autostart/releases/tag/v0.1.0

@@ -37,14 +37,32 @@ O AutoStart verifica novas versões ao iniciar (dá para desligar em Configuraç
 4. Use **Testar abertura** e **Testar fechamento** para conferir tudo sem abrir o simulador.
 5. O perfil **ativo** (marcado na lista, também trocável pela bandeja) é o que o AutoStart observa.
 
-### Como descobrir o nome de um processo
+### Nome do processo (detectado automaticamente)
 
-O AutoStart identifica o simulador e os apps pelo **nome do executável** (ex.: `Volanta.exe`). Isso importa principalmente para apps que usam um _launcher_: você abre `Launcher.exe`, mas quem fica rodando é outro processo.
+O AutoStart identifica os apps pelo **nome do processo** (ex.: `Volanta.exe`), usado para saber se o app já estava aberto e para fechá-lo depois. Você não precisa configurar isso: basta escolher o executável.
 
-- **Pelo AutoStart**: no seletor de gatilho, a lista "Processos em execução" mostra tudo o que está aberto agora. Abra o app antes e procure por ele.
+Muitos apps usam um _launcher_: você abre `Launcher.exe`, ele inicia o app de verdade e encerra. Na primeira vez que o AutoStart abre o item (numa sessão ou em **Testar abertura**), ele acompanha os processos iniciados e salva sozinho o nome do processo que continua rodando. O resultado aparece em **Avançado → Nome do processo**, com a indicação "Detectado automaticamente", e na tela de Logs.
+
+Se a detecção errar, edite o campo em **Avançado**: o item passa para o modo manual e o AutoStart não altera mais o nome. O botão **Detectar automaticamente** volta ao modo automático. Para descobrir o nome certo:
+
+- **Pelo AutoStart**: no seletor de gatilho, a lista "Processos em execução" mostra tudo o que está aberto agora.
 - **Pelo Gerenciador de Tarefas**: `Ctrl + Shift + Esc` → aba **Detalhes** → a coluna **Nome** mostra o executável.
 
-No formulário do app, ajuste o campo **Nome do processo** para o processo que fica rodando.
+### Abrir minimizado
+
+Ative **Abrir minimizado** no item para o app abrir direto na barra de tarefas, sem tirar o foco do simulador. O AutoStart pede ao Windows a janela minimizada e, nos primeiros 10 segundos, minimiza as janelas que o app abrir.
+
+Limitações: apps que abrem só na bandeja não têm o que minimizar (e funcionam normalmente); apps que restauram a própria janela depois desse período podem voltar a aparecer. Nesses casos, verifique se o próprio app tem uma opção de iniciar minimizado.
+
+### Aguardar o SimConnect (MSFS)
+
+Alguns addons precisam que o **SimConnect** do Microsoft Flight Simulator esteja pronto para funcionar. Ative **Aguardar o SimConnect** nesses itens:
+
+1. Quando o simulador abre, os itens **sem** essa opção abrem primeiro, na ordem da lista.
+2. Os itens **com** a opção ficam como "Aguardando SimConnect" e abrem, também na ordem, assim que o SimConnect aceita conexões (normalmente perto do menu principal).
+3. Se o SimConnect não ficar disponível em 10 minutos, esses itens ficam com erro.
+
+A opção só funciona com os gatilhos do **MSFS 2020** (`FlightSimulator.exe`) e do **MSFS 2024** (`FlightSimulator2024.exe`). Em **Testar abertura**, a espera é ignorada para você conferir tudo sem o simulador. "SimConnect disponível" significa que o simulador aceita conexões de addons, não que o voo já foi carregado. Se você alterou o `SimConnect.xml` do simulador (nome do pipe ou só TCP), a detecção pode não funcionar.
 
 ### Importar e exportar perfis
 

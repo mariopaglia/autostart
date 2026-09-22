@@ -66,6 +66,7 @@ O servidor SimConnect do MSFS abre o named pipe `\\.\pipe\Microsoft Flight Simul
 
 ### D7. Modelo e compatibilidade
 - `AppItem` ganha `process_name_mode: ProcessNameMode` (`auto` | `manual`, `#[serde(default)]` = `Auto`), `start_minimized: bool` e `wait_for_simconnect: bool` (`#[serde(default)]` = false). `ItemStatus` ganha `WaitingSimConnect`; `TimelineKind` ganha `SimConnectReady` e `SimConnectWaitSkipped`; `ErrorKind`/`AppError` ganham `SimConnectUnavailable`. Os bindings são regenerados, e os schemas Zod ganham os mesmos campos com `.default(...)`, o que mantém válidos o import de arquivos da v0.1.0 e o carregamento de `profiles.json` antigos.
+- Migração local: ao carregar o `profiles.json`, `storage.rs` preenche o `processNameMode` ausente com `manual` quando o `processName` difere do nome do executável (o usuário corrigiu à mão um launcher na v0.1.0) e com `auto` nos demais casos. Sem isso, o aprendizado poderia trocar a correção do usuário pelo nome de um launcher que continua aberto. Arquivos importados usam o padrão do schema (`auto`).
 - `schemaVersion` continua 1: só há campos novos com valor padrão. Em um downgrade para a v0.1.0, os campos desconhecidos são ignorados pelo serde e descartados pelo Zod, sem erro.
 
 ### D8. Formulário

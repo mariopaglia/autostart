@@ -5,9 +5,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::AppResult;
 use crate::models::{LaunchItem, Profile, SessionLog, Settings, Trigger, UrlItem};
+use crate::processes::normalize_process_name;
 
 const SCHEMA_VERSION: u32 = 1;
 const PROFILES_FILE: &str = "profiles.json";
@@ -41,7 +43,7 @@ impl Storage {
 
     pub fn load_profiles(&self) -> AppResult<Vec<Profile>> {
         let profiles = self
-            .read_or_recover::<ProfilesFile>(PROFILES_FILE)?
+            .read_migrated_or_recover::<ProfilesFile>(PROFILES_FILE, infer_process_name_modes)?
             .map(|file| file.profiles)
             .unwrap_or_default();
 
@@ -83,6 +85,14 @@ impl Storage {
     }
 
     fn read_or_recover<T: DeserializeOwned>(&self, file_name: &str) -> AppResult<Option<T>> {
+        self.read_migrated_or_recover(file_name, |_| {})
+    }
+
+    fn read_migrated_or_recover<T: DeserializeOwned>(
+        &self,
+        file_name: &str,
+        migrate: impl FnOnce(&mut Value),
+    ) -> AppResult<Option<T>> {
         let path = self.dir.join(file_name);
         let content = match fs::read_to_string(&path) {
             Ok(content) => content,
@@ -90,7 +100,11 @@ impl Storage {
             Err(error) => return Err(error.into()),
         };
 
-        match serde_json::from_str(&content) {
+        let parsed = serde_json::from_str::<Value>(&content).and_then(|mut value| {
+            migrate(&mut value);
+            serde_json::from_value(value)
+        });
+        match parsed {
             Ok(value) => Ok(Some(value)),
             Err(error) => {
                 let quarantined = quarantine(&path)?;
@@ -131,6 +145,35 @@ fn quarantine(path: &Path) -> AppResult<PathBuf> {
     Ok(quarantined)
 }
 
+/// Profiles saved before `processNameMode` existed: a process name that differs from the
+/// executable was typed by the user, so learning must not overwrite it.
+fn infer_process_name_modes(raw: &mut Value) {
+    let Some(profiles) = raw.get_mut("profiles").and_then(Value::as_array_mut) else {
+        return;
+    };
+    let items = profiles
+        .iter_mut()
+        .filter_map(|profile| profile.get_mut("items")?.as_array_mut())
+        .flatten()
+        .filter_map(Value::as_object_mut)
+        .filter(|item| {
+            item.get("type").and_then(Value::as_str) == Some("app")
+                && !item.contains_key("processNameMode")
+        });
+
+    for item in items {
+        let text = |key: &str| item.get(key).and_then(Value::as_str).unwrap_or_default();
+        let executable = text("exePath")
+            .rsplit(['\\', '/'])
+            .next()
+            .unwrap_or_default();
+        let typed_by_user =
+            normalize_process_name(text("processName")) != normalize_process_name(executable);
+        let mode = if typed_by_user { "manual" } else { "auto" };
+        item.insert("processNameMode".into(), Value::from(mode));
+    }
+}
+
 pub fn example_profile() -> Profile {
     Profile {
         id: uuid::Uuid::new_v4().to_string(),
@@ -153,7 +196,7 @@ pub fn example_profile() -> Profile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Language, DEFAULT_GRACEFUL_TIMEOUT_MS};
+    use crate::models::{Language, ProcessNameMode, DEFAULT_GRACEFUL_TIMEOUT_MS};
 
     fn storage() -> (tempfile::TempDir, Storage) {
         let dir = tempfile::tempdir().expect("temp dir");
@@ -232,5 +275,47 @@ mod tests {
 
         assert!(dir.path().join(SETTINGS_FILE).exists());
         assert!(!dir.path().join("settings.json.tmp").exists());
+    }
+
+    #[test]
+    fn items_from_v010_keep_user_typed_process_names_as_manual() {
+        let (dir, storage) = storage();
+        let item = |id: &str, exe: &str, process: &str| {
+            format!(
+                r#"{{"type":"app","id":"{id}","name":"App","exePath":"{exe}","processName":"{process}"}}"#
+            )
+        };
+        let items = [
+            item(
+                "00000000-0000-4000-8000-000000000001",
+                r"C:\\Apps\\Spad.exe",
+                "SPAD.exe",
+            ),
+            item(
+                "00000000-0000-4000-8000-000000000002",
+                r"C:\\Apps\\Launcher.exe",
+                "Volanta.exe",
+            ),
+        ]
+        .join(",");
+        fs::write(
+            dir.path().join(PROFILES_FILE),
+            format!(
+                r#"{{"schemaVersion":1,"profiles":[{{"id":"00000000-0000-4000-8000-000000000000","name":"MSFS","trigger":{{"processName":"FlightSimulator2024.exe","label":"MSFS 2024"}},"items":[{items}]}}]}}"#
+            ),
+        )
+        .expect("write");
+
+        let profiles = storage.load_profiles().expect("profiles");
+        let modes: Vec<ProcessNameMode> = profiles[0]
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                LaunchItem::App(app) => Some(app.process_name_mode),
+                LaunchItem::Url(_) => None,
+            })
+            .collect();
+
+        assert_eq!(modes, [ProcessNameMode::Auto, ProcessNameMode::Manual]);
     }
 }
