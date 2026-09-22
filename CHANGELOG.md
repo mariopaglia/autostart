@@ -6,7 +6,7 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não lançado]
 
-## [0.1.0] - a definir
+## [0.1.0] - 2026-09-22
 
 Primeira versão pública.
 
