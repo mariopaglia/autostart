@@ -1,8 +1,8 @@
 name: Preview build
 
+# Manual only: run it from the Actions tab (or `gh workflow run preview-build.yml --ref <branch>`)
+# when there is something to validate on Windows.
 on:
-  push:
-    branches-ignore: [main]
   workflow_dispatch:
 
 concurrency:

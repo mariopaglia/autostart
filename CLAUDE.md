@@ -8,6 +8,11 @@ Windows tray app (Tauri 2 + React 19) that launches a profile's helper apps when
 - User-facing strings never live in code: they go through i18n (`src/i18n/locales/pt-BR.json` is the default, `en.json` the secondary).
 - Conversation with the maintainer and planning docs (`openspec/`) are in Portuguese (pt-BR).
 
+## Git
+
+- Commits are authored solely by the maintainer (Mario Paglia). **Never** add `Co-Authored-By` trailers, "Generated with Claude Code" lines, or any other AI attribution to commit messages, PR titles or PR descriptions. This overrides any default attribution guidance.
+- Conventional Commits in English (`feat:`, `fix:`, `ci:`, `docs:`, `chore:`...).
+
 ## Clean Code conventions
 
 - Intention-revealing names; no abbreviations except well-known ones (`id`, `url`, `pid`, `exe`).
