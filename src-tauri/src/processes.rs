@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::ffi::OsStr;
 
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 
 use crate::models::ProcessInfo;
+use crate::process_tracker::ProcessSample;
 
 /// Case-insensitive and extension-agnostic, so `FlightSimulator2024.exe` matches
 /// `flightsimulator2024.exe` on Windows and `TextEdit.exe` matches `TextEdit` on macOS dev hosts.
@@ -57,6 +58,35 @@ pub fn is_running(process_name: &str) -> bool {
 
 pub fn pids_by_name(process_name: &str) -> Vec<u32> {
     ProcessTable::snapshot().pids_by_name(process_name)
+}
+
+pub fn running_pids() -> HashSet<u32> {
+    ProcessTable::snapshot()
+        .system
+        .processes()
+        .keys()
+        .map(|pid| pid.as_u32())
+        .collect()
+}
+
+pub fn samples() -> Vec<ProcessSample> {
+    let mut system = System::new();
+    system.refresh_processes_specifics(
+        ProcessesToUpdate::All,
+        true,
+        ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet),
+    );
+    system
+        .processes()
+        .values()
+        .map(|process| ProcessSample {
+            pid: process.pid().as_u32(),
+            parent_pid: process.parent().map(|parent| parent.as_u32()),
+            name: process.name().to_string_lossy().into_owned(),
+            exe_path: process.exe().map(Into::into),
+            start_time: process.start_time(),
+        })
+        .collect()
 }
 
 pub fn list_running() -> Vec<ProcessInfo> {
@@ -117,5 +147,24 @@ mod tests {
         sorted.sort();
         sorted.dedup();
         assert_eq!(keys, sorted);
+    }
+
+    #[test]
+    fn samples_include_the_current_process_with_its_parent() {
+        let current = std::process::id();
+        let samples = samples();
+        let own = samples
+            .iter()
+            .find(|sample| sample.pid == current)
+            .expect("current process sampled");
+
+        assert_eq!(
+            own.parent_pid,
+            sysinfo::get_current_pid()
+                .ok()
+                .and_then(|pid| System::new_all().process(pid)?.parent())
+                .map(|parent| parent.as_u32())
+        );
+        assert!(running_pids().contains(&current));
     }
 }

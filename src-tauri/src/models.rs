@@ -243,6 +243,7 @@ pub enum TimelineKind {
     ClosedGracefully,
     ForceClosed,
     Kept,
+    ProcessNameLearned,
     SimConnectReady,
     SimConnectWaitSkipped,
     Error,
@@ -265,6 +266,9 @@ pub struct TimelineEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub error: Option<ErrorPayload>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]

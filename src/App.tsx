@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAppearance } from "@/hooks/use-appearance";
 import { useMonitorEvents } from "@/hooks/use-monitor-events";
+import { useProfileEvents } from "@/hooks/use-profile-events";
 import { useSettingsEvents } from "@/hooks/use-settings-events";
 import { notifyError } from "@/lib/notify";
 import { useProfilesStore } from "@/stores/profiles-store";
@@ -26,6 +27,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const theme = useAppearance();
   useMonitorEvents();
+  useProfileEvents();
   useSettingsEvents();
 
   useEffect(() => {

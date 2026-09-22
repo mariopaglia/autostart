@@ -6,6 +6,12 @@ export const TRIGGER_PRESETS: readonly Trigger[] = [
   { processName: "X-Plane.exe", label: "X-Plane 12" },
 ];
 
+const SIMCONNECT_TRIGGERS: readonly string[] = ["flightsimulator.exe", "flightsimulator2024.exe"];
+
+export function supportsSimConnect(trigger: Trigger): boolean {
+  return SIMCONNECT_TRIGGERS.includes(trigger.processName.trim().toLowerCase());
+}
+
 export function triggerFromProcessName(processName: string): Trigger {
   const trimmed = processName.trim();
   const processNameWithExtension = /\.exe$/i.test(trimmed) ? trimmed : `${trimmed}.exe`;

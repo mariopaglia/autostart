@@ -8,6 +8,7 @@ import {
   Play,
   Plug,
   Rocket,
+  ScanSearch,
   SkipForward,
   Zap,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const KIND_ICONS: Record<TimelineKind, { icon: LucideIcon; className: string }> 
   closedGracefully: { icon: CircleCheck, className: "text-emerald-600 dark:text-emerald-400" },
   forceClosed: { icon: Zap, className: "text-amber-600 dark:text-amber-400" },
   kept: { icon: Pin, className: "text-muted-foreground" },
+  processNameLearned: { icon: ScanSearch, className: "text-sky-600 dark:text-sky-400" },
   simConnectReady: { icon: Plug, className: "text-violet-600 dark:text-violet-400" },
   simConnectWaitSkipped: { icon: FastForward, className: "text-muted-foreground" },
   error: { icon: CircleAlert, className: "text-destructive" },
@@ -49,6 +51,7 @@ export function TimelineRow({ entry, language }: { entry: TimelineEntry; languag
         <span>
           {entry.itemName && <span className="font-medium">{entry.itemName} · </span>}
           {t(`logs.kind.${entry.kind}`)}
+          {entry.detail && <span className="font-mono text-xs"> · {entry.detail}</span>}
         </span>
         {entry.error && (
           <span className="text-xs text-destructive">

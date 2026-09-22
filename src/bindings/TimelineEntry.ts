@@ -2,4 +2,4 @@
 import type { ErrorPayload } from "./ErrorPayload";
 import type { TimelineKind } from "./TimelineKind";
 
-export type TimelineEntry = { timestampMs: number, kind: TimelineKind, itemId?: string, itemName?: string, error?: ErrorPayload, };
+export type TimelineEntry = { timestampMs: number, kind: TimelineKind, itemId?: string, itemName?: string, error?: ErrorPayload, detail?: string, };

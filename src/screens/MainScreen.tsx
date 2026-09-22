@@ -10,6 +10,7 @@ import { ItemList } from "@/components/items/ItemList";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { commands } from "@/lib/tauri";
+import { supportsSimConnect } from "@/lib/trigger-presets";
 import { useProfilesStore, useSelectedProfile } from "@/stores/profiles-store";
 
 function useMissingExecutables(profile: Profile | undefined): ReadonlySet<string> {
@@ -111,6 +112,7 @@ export function MainScreen() {
 
       <ItemFormDialog
         target={formTarget}
+        simConnectSupported={supportsSimConnect(profile.trigger)}
         onSave={saveItem}
         onClose={() => {
           setFormTarget(null);

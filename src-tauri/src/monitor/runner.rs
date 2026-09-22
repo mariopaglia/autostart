@@ -2,27 +2,49 @@ use std::time::Duration;
 
 use tauri::AppHandle;
 
+use super::app_watch;
 use super::reporter::{lock, Reporter, SharedSession};
 use crate::closer::{self, CloseOutcome};
 use crate::launcher::{self, LaunchOutcome};
-use crate::models::{ItemRuntime, ItemStatus, TimelineKind};
+use crate::models::{ItemRuntime, ItemStatus, LaunchItem, TimelineKind};
 
 pub async fn launch_items(app: AppHandle, session: SharedSession, reporter: Reporter) {
     let items = lock(&session).enabled_items();
 
     for item in items {
-        tokio::time::sleep(Duration::from_millis(u64::from(item.delay_ms()))).await;
-        reporter.item(&session, status(item.id(), ItemStatus::Launching));
-
-        let outcome = launcher::launch_item(&app, &item).await;
-        let (kind, error) = match &outcome {
-            LaunchOutcome::Launched => (TimelineKind::Launched, None),
-            LaunchOutcome::AlreadyRunning => (TimelineKind::Skipped, None),
-            LaunchOutcome::Failed(error) => (TimelineKind::Error, Some(error)),
-        };
-        reporter.timeline(&session, kind, Some(item.id()), error);
-        reporter.item(&session, outcome.into_runtime(item.id()));
+        launch_one(&app, &session, &reporter, &item).await;
     }
+}
+
+async fn launch_one(
+    app: &AppHandle,
+    session: &SharedSession,
+    reporter: &Reporter,
+    item: &LaunchItem,
+) {
+    tokio::time::sleep(Duration::from_millis(u64::from(item.delay_ms()))).await;
+    reporter.item(session, status(item.id(), ItemStatus::Launching));
+
+    let outcome = match (launcher::launch_item(app, item).await, item) {
+        (LaunchOutcome::AppLaunched(launched), LaunchItem::App(app_item)) => {
+            tauri::async_runtime::spawn(app_watch::watch(
+                app.clone(),
+                session.clone(),
+                reporter.clone(),
+                app_item.clone(),
+                launched,
+            ));
+            LaunchOutcome::Launched
+        }
+        (outcome, _) => outcome,
+    };
+    let (kind, error) = match &outcome {
+        LaunchOutcome::Launched | LaunchOutcome::AppLaunched(_) => (TimelineKind::Launched, None),
+        LaunchOutcome::AlreadyRunning => (TimelineKind::Skipped, None),
+        LaunchOutcome::Failed(error) => (TimelineKind::Error, Some(error)),
+    };
+    reporter.timeline(session, kind, Some(item.id()), error);
+    reporter.item(session, outcome.into_runtime(item.id()));
 }
 
 pub async fn close_items(

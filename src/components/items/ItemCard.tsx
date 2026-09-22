@@ -2,8 +2,10 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   GripVertical,
+  Minimize2,
   MoreVertical,
   Pencil,
+  Plug,
   ShieldAlert,
   Trash2,
   TriangleAlert,
@@ -98,6 +100,18 @@ export function ItemCard({
               <Badge variant="outline" className="gap-1">
                 <ShieldAlert className="size-3" />
                 {t("items.admin")}
+              </Badge>
+            )}
+            {item.type === "app" && item.startMinimized && (
+              <Badge variant="outline" className="gap-1">
+                <Minimize2 className="size-3" />
+                {t("items.minimized")}
+              </Badge>
+            )}
+            {item.type === "app" && item.waitForSimConnect && (
+              <Badge variant="outline" className="gap-1">
+                <Plug className="size-3" />
+                {t("items.simConnect")}
               </Badge>
             )}
             {item.delayMs > 0 && (

@@ -1,52 +1,23 @@
-use ::windows::core::BOOL;
-use ::windows::Win32::Foundation::{E_ACCESSDENIED, HWND, LPARAM, WPARAM};
-use ::windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
-use ::windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetWindowThreadProcessId, PostMessageW, WM_CLOSE,
-};
+use std::collections::HashSet;
 
+use ::windows::Win32::Foundation::{E_ACCESSDENIED, LPARAM, WPARAM};
+use ::windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+use ::windows::Win32::UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE};
+
+use super::top_level_windows::top_level_windows;
 use super::OwnedHandle;
 use crate::error::{AppError, AppResult};
-
-struct WindowSearch {
-    pid: u32,
-    windows: Vec<HWND>,
-}
 
 /// Posts WM_CLOSE to every top-level window of the process, hidden ones included,
 /// which is what `taskkill` without `/F` does and what tray-only apps listen to.
 pub fn request_close(pid: u32) -> usize {
-    let mut search = WindowSearch {
-        pid,
-        windows: Vec::new(),
-    };
-    // SAFETY: `search` outlives the synchronous EnumWindows call that receives its address.
-    let enumerated =
-        unsafe { EnumWindows(Some(collect_window), LPARAM(&mut search as *mut _ as isize)) };
-    if let Err(error) = enumerated {
-        log::warn!("EnumWindows failed for pid {pid}: {error}");
-    }
-
-    search
-        .windows
+    top_level_windows(&HashSet::from([pid]))
         .into_iter()
         // SAFETY: posting a message to a window handle has no memory-safety requirements.
         .filter(|&window| {
             unsafe { PostMessageW(Some(window), WM_CLOSE, WPARAM(0), LPARAM(0)) }.is_ok()
         })
         .count()
-}
-
-unsafe extern "system" fn collect_window(window: HWND, context: LPARAM) -> BOOL {
-    // SAFETY: `context` is the `WindowSearch` pointer passed by `request_close`.
-    let search = unsafe { &mut *(context.0 as *mut WindowSearch) };
-    let mut owner_pid = 0u32;
-    // SAFETY: `owner_pid` is a valid out-pointer for the duration of the call.
-    unsafe { GetWindowThreadProcessId(window, Some(&mut owner_pid)) };
-    if owner_pid == search.pid {
-        search.windows.push(window);
-    }
-    true.into()
 }
 
 pub fn terminate(pid: u32, process_name: &str) -> AppResult<()> {

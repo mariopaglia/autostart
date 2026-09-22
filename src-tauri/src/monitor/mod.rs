@@ -1,3 +1,4 @@
+mod app_watch;
 mod reporter;
 mod runner;
 mod session;

@@ -1,7 +1,7 @@
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use crate::error::{AppError, AppResult};
-use crate::models::{Profile, SessionLog, Settings};
+use crate::models::{LaunchItem, ProcessNameMode, Profile, SessionLog, Settings};
 use crate::storage::Storage;
 use crate::validation::{validate_profile, validate_settings};
 
@@ -64,6 +64,38 @@ impl AppState {
         }
         self.storage.save_profiles(&data.profiles)?;
         Ok(profile)
+    }
+
+    /// Returns the updated profile, or `None` when the item was removed, switched to manual
+    /// mode or already had that name while the app was being observed.
+    pub fn learn_process_name(
+        &self,
+        profile_id: &str,
+        item_id: &str,
+        process_name: &str,
+    ) -> AppResult<Option<Profile>> {
+        let mut data = self.data();
+        let Some(profile) = data
+            .profiles
+            .iter_mut()
+            .find(|profile| profile.id == profile_id)
+        else {
+            return Ok(None);
+        };
+        let Some(item) = profile.items.iter_mut().find_map(|item| match item {
+            LaunchItem::App(app) if app.id == item_id => Some(app),
+            _ => None,
+        }) else {
+            return Ok(None);
+        };
+        if item.process_name_mode != ProcessNameMode::Auto || item.process_name == process_name {
+            return Ok(None);
+        }
+
+        item.process_name = process_name.to_owned();
+        let updated = profile.clone();
+        self.storage.save_profiles(&data.profiles)?;
+        Ok(Some(updated))
     }
 
     pub fn delete_profile(&self, id: &str) -> AppResult<Settings> {
@@ -182,5 +214,76 @@ mod tests {
             state.delete_profile(&only),
             Err(AppError::LastProfile)
         ));
+    }
+
+    fn profile_with_app(mode: ProcessNameMode) -> Profile {
+        let mut profile = example_profile();
+        profile.items = vec![LaunchItem::App(crate::models::AppItem {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: "Volanta".into(),
+            exe_path: "C:\\Apps\\Volanta\\Launcher.exe".into(),
+            args: None,
+            working_dir: None,
+            process_name: "Launcher.exe".into(),
+            process_name_mode: mode,
+            icon_base64: None,
+            delay_ms: 0,
+            run_as_admin: false,
+            start_minimized: false,
+            wait_for_sim_connect: false,
+            on_close: crate::models::OnClose::Graceful,
+            enabled: true,
+        })];
+        profile
+    }
+
+    fn first_process_name(profile: &Profile) -> &str {
+        match profile.items.first() {
+            Some(LaunchItem::App(app)) => &app.process_name,
+            _ => "",
+        }
+    }
+
+    #[test]
+    fn learned_name_is_persisted_for_auto_items() {
+        let (dir, state) = state();
+        let profile = state
+            .save_profile(profile_with_app(ProcessNameMode::Auto))
+            .expect("save");
+        let item_id = profile.items[0].id().to_owned();
+
+        let updated = state
+            .learn_process_name(&profile.id, &item_id, "Volanta.exe")
+            .expect("learn")
+            .expect("profile changed");
+
+        assert_eq!(first_process_name(&updated), "Volanta.exe");
+        let reloaded = AppState::load(Storage::new(dir.path().to_path_buf()).expect("storage"))
+            .expect("reload")
+            .profile(&profile.id)
+            .expect("profile");
+        assert_eq!(first_process_name(&reloaded), "Volanta.exe");
+    }
+
+    #[test]
+    fn learning_ignores_manual_items_and_unknown_ids() {
+        let (_dir, state) = state();
+        let profile = state
+            .save_profile(profile_with_app(ProcessNameMode::Manual))
+            .expect("save");
+        let item_id = profile.items[0].id().to_owned();
+
+        assert!(state
+            .learn_process_name(&profile.id, &item_id, "Volanta.exe")
+            .expect("learn")
+            .is_none());
+        assert!(state
+            .learn_process_name(&profile.id, "missing", "Volanta.exe")
+            .expect("learn")
+            .is_none());
+        assert_eq!(
+            first_process_name(&state.profile(&profile.id).expect("profile")),
+            "Launcher.exe"
+        );
     }
 }

@@ -11,6 +11,7 @@ interface ProfilesState {
   select: (profileId: string) => void;
   save: (profile: Profile) => Promise<boolean>;
   remove: (profileId: string) => Promise<void>;
+  replace: (profile: Profile) => void;
 }
 
 function upsert(profiles: Profile[], profile: Profile): Profile[] {
@@ -45,6 +46,10 @@ export const useProfilesStore = create<ProfilesState>()((set, get) => ({
       notifyError(error);
       return false;
     }
+  },
+
+  replace: (profile) => {
+    set({ profiles: upsert(get().profiles, profile) });
   },
 
   remove: async (profileId) => {

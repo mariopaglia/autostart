@@ -73,6 +73,13 @@ describe("profiles store", () => {
     expect(useProfilesStore.getState().profiles[0]?.name).toBe("First");
   });
 
+  it("applies a profile changed by the backend without saving it again", () => {
+    useProfilesStore.getState().replace({ ...first, name: "Learned" });
+
+    expect(useProfilesStore.getState().profiles[0]?.name).toBe("Learned");
+    expect(mocked.saveProfile).not.toHaveBeenCalled();
+  });
+
   it("moves selection to the new active profile after deleting the selected one", async () => {
     mocked.deleteProfile.mockResolvedValue(settingsFor(first.id));
 

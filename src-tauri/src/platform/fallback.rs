@@ -1,5 +1,6 @@
 //! Development-only stand-ins so the app builds and the UI runs on non-Windows hosts.
 
+use std::collections::HashSet;
 use std::path::Path;
 use std::process::Command;
 
@@ -35,6 +36,8 @@ pub fn launch(
             reason: error.to_string(),
         })
 }
+
+pub fn minimize_new_windows(_pids: &HashSet<u32>, _already_minimized: &mut HashSet<isize>) {}
 
 pub fn is_elevated() -> bool {
     false

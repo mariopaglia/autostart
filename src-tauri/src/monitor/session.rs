@@ -3,7 +3,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::closer::CloseTarget;
 use crate::error::AppError;
 use crate::models::{
-    ItemRuntime, ItemStatus, LaunchItem, Profile, SessionLog, TimelineEntry, TimelineKind,
+    ItemRuntime, ItemStatus, LaunchItem, ProcessNameMode, Profile, SessionLog, TimelineEntry,
+    TimelineKind,
 };
 
 /// One run of a profile, real or test: a frozen copy of the profile, per-item runtime and timeline.
@@ -90,12 +91,47 @@ impl Session {
         item_id: Option<&str>,
         error: Option<&AppError>,
     ) -> TimelineEntry {
+        self.push_entry(kind, item_id, error, None)
+    }
+
+    pub fn record_detail(
+        &mut self,
+        kind: TimelineKind,
+        item_id: &str,
+        detail: String,
+    ) -> TimelineEntry {
+        self.push_entry(kind, Some(item_id), None, Some(detail))
+    }
+
+    /// Returns whether the name changed; items in manual mode keep what the user typed.
+    pub fn learn_process_name(&mut self, item_id: &str, process_name: &str) -> bool {
+        let Some(item) = self.profile.items.iter_mut().find_map(|item| match item {
+            LaunchItem::App(app) if app.id == item_id => Some(app),
+            _ => None,
+        }) else {
+            return false;
+        };
+        if item.process_name_mode != ProcessNameMode::Auto || item.process_name == process_name {
+            return false;
+        }
+        item.process_name = process_name.to_owned();
+        true
+    }
+
+    fn push_entry(
+        &mut self,
+        kind: TimelineKind,
+        item_id: Option<&str>,
+        error: Option<&AppError>,
+        detail: Option<String>,
+    ) -> TimelineEntry {
         let entry = TimelineEntry {
             timestamp_ms: now_ms(),
             kind,
             item_id: item_id.map(str::to_owned),
             item_name: item_id.and_then(|id| self.item_name(id)),
             error: error.map(Into::into),
+            detail,
         };
         self.log.entries.push(entry.clone());
         entry
@@ -287,5 +323,32 @@ mod tests {
             session.log().entries.last().map(|e| e.kind),
             Some(TimelineKind::SessionEnded)
         );
+    }
+
+    #[test]
+    fn learned_name_is_used_to_close_the_session() {
+        let mut session = Session::start(profile(), false);
+        session.assume_all_launched();
+
+        assert!(session.learn_process_name("launched", "Volanta.exe"));
+        let target = session
+            .close_targets(true)
+            .into_iter()
+            .find(|target| target.item_id == "launched")
+            .expect("launched item is a close target");
+        assert_eq!(target.process_name, "Volanta.exe");
+    }
+
+    #[test]
+    fn learning_keeps_manual_names_and_ignores_unchanged_ones() {
+        let mut manual = profile();
+        if let Some(LaunchItem::App(app)) = manual.items.first_mut() {
+            app.process_name_mode = ProcessNameMode::Manual;
+        }
+        let mut session = Session::start(manual, false);
+
+        assert!(!session.learn_process_name("launched", "Volanta.exe"));
+        assert!(!session.learn_process_name("preexisting", "preexisting.exe"));
+        assert!(!session.learn_process_name("missing", "Volanta.exe"));
     }
 }

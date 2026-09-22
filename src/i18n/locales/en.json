@@ -74,6 +74,8 @@
     "remove": "Remove",
     "toggle": "Enable item",
     "admin": "Admin",
+    "minimized": "Minimized",
+    "simConnect": "SimConnect",
     "delay": "{{seconds}}s",
     "onClose": {
       "graceful": "Closes normally",
@@ -106,7 +108,6 @@
     "workingDir": "Working folder",
     "workingDirHint": "Optional. Defaults to the executable's folder.",
     "processName": "Process name",
-    "processNameHint": "Used to detect and close the app. Change it if the executable is only a launcher.",
     "url": "URL",
     "delay": "Wait before opening (ms)",
     "runAsAdmin": "Run as administrator",
@@ -115,7 +116,17 @@
       "graceful": "Close normally",
       "force": "Force close",
       "keep": "Keep open"
-    }
+    },
+    "advanced": "Advanced",
+    "startMinimized": "Start minimized",
+    "startMinimizedHint": "The window opens minimized without taking focus from the simulator. Some apps may ignore it.",
+    "waitForSimConnect": "Wait for SimConnect",
+    "waitForSimConnectHint": "Opens after the other items, once the simulator accepts addon connections.",
+    "waitForSimConnectUnsupported": "Available only for MSFS 2020 and MSFS 2024.",
+    "processNameAuto": "Detected automatically",
+    "processNameAutoHint": "AutoStart finds the real process on its own, even when the executable is just a launcher.",
+    "processNameManualHint": "Set manually. AutoStart will not change this name.",
+    "detectAutomatically": "Detect automatically"
   },
   "validation": {
     "required": "Required field",
@@ -165,6 +176,7 @@
       "closedGracefully": "Closed gracefully",
       "forceClosed": "Force closed",
       "kept": "Kept open",
+      "processNameLearned": "Process name detected",
       "simConnectReady": "SimConnect available",
       "simConnectWaitSkipped": "SimConnect wait skipped in test",
       "error": "Error",

@@ -69,6 +69,13 @@ export const monitorEvents = {
     }),
 };
 
+export const profileEvents = {
+  onChanged: (handler: (profile: Profile) => void): Promise<UnlistenFn> =>
+    listen<Profile>("profiles://changed", (event) => {
+      handler(event.payload);
+    }),
+};
+
 export const settingsEvents = {
   onChanged: (handler: (settings: Settings) => void): Promise<UnlistenFn> =>
     listen<Settings>("settings://changed", (event) => {

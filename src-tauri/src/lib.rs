@@ -7,6 +7,7 @@ mod launcher;
 mod models;
 mod monitor;
 mod platform;
+mod process_tracker;
 mod processes;
 mod state;
 mod storage;

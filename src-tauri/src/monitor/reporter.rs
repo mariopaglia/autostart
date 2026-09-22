@@ -110,6 +110,17 @@ impl Reporter {
         self.emit(LOG_EVENT, entry);
     }
 
+    pub fn process_name_learned(&self, session: &SharedSession, item_id: &str, process_name: &str) {
+        let entry = lock(session).record_detail(
+            TimelineKind::ProcessNameLearned,
+            item_id,
+            process_name.to_owned(),
+        );
+        self.published().session_log = Some(lock(session).log().clone());
+        log::info!("learned process name {process_name} for item {item_id}");
+        self.emit(LOG_EVENT, entry);
+    }
+
     pub fn finish(&self, session: &SharedSession) {
         let (entry, log) = {
             let mut session = lock(session);

@@ -12,11 +12,17 @@ export type ItemFormTarget =
 
 interface ItemFormDialogProps {
   target: ItemFormTarget | null;
+  simConnectSupported: boolean;
   onSave: (item: LaunchItem) => void;
   onClose: () => void;
 }
 
-export function ItemFormDialog({ target, onSave, onClose }: ItemFormDialogProps) {
+export function ItemFormDialog({
+  target,
+  simConnectSupported,
+  onSave,
+  onClose,
+}: ItemFormDialogProps) {
   const { t } = useTranslation();
 
   function saveApp(item: AppItem) {
@@ -43,7 +49,12 @@ export function ItemFormDialog({ target, onSave, onClose }: ItemFormDialogProps)
 
         {target?.mode === "edit" &&
           (target.item.type === "app" ? (
-            <AppItemForm item={target.item} onSubmit={saveApp} onCancel={onClose} />
+            <AppItemForm
+              item={target.item}
+              simConnectSupported={simConnectSupported}
+              onSubmit={saveApp}
+              onCancel={onClose}
+            />
           ) : (
             <UrlItemForm item={target.item} onSubmit={saveUrl} onCancel={onClose} />
           ))}
@@ -55,7 +66,11 @@ export function ItemFormDialog({ target, onSave, onClose }: ItemFormDialogProps)
               <TabsTrigger value="url">{t("itemForm.typeUrl")}</TabsTrigger>
             </TabsList>
             <TabsContent value="app" className="pt-4">
-              <AppItemForm onSubmit={saveApp} onCancel={onClose} />
+              <AppItemForm
+                simConnectSupported={simConnectSupported}
+                onSubmit={saveApp}
+                onCancel={onClose}
+              />
             </TabsContent>
             <TabsContent value="url" className="pt-4">
               <UrlItemForm onSubmit={saveUrl} onCancel={onClose} />
