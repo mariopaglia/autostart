@@ -38,8 +38,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Previews are never served by the updater, so they skip the signed updater artifacts
+      # and need no access to the release signing secrets.
       - name: Build installer
-        run: pnpm tauri build --bundles nsis
+        run: pnpm tauri build --bundles nsis --config src-tauri/tauri.preview.conf.json
 
       - name: Upload installer and portable exe
         uses: actions/upload-artifact@v7

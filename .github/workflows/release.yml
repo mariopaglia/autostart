@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tag matches app version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $tauriVersion = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $packageVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $cargoVersion = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
+          foreach ($version in @($tauriVersion, $packageVersion, $cargoVersion)) {
+            if ("v$version" -ne $tag) {
+              Write-Error "Tag $tag does not match the app version (tauri.conf.json $tauriVersion, package.json $packageVersion, Cargo.toml $cargoVersion)"
+              exit 1
+            }
+          }
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Code signing with Azure Trusted Signing is disabled until the Azure account exists.
+      # To enable it (see README, "Code signing"):
+      #   1. Create the repository secrets AZURE_CLIENT_ID, AZURE_CLIENT_SECRET and AZURE_TENANT_ID,
+      #      and the variables AZURE_SIGNING_ENDPOINT, AZURE_SIGNING_ACCOUNT and AZURE_CERTIFICATE_PROFILE.
+      #   2. Uncomment the step below and the AZURE_* and TAURI_CONFIG env entries of the next step.
+      #
+      # - name: Install Azure Trusted Signing CLI
+      #   run: cargo install trusted-signing-cli --locked
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          # AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          # TAURI_CONFIG: '{"bundle":{"windows":{"signCommand":"trusted-signing-cli -e ${{ vars.AZURE_SIGNING_ENDPOINT }} -a ${{ vars.AZURE_SIGNING_ACCOUNT }} -c ${{ vars.AZURE_CERTIFICATE_PROFILE }} -d AutoStart %1"}}}'
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: AutoStart ${{ github.ref_name }}
+          generateReleaseNotes: true
+          releaseDraft: false
+          prerelease: false
