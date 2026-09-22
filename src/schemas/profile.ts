@@ -9,12 +9,21 @@ import type { UrlItem } from "@/bindings/UrlItem";
 export const DEFAULT_DELAY_MS = 800;
 export const MAX_DELAY_MS = 60_000;
 
-const nameSchema = z.string().trim().min(1).max(80);
-const processNameSchema = z
+export const nameSchema = z
   .string()
   .trim()
-  .regex(/^[^\\/:*?"<>|]+\.exe$/i);
-const delaySchema = z.number().int().min(0).max(MAX_DELAY_MS).default(DEFAULT_DELAY_MS);
+  .min(1, { error: "validation.name" })
+  .max(80, { error: "validation.name" });
+export const processNameSchema = z
+  .string()
+  .trim()
+  .regex(/^[^\\/:*?"<>|]+\.exe$/i, { error: "validation.exe" });
+const delaySchema = z
+  .number({ error: "validation.delay" })
+  .int({ error: "validation.delay" })
+  .min(0, { error: "validation.delay" })
+  .max(MAX_DELAY_MS, { error: "validation.delay" })
+  .default(DEFAULT_DELAY_MS);
 const optionalTextSchema = z
   .string()
   .trim()
@@ -31,7 +40,7 @@ export const triggerSchema = z.object({
 export const appItemSchema = z.object({
   id: z.uuid(),
   name: nameSchema,
-  exePath: z.string().trim().min(1),
+  exePath: z.string().trim().min(1, { error: "validation.required" }),
   args: optionalTextSchema,
   workingDir: optionalTextSchema,
   processName: processNameSchema,
@@ -45,7 +54,7 @@ export const appItemSchema = z.object({
 export const urlItemSchema = z.object({
   id: z.uuid(),
   name: nameSchema,
-  url: z.url({ protocol: /^https?$/ }),
+  url: z.url({ protocol: /^https?$/, error: "validation.url" }),
   delayMs: delaySchema,
   enabled: z.boolean().default(true),
 }) satisfies z.ZodType<UrlItem>;

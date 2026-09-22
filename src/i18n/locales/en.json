@@ -1,0 +1,144 @@
+{
+  "nav": {
+    "main": "Profiles",
+    "logs": "Logs",
+    "settings": "Settings"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "comingSoon": "Available in the next development phase."
+  },
+  "monitor": {
+    "state": {
+      "idle": "Waiting for simulator",
+      "simRunning": "Simulator running",
+      "closing": "Closing apps",
+      "paused": "Paused"
+    },
+    "pause": "Pause monitoring",
+    "resume": "Resume monitoring",
+    "testLaunch": "Test launch",
+    "testClose": "Test close",
+    "testsDisabled": "Unavailable while the simulator is running",
+    "confirmTestClose": {
+      "title": "Close this profile's apps?",
+      "description": "No test launch was run for this profile. Every running app in the profile will be closed according to its own rule.",
+      "confirm": "Close apps"
+    }
+  },
+  "profiles": {
+    "title": "Profiles",
+    "new": "New profile",
+    "active": "Active",
+    "setActive": "Make active",
+    "rename": "Rename",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "export": "Export",
+    "import": "Import profile",
+    "actions": "Profile actions",
+    "copySuffix": " (copy)",
+    "disabled": "Disabled",
+    "enabledToggle": "Profile enabled",
+    "nameLabel": "Profile name",
+    "createTitle": "New profile",
+    "renameTitle": "Rename profile",
+    "deleteConfirm": {
+      "title": "Delete \"{{name}}\"?",
+      "description": "The profile and all its items will be removed. This cannot be undone.",
+      "confirm": "Delete"
+    },
+    "importInvalid": "Invalid profile file",
+    "importInvalidField": "Field {{field}}: {{message}}",
+    "imported": "Profile \"{{name}}\" imported",
+    "exported": "Profile exported",
+    "fileFilter": "AutoStart profile"
+  },
+  "trigger": {
+    "label": "Trigger",
+    "change": "Change trigger",
+    "presets": "Simulators",
+    "running": "Running processes",
+    "search": "Search or type a process…",
+    "empty": "No process found",
+    "useCustom": "Use \"{{processName}}\""
+  },
+  "items": {
+    "addApp": "Add app",
+    "addUrl": "Add URL",
+    "emptyTitle": "No items in this profile",
+    "emptyDescription": "Add the apps and websites that should open with the simulator.",
+    "dragHandle": "Drag to reorder",
+    "actions": "Item actions",
+    "edit": "Edit",
+    "remove": "Remove",
+    "toggle": "Enable item",
+    "admin": "Admin",
+    "delay": "{{seconds}}s",
+    "onClose": {
+      "graceful": "Closes normally",
+      "force": "Force closes",
+      "keep": "Stays open"
+    },
+    "missingExe": "Executable not found",
+    "status": {
+      "pending": "Queued",
+      "launching": "Opening…",
+      "running": "Running",
+      "skipped": "Already open",
+      "closing": "Closing…",
+      "closed": "Closed",
+      "error": "Error"
+    }
+  },
+  "itemForm": {
+    "addTitle": "Add item",
+    "editTitle": "Edit item",
+    "typeApp": "App",
+    "typeUrl": "Website",
+    "chooseExe": "Choose executable…",
+    "exeFilter": "Executables",
+    "name": "Name",
+    "exePath": "Executable",
+    "args": "Arguments",
+    "argsHint": "Optional. E.g. --minimized",
+    "workingDir": "Working folder",
+    "workingDirHint": "Optional. Defaults to the executable's folder.",
+    "processName": "Process name",
+    "processNameHint": "Used to detect and close the app. Change it if the executable is only a launcher.",
+    "url": "URL",
+    "delay": "Wait before opening (ms)",
+    "runAsAdmin": "Run as administrator",
+    "onClose": "When the simulator closes",
+    "onCloseOptions": {
+      "graceful": "Close normally",
+      "force": "Force close",
+      "keep": "Keep open"
+    }
+  },
+  "validation": {
+    "required": "Required field",
+    "name": "Enter a name with 1 to 80 characters",
+    "exe": "Enter an executable, e.g. App.exe",
+    "url": "Enter an http or https URL",
+    "delay": "Use a number between 0 and 60000",
+    "invalid": "Invalid value"
+  },
+  "errors": {
+    "io": "Could not read or write a file",
+    "json": "Invalid JSON file",
+    "validation": "Invalid data",
+    "profileNotFound": "Profile not found",
+    "lastProfile": "At least one profile must remain",
+    "executableNotFound": "Executable not found",
+    "launchFailed": "Could not open the app",
+    "processNotDetected": "The process was not detected after launch",
+    "elevationDenied": "Elevation denied",
+    "accessDenied": "Access denied: run AutoStart as administrator",
+    "closeTimedOut": "The app did not close in time",
+    "sessionInProgress": "A session is in progress",
+    "unsupported": "Not supported on this platform",
+    "internal": "Unexpected error"
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "nav": {
+    "main": "Perfis",
+    "logs": "Logs",
+    "settings": "Configurações"
+  },
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "comingSoon": "Disponível na próxima fase do desenvolvimento."
+  },
+  "monitor": {
+    "state": {
+      "idle": "Aguardando simulador",
+      "simRunning": "Simulador rodando",
+      "closing": "Fechando apps",
+      "paused": "Pausado"
+    },
+    "pause": "Pausar monitoramento",
+    "resume": "Retomar monitoramento",
+    "testLaunch": "Testar abertura",
+    "testClose": "Testar fechamento",
+    "testsDisabled": "Indisponível enquanto o simulador está aberto",
+    "confirmTestClose": {
+      "title": "Fechar os apps deste perfil?",
+      "description": "Nenhuma abertura de teste foi feita para este perfil. Todos os apps do perfil que estiverem em execução serão fechados conforme a regra de cada um.",
+      "confirm": "Fechar apps"
+    }
+  },
+  "profiles": {
+    "title": "Perfis",
+    "new": "Novo perfil",
+    "active": "Ativo",
+    "setActive": "Tornar ativo",
+    "rename": "Renomear",
+    "duplicate": "Duplicar",
+    "delete": "Excluir",
+    "export": "Exportar",
+    "import": "Importar perfil",
+    "actions": "Ações do perfil",
+    "copySuffix": " (cópia)",
+    "disabled": "Desativado",
+    "enabledToggle": "Perfil habilitado",
+    "nameLabel": "Nome do perfil",
+    "createTitle": "Novo perfil",
+    "renameTitle": "Renomear perfil",
+    "deleteConfirm": {
+      "title": "Excluir \"{{name}}\"?",
+      "description": "O perfil e todos os seus itens serão removidos. Essa ação não pode ser desfeita.",
+      "confirm": "Excluir"
+    },
+    "importInvalid": "Arquivo de perfil inválido",
+    "importInvalidField": "Campo {{field}}: {{message}}",
+    "imported": "Perfil \"{{name}}\" importado",
+    "exported": "Perfil exportado",
+    "fileFilter": "Perfil do AutoStart"
+  },
+  "trigger": {
+    "label": "Gatilho",
+    "change": "Trocar gatilho",
+    "presets": "Simuladores",
+    "running": "Processos em execução",
+    "search": "Buscar ou digitar um processo…",
+    "empty": "Nenhum processo encontrado",
+    "useCustom": "Usar \"{{processName}}\""
+  },
+  "items": {
+    "addApp": "Adicionar app",
+    "addUrl": "Adicionar URL",
+    "emptyTitle": "Nenhum item neste perfil",
+    "emptyDescription": "Adicione os apps e sites que devem abrir junto com o simulador.",
+    "dragHandle": "Arrastar para reordenar",
+    "actions": "Ações do item",
+    "edit": "Editar",
+    "remove": "Remover",
+    "toggle": "Habilitar item",
+    "admin": "Admin",
+    "delay": "{{seconds}}s",
+    "onClose": {
+      "graceful": "Fecha normal",
+      "force": "Fecha forçado",
+      "keep": "Mantém aberto"
+    },
+    "missingExe": "Executável não encontrado",
+    "status": {
+      "pending": "Na fila",
+      "launching": "Abrindo…",
+      "running": "Rodando",
+      "skipped": "Já estava aberto",
+      "closing": "Fechando…",
+      "closed": "Fechado",
+      "error": "Erro"
+    }
+  },
+  "itemForm": {
+    "addTitle": "Adicionar item",
+    "editTitle": "Editar item",
+    "typeApp": "App",
+    "typeUrl": "Site",
+    "chooseExe": "Escolher executável…",
+    "exeFilter": "Executáveis",
+    "name": "Nome",
+    "exePath": "Executável",
+    "args": "Argumentos",
+    "argsHint": "Opcional. Ex.: --minimized",
+    "workingDir": "Pasta de trabalho",
+    "workingDirHint": "Opcional. Padrão: a pasta do executável.",
+    "processName": "Nome do processo",
+    "processNameHint": "Usado para detectar e fechar o app. Ajuste se o executável for só um launcher.",
+    "url": "URL",
+    "delay": "Espera antes de abrir (ms)",
+    "runAsAdmin": "Executar como administrador",
+    "onClose": "Ao fechar o simulador",
+    "onCloseOptions": {
+      "graceful": "Fechar normalmente",
+      "force": "Forçar encerramento",
+      "keep": "Manter aberto"
+    }
+  },
+  "validation": {
+    "required": "Campo obrigatório",
+    "name": "Informe um nome de 1 a 80 caracteres",
+    "exe": "Informe um executável, ex.: App.exe",
+    "url": "Informe uma URL http ou https",
+    "delay": "Use um número entre 0 e 60000",
+    "invalid": "Valor inválido"
+  },
+  "errors": {
+    "io": "Erro ao ler ou gravar um arquivo",
+    "json": "Arquivo JSON inválido",
+    "validation": "Dados inválidos",
+    "profileNotFound": "Perfil não encontrado",
+    "lastProfile": "É preciso manter ao menos um perfil",
+    "executableNotFound": "Executável não encontrado",
+    "launchFailed": "Não foi possível abrir o app",
+    "processNotDetected": "O processo não foi detectado após abrir",
+    "elevationDenied": "Elevação negada",
+    "accessDenied": "Acesso negado: execute o AutoStart como administrador",
+    "closeTimedOut": "O app não fechou a tempo",
+    "sessionInProgress": "Há uma sessão em andamento",
+    "unsupported": "Não suportado nesta plataforma",
+    "internal": "Erro inesperado"
+  }
+}

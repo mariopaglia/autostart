@@ -25,10 +25,10 @@ Entrega: arquivos completos, nunca "resto igual".
 
 ## 2. Fase 2 — Monitor e UI principal
 
-- [ ] 2.1 Implementar `monitor/state_machine.rs` como função pura (design D6). Verificar com testes unitários de todos os cenários da spec process-monitor (início, 2 ticks ausentes, oscilação, reabertura durante closing, pause/resume, app iniciado com o sim aberto)
-- [ ] 2.2 Implementar `monitor/session.rs` (snapshot do perfil, abertos × preexistentes, timeline e persistência em `last-session.json`). Verificar com testes unitários de registro e regra `closeOnlyIfLaunchedByApp`
+- [x] 2.1 Implementar `monitor/state_machine.rs` como função pura (design D6). Verificar com testes unitários de todos os cenários da spec process-monitor (início, 2 ticks ausentes, oscilação, reabertura durante closing, pause/resume, app iniciado com o sim aberto)
+- [x] 2.2 Implementar `monitor/session.rs` (snapshot do perfil, abertos × preexistentes, timeline e persistência em `last-session.json`). Verificar com testes unitários de registro e regra `closeOnlyIfLaunchedByApp`
 - [ ] 2.3 Implementar `monitor/mod.rs` (loop de 2 s, canal `MonitorCommand`, tasks de launch/close, eventos `monitor://state`, `monitor://item-status` e `monitor://log`) e os comandos get_monitor_state, pause_monitor e resume_monitor. Migrar test_launch/test_close para o canal do monitor, bloqueando durante a sessão. Verificar no macOS usando `TextEdit` como gatilho: abrir/fechar o TextEdit abre/fecha os itens e os eventos chegam ao frontend
-- [ ] 2.4 Criar as stores Zustand (profiles, settings, monitor) e o hook `useMonitorEvents` (snapshot inicial + listen). Verificar com testes Vitest das stores com `invoke` mockado
+- [x] 2.4 Criar as stores Zustand (profiles, settings, monitor) e o hook `useMonitorEvents` (snapshot inicial + listen). Verificar com testes Vitest das stores com `invoke` mockado
 - [ ] 2.5 Montar o layout AppShell (Sidebar + TopBar + área central) com tema escuro e troca de tela `main | logs | settings`. Verificar visualmente em 1000x680 e no mínimo de 800x560
 - [ ] 2.6 Montar a Sidebar de perfis: listar, marcar ativo, criar, renomear, duplicar (novos UUIDs + sufixo), excluir (bloqueando o último), exportar e importar (dialog + Zod + novos UUIDs + erros por campo). Verificar executando cada ação e conferindo `profiles.json`
 - [ ] 2.7 Montar a TopBar: StatusBadge do monitor ao vivo, TriggerSelector (presets + ProcessPicker com busca via list_running_processes + personalizado) e botões de teste com estado desabilitado e tooltip. Verificar trocando o gatilho e observando a mudança de status

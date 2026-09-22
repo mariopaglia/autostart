@@ -4,6 +4,7 @@ mod error;
 mod exe_inspection;
 mod launcher;
 mod models;
+mod monitor;
 mod platform;
 mod processes;
 mod state;
@@ -13,6 +14,7 @@ mod validation;
 use tauri::Manager;
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 
+use crate::monitor::MonitorHandle;
 use crate::state::AppState;
 use crate::storage::Storage;
 
@@ -28,6 +30,7 @@ pub fn run() {
         .setup(|app| {
             let storage = Storage::new(app.path().app_data_dir()?)?;
             app.manage(AppState::load(storage)?);
+            app.manage(MonitorHandle::spawn(app.handle().clone()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -38,10 +41,15 @@ pub fn run() {
             commands::get_settings,
             commands::save_settings,
             commands::inspect_exe,
+            commands::find_missing_executables,
             commands::list_running_processes,
             commands::is_elevated,
             commands::import_profile,
             commands::export_profile,
+            commands::get_monitor_state,
+            commands::get_session_log,
+            commands::pause_monitor,
+            commands::resume_monitor,
             commands::test_launch,
             commands::test_close,
         ])

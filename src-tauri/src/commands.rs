@@ -1,14 +1,12 @@
 use std::path::PathBuf;
-use std::time::Duration;
 
-use tauri::{AppHandle, State};
+use tauri::State;
 
-use crate::closer::{self, CloseTarget};
 use crate::error::AppResult;
 use crate::exe_inspection;
-use crate::launcher;
-use crate::models::{ExeInfo, ItemRuntime, LaunchItem, ProcessInfo, Profile, Settings};
-use crate::state::{AppState, TestLaunch};
+use crate::models::{ExeInfo, MonitorSnapshot, ProcessInfo, Profile, SessionLog, Settings};
+use crate::monitor::MonitorHandle;
+use crate::state::AppState;
 use crate::{platform, processes};
 
 #[tauri::command]
@@ -47,6 +45,14 @@ pub fn inspect_exe(path: PathBuf) -> AppResult<ExeInfo> {
 }
 
 #[tauri::command]
+pub fn find_missing_executables(paths: Vec<String>) -> Vec<String> {
+    paths
+        .into_iter()
+        .filter(|path| !std::path::Path::new(path).is_file())
+        .collect()
+}
+
+#[tauri::command]
 pub fn is_elevated() -> bool {
     platform::is_elevated()
 }
@@ -75,71 +81,36 @@ pub fn export_profile(
 }
 
 #[tauri::command]
-pub async fn test_launch(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    profile_id: String,
-) -> AppResult<Vec<ItemRuntime>> {
-    let profile = state.profile(&profile_id)?;
-    let mut results = Vec::new();
+pub fn get_monitor_state(monitor: State<'_, MonitorHandle>) -> MonitorSnapshot {
+    monitor.snapshot()
+}
 
-    for item in profile.items.iter().filter(|item| item.is_enabled()) {
-        tokio::time::sleep(Duration::from_millis(u64::from(item.delay_ms()))).await;
-        let runtime = launcher::launch_item(&app, item)
-            .await
-            .into_runtime(item.id());
-        log::info!("test launch: {} -> {:?}", item.name(), runtime.status);
-        results.push(runtime);
-    }
+#[tauri::command]
+pub fn get_session_log(monitor: State<'_, MonitorHandle>) -> Option<SessionLog> {
+    monitor.session_log()
+}
 
-    state.record_test_launch(TestLaunch {
-        profile_id,
-        launched_item_ids: results
-            .iter()
-            .filter(|runtime| runtime.launched_by_app)
-            .map(|runtime| runtime.item_id.clone())
-            .collect(),
-    });
-    Ok(results)
+#[tauri::command]
+pub async fn pause_monitor(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
+    monitor.pause().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn resume_monitor(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
+    monitor.resume().await;
+    Ok(())
+}
+
+/// Starts in the background; progress arrives through the monitor events.
+#[tauri::command]
+pub async fn test_launch(monitor: State<'_, MonitorHandle>, profile_id: String) -> AppResult<()> {
+    monitor.test_launch(profile_id).await
 }
 
 /// Without a previous test launch every app item is treated as launched by AutoStart;
 /// the UI asks for confirmation before calling it in that case.
 #[tauri::command]
-pub async fn test_close(
-    state: State<'_, AppState>,
-    profile_id: String,
-) -> AppResult<Vec<ItemRuntime>> {
-    let profile = state.profile(&profile_id)?;
-    let settings = state.settings();
-    let launched_ids = state
-        .take_test_launch(&profile_id)
-        .filter(|_| settings.close_only_if_launched_by_app)
-        .map(|test_launch| test_launch.launched_item_ids);
-
-    let targets = profile
-        .items
-        .iter()
-        .filter_map(|item| match item {
-            LaunchItem::App(app_item) => Some(app_item),
-            LaunchItem::Url(_) => None,
-        })
-        .filter(|app_item| {
-            launched_ids
-                .as_ref()
-                .is_none_or(|ids| ids.contains(&app_item.id))
-        })
-        .map(CloseTarget::from_app_item)
-        .collect();
-
-    let timeout = Duration::from_millis(u64::from(settings.graceful_timeout_ms));
-    let results = closer::close_all(targets, timeout)
-        .await
-        .into_iter()
-        .map(|(item_id, outcome)| {
-            log::info!("test close: {item_id} -> {outcome:?}");
-            outcome.into_runtime(&item_id)
-        })
-        .collect();
-    Ok(results)
+pub async fn test_close(monitor: State<'_, MonitorHandle>, profile_id: String) -> AppResult<()> {
+    monitor.test_close(profile_id).await
 }

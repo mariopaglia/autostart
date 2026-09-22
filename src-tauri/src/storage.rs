@@ -7,11 +7,12 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppResult;
-use crate::models::{LaunchItem, Profile, Settings, Trigger, UrlItem};
+use crate::models::{LaunchItem, Profile, SessionLog, Settings, Trigger, UrlItem};
 
 const SCHEMA_VERSION: u32 = 1;
 const PROFILES_FILE: &str = "profiles.json";
 const SETTINGS_FILE: &str = "settings.json";
+const LAST_SESSION_FILE: &str = "last-session.json";
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,6 +72,14 @@ impl Storage {
             settings: settings.clone(),
         };
         self.write_atomic(SETTINGS_FILE, &file)
+    }
+
+    pub fn load_last_session(&self) -> AppResult<Option<SessionLog>> {
+        self.read_or_recover(LAST_SESSION_FILE)
+    }
+
+    pub fn save_last_session(&self, log: &SessionLog) -> AppResult<()> {
+        self.write_atomic(LAST_SESSION_FILE, log)
     }
 
     fn read_or_recover<T: DeserializeOwned>(&self, file_name: &str) -> AppResult<Option<T>> {

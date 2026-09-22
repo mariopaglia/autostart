@@ -1,7 +1,7 @@
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use crate::error::{AppError, AppResult};
-use crate::models::{Profile, Settings};
+use crate::models::{Profile, SessionLog, Settings};
 use crate::storage::Storage;
 use crate::validation::{validate_profile, validate_settings};
 
@@ -10,16 +10,9 @@ struct AppData {
     settings: Settings,
 }
 
-#[derive(Debug, Clone)]
-pub struct TestLaunch {
-    pub profile_id: String,
-    pub launched_item_ids: Vec<String>,
-}
-
 pub struct AppState {
     storage: Storage,
     data: Mutex<AppData>,
-    last_test_launch: Mutex<Option<TestLaunch>>,
 }
 
 impl AppState {
@@ -41,7 +34,6 @@ impl AppState {
         Ok(Self {
             storage,
             data: Mutex::new(AppData { profiles, settings }),
-            last_test_launch: Mutex::new(None),
         })
     }
 
@@ -113,15 +105,16 @@ impl AppState {
         self.save_settings(settings)
     }
 
-    pub fn record_test_launch(&self, test_launch: TestLaunch) {
-        *lock(&self.last_test_launch) = Some(test_launch);
+    pub fn load_last_session(&self) -> Option<SessionLog> {
+        self.storage.load_last_session().unwrap_or_else(|error| {
+            log::warn!("could not read the last session: {error}");
+            None
+        })
     }
 
-    pub fn take_test_launch(&self, profile_id: &str) -> Option<TestLaunch> {
-        let mut last = lock(&self.last_test_launch);
-        match last.as_ref() {
-            Some(test_launch) if test_launch.profile_id == profile_id => last.take(),
-            _ => None,
+    pub fn save_last_session(&self, log: &SessionLog) {
+        if let Err(error) = self.storage.save_last_session(log) {
+            log::error!("could not save the last session: {error}");
         }
     }
 
@@ -178,18 +171,5 @@ mod tests {
             state.delete_profile(&only),
             Err(AppError::LastProfile)
         ));
-    }
-
-    #[test]
-    fn test_launch_is_consumed_only_by_its_profile() {
-        let (_dir, state) = state();
-        state.record_test_launch(TestLaunch {
-            profile_id: "a".into(),
-            launched_item_ids: vec!["1".into()],
-        });
-
-        assert!(state.take_test_launch("b").is_none());
-        assert!(state.take_test_launch("a").is_some());
-        assert!(state.take_test_launch("a").is_none());
     }
 }

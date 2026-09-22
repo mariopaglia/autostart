@@ -192,7 +192,6 @@ pub struct ItemRuntime {
     pub message: Option<String>,
 }
 
-#[allow(dead_code)] // Produced by the monitor (phase 2); already exported to TypeScript.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -204,7 +203,6 @@ pub enum MonitorState {
     Paused,
 }
 
-#[allow(dead_code)] // Produced by the monitor (phase 2); already exported to TypeScript.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -215,7 +213,6 @@ pub struct MonitorSnapshot {
     pub items: Vec<ItemRuntime>,
 }
 
-#[allow(dead_code)] // Produced by the monitor (phase 2); already exported to TypeScript.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -230,7 +227,6 @@ pub enum TimelineKind {
     SessionEnded,
 }
 
-#[allow(dead_code)] // Produced by the monitor (phase 2); already exported to TypeScript.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -245,6 +241,20 @@ pub struct TimelineEntry {
     #[ts(optional)]
     pub item_name: Option<String>,
     pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SessionLog {
+    pub profile_id: String,
+    pub profile_name: String,
+    pub is_test: bool,
+    #[ts(type = "number")]
+    pub started_at_ms: u64,
+    #[ts(type = "number | null")]
+    pub ended_at_ms: Option<u64>,
+    pub entries: Vec<TimelineEntry>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]

@@ -37,6 +37,9 @@ pub enum AppError {
     #[error("{0} did not close in time")]
     CloseTimedOut(String),
 
+    #[error("a session is in progress")]
+    SessionInProgress,
+
     #[cfg_attr(windows, allow(dead_code))]
     #[error("not supported on this platform: {0}")]
     Unsupported(&'static str),
@@ -60,6 +63,7 @@ pub enum ErrorKind {
     ElevationDenied,
     AccessDenied,
     CloseTimedOut,
+    SessionInProgress,
     Unsupported,
     Internal,
 }
@@ -85,6 +89,7 @@ impl AppError {
             Self::ElevationDenied => ErrorKind::ElevationDenied,
             Self::AccessDenied(_) => ErrorKind::AccessDenied,
             Self::CloseTimedOut(_) => ErrorKind::CloseTimedOut,
+            Self::SessionInProgress => ErrorKind::SessionInProgress,
             Self::Unsupported(_) => ErrorKind::Unsupported,
             Self::Tauri(_) => ErrorKind::Internal,
         }
