@@ -8,7 +8,7 @@
 
 Abre automaticamente os apps auxiliares do seu simulador de voo quando ele inicia e fecha tudo quando ele encerra.
 
-> **English summary** — AutoStart is a free Windows tray app for virtual pilots. Pick a trigger process (e.g. `FlightSimulator2024.exe`), add your helper apps and websites (Volanta, Navigraph, SimBrief, SPAD.neXt…) and AutoStart launches them in order when the simulator starts and closes them when it exits. Install it from the [latest release](https://github.com/mariopaglia/autostart/releases/latest) (per-user, no admin rights). The app is available in Portuguese and English. Development instructions below work on Windows and macOS (macOS uses stubs for the Windows-only APIs).
+> **English summary** — AutoStart is a free Windows tray app for virtual pilots. Pick a trigger process (e.g. `FlightSimulator2024.exe`), add your helper apps and websites (Volanta, Navigraph, SimBrief, SPAD.neXt…) and AutoStart launches them in order when the simulator starts and closes them when it exits. Download [AutoStart-Setup.exe](https://github.com/mariopaglia/autostart/releases/latest/download/AutoStart-Setup.exe) (always the latest version; per-user install, no admin rights). The app is available in Portuguese and English. Development instructions below work on Windows and macOS (macOS uses stubs for the Windows-only APIs).
 
 ## O que ele faz
 
@@ -19,7 +19,7 @@ Abre automaticamente os apps auxiliares do seu simulador de voo quando ele inici
 
 ## Instalação
 
-1. Baixe o instalador `AutoStart_x.y.z_x64-setup.exe` no [último release](https://github.com/mariopaglia/autostart/releases/latest). Baixe **somente** por esse link oficial.
+1. Baixe o instalador **[AutoStart-Setup.exe](https://github.com/mariopaglia/autostart/releases/latest/download/AutoStart-Setup.exe)**. Esse link sempre entrega a versão mais recente; as notas de cada versão ficam na [página de releases](https://github.com/mariopaglia/autostart/releases/latest). Baixe **somente** por esses links oficiais.
 2. Execute o instalador. Ele instala só para o seu usuário, em `%LOCALAPPDATA%`, **sem pedir administrador**, e cria o atalho no menu Iniciar.
 3. **Aviso do SmartScreen**: como o instalador ainda não tem assinatura de código, o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações → Executar assim mesmo**.
 
@@ -138,7 +138,7 @@ Feito uma única vez. **Perder a chave privada impede para sempre as atualizaç�
    git push origin v0.2.0
    ```
 
-3. O workflow **Release** (`.github/workflows/release.yml`) confere se a tag bate com a versão dos três arquivos (senão falha antes de publicar), builda no `windows-latest` e publica o release com o instalador, a assinatura `.sig` e o `latest.json`, que é o arquivo que os apps instalados consultam.
+3. O workflow **Release** (`.github/workflows/release.yml`) confere se a tag bate com a versão dos três arquivos (senão falha antes de publicar), builda no `windows-latest` e publica o release com o instalador `AutoStart-Setup.exe` (nome fixo, para o link de download direto nunca mudar), a assinatura `.sig` e o `latest.json`, que é o arquivo que os apps instalados consultam.
 
 Para tirar uma versão do ar, apague o release no GitHub: o `latest.json` volta a ser o do release anterior.
 

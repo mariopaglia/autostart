@@ -72,3 +72,5 @@ jobs:
           generateReleaseNotes: true
           releaseDraft: false
           prerelease: false
+          # A version-free name keeps releases/latest/download/AutoStart-Setup.exe a permanent link.
+          releaseAssetNamePattern: "[name]-Setup[ext]"
