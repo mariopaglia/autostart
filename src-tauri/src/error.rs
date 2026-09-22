@@ -37,6 +37,7 @@ pub enum AppError {
     #[error("{0} did not close in time")]
     CloseTimedOut(String),
 
+    #[cfg_attr(windows, allow(dead_code))]
     #[error("not supported on this platform: {0}")]
     Unsupported(&'static str),
 
