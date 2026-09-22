@@ -1,0 +1,58 @@
+<!--
+Fases: cada fase termina com um CHECKPOINT. Pare, apresente o resumo ao mantenedor e só continue após a validação.
+Convenções: código em inglês, Clean Code, comentários só quando necessários (ver CLAUDE.md).
+Entrega: arquivos completos, nunca "resto igual".
+-->
+
+## 1. Fase 1 — Scaffold, contrato de tipos e núcleo Rust
+
+- [ ] 1.1 Antes de escrever código, apresentar ao mantenedor a árvore de pastas (design D2) e as versões resolvidas (design D1), e aguardar o ok
+- [ ] 1.2 Scaffold com `pnpm create tauri-app` (React + TS + Vite), `identifier = com.mariopaglia.autostart`, `productName = AutoStart`, versão 0.1.0, `packageManager` com pnpm fixado e LICENSE MIT. Verificar se `pnpm tauri dev` abre a janela padrão no macOS
+- [ ] 1.3 Configurar TS estrito (`strict`, `noUncheckedIndexedAccess`), ESLint (typescript-eslint com `no-explicit-any: error`), Prettier e scripts `typecheck`, `lint`, `test` e `bindings`. Verificar com `pnpm typecheck && pnpm lint` passando
+- [ ] 1.4 Instalar Tailwind 4 (`@tailwindcss/vite`) e rodar `shadcn init` (new-york, zinc, CSS variables, tema escuro). Adicionar os componentes button, card, dialog, input, label, switch, select, badge, dropdown-menu, tooltip, form, sonner, scroll-area, separator, alert, command e popover. Verificar renderizando um Button com a classe `dark` ativa
+- [ ] 1.5 Instalar as dependências de frontend (zustand, @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities, zod, react-hook-form, @hookform/resolvers, i18next, react-i18next, lucide-react, vitest e plugins JS do Tauri) e as crates Rust (design D1). Verificar com `cargo check` no macOS
+- [ ] 1.6 Criar `error.rs` (`AppError` com thiserror + `Serialize` como `{ kind, message }`) e `models.rs` (Profile, Trigger, LaunchItem tag `type`, OnClose, Settings, ItemStatus, MonitorState, MonitorSnapshot, TimelineEntry, ExeInfo, ProcessInfo) com serde camelCase + ts-rs. Verificar com `cargo test` gerando `src/bindings/*.ts`
+- [ ] 1.7 Criar os schemas Zod `src/schemas/profile.ts` e `settings.ts` com defaults e limites das specs, usando `satisfies z.ZodType<...>` contra os bindings. Verificar com testes Vitest de casos válidos e inválidos (URL não http, delay fora do limite, nome vazio, union discriminada) e com `pnpm typecheck` falhando se um campo divergir
+- [ ] 1.8 Implementar `storage.rs`: diretório de dados, leitura com `#[serde(default)]`, escrita atômica (`.tmp` + rename), `schemaVersion`, recuperação de arquivo corrompido (`.corrupt-<timestamp>`) e perfil de exemplo MSFS 2024. Verificar com testes unitários em diretório temporário (roundtrip, campo ausente, arquivo corrompido)
+- [ ] 1.9 Criar a camada `platform/` com a API única e o `fallback.rs` para macOS (design D15). Verificar com `cargo check` no macOS e `cargo check --target x86_64-pc-windows-msvc` (ou no CI)
+- [ ] 1.10 Implementar `processes.rs` (listar sem duplicatas, ordenado, e buscar PIDs por nome sem diferenciar maiúsculas) e `platform/windows/exe_info.rs` (ícone PNG base64 + ProductName/FileDescription). Verificar com teste unitário da normalização de nomes e, no Windows, com `inspect_exe` sobre `C:\Windows\notepad.exe` retornando nome e ícone
+- [ ] 1.11 Implementar `launcher.rs` (Command com `raw_arg`, workingDir, flags detached, `runas` via `ShellExecuteExW`, URL via opener e confirmação do processo em 10 s) e `closer.rs` + `platform/windows/windows_close.rs` (WM_CLOSE em todas as janelas top-level, polling, TerminateProcess, AccessDenied, fechamento paralelo com timeout global). Verificar no Windows abrindo e fechando o Notepad pelos comandos de teste
+- [ ] 1.12 Expor os comandos em `commands.rs`: get_profiles, save_profile, delete_profile, set_active_profile, get_settings, save_settings, inspect_exe, list_running_processes, import_profile, export_profile, test_launch e test_close (ainda sem monitor). Criar os wrappers tipados em `src/lib/tauri.ts`. Verificar chamando cada comando por uma página de debug temporária e confirmando as respostas tipadas
+- [ ] 1.13 Criar `.github/workflows/ci.yml` (windows-latest: pnpm install, typecheck, lint, test, clippy `-D warnings`, cargo test e `git diff --exit-code src/bindings`). Verificar com o workflow verde após o push
+- [ ] 1.14 CHECKPOINT Fase 1: apresentar o resumo e o checklist de validação manual no Windows (inspect_exe, test_launch/test_close com Notepad e com um app de launcher) e aguardar a validação do mantenedor
+
+## 2. Fase 2 — Monitor e UI principal
+
+- [ ] 2.1 Implementar `monitor/state_machine.rs` como função pura (design D6). Verificar com testes unitários de todos os cenários da spec process-monitor (início, 2 ticks ausentes, oscilação, reabertura durante closing, pause/resume, app iniciado com o sim aberto)
+- [ ] 2.2 Implementar `monitor/session.rs` (snapshot do perfil, abertos × preexistentes, timeline e persistência em `last-session.json`). Verificar com testes unitários de registro e regra `closeOnlyIfLaunchedByApp`
+- [ ] 2.3 Implementar `monitor/mod.rs` (loop de 2 s, canal `MonitorCommand`, tasks de launch/close, eventos `monitor://state`, `monitor://item-status` e `monitor://log`) e os comandos get_monitor_state, pause_monitor e resume_monitor. Migrar test_launch/test_close para o canal do monitor, bloqueando durante a sessão. Verificar no macOS usando `TextEdit` como gatilho: abrir/fechar o TextEdit abre/fecha os itens e os eventos chegam ao frontend
+- [ ] 2.4 Criar as stores Zustand (profiles, settings, monitor) e o hook `useMonitorEvents` (snapshot inicial + listen). Verificar com testes Vitest das stores com `invoke` mockado
+- [ ] 2.5 Montar o layout AppShell (Sidebar + TopBar + área central) com tema escuro e troca de tela `main | logs | settings`. Verificar visualmente em 1000x680 e no mínimo de 800x560
+- [ ] 2.6 Montar a Sidebar de perfis: listar, marcar ativo, criar, renomear, duplicar (novos UUIDs + sufixo), excluir (bloqueando o último), exportar e importar (dialog + Zod + novos UUIDs + erros por campo). Verificar executando cada ação e conferindo `profiles.json`
+- [ ] 2.7 Montar a TopBar: StatusBadge do monitor ao vivo, TriggerSelector (presets + ProcessPicker com busca via list_running_processes + personalizado) e botões de teste com estado desabilitado e tooltip. Verificar trocando o gatilho e observando a mudança de status
+- [ ] 2.8 Montar a ItemList com dnd-kit (mouse + teclado), ItemCard (ícone/globo, nome, caminho resumido, badges, toggle, status da sessão, aviso de exe inexistente) e EmptyState. Verificar reordenando por mouse e teclado e conferindo a ordem persistida
+- [ ] 2.9 Montar o ItemFormDialog (app via diálogo nativo + inspect_exe com autopreenchimento, processName editável, ou URL) com react-hook-form + Zod. Verificar adicionando um app e uma URL, editando e vendo os erros de validação por campo
+- [ ] 2.10 CHECKPOINT Fase 2: apresentar o resumo e o checklist de validação manual no Windows (fluxo real: abrir o MSFS ou um gatilho substituto, itens abrindo em ordem, preexistente pulado, fechamento gracioso e forçado, launcher com troca de processo) e aguardar a validação do mantenedor
+
+## 3. Fase 3 — Integração com o sistema, logs, configurações, i18n e onboarding
+
+- [ ] 3.1 Implementar `tray.rs` (três ícones por estado, tooltip, menu com submenu de perfis, pausar/retomar, abrir, sair, textos por idioma e `refresh` em mudanças). Verificar trocando o perfil e pausando pela bandeja, com a UI refletindo
+- [ ] 3.2 Configurar fechar para a bandeja (`CloseRequested` → hide), clique esquerdo no ícone para mostrar/focar, janela com `visible: false` e exibição condicional (startMinimized, onboarding, `--minimized`). Verificar fechando no X e reabrindo pela bandeja
+- [ ] 3.3 Configurar o plugin single-instance (focar a janela existente) e o fluxo `--wait-for-pid` no `main.rs` (design D10). Verificar abrindo o app duas vezes no Windows: continua uma única instância e a janela ganha foco
+- [ ] 3.4 Integrar o plugin autostart com `--minimized`, sincronizado com `startWithWindows`, e com o estado lido do sistema na tela. Verificar ativando, reiniciando o Windows e desativando
+- [ ] 3.5 Implementar `platform/windows/elevation.rs` (is_elevated, relaunch_as_admin) e o ElevationBanner com as condições da spec privilege-elevation. Verificar no Windows: banner aparece com item admin, reinício elevado funciona e UAC negado mantém a instância
+- [ ] 3.6 Configurar tauri-plugin-log (LogDir + rotação 5 × 5 MB, sem args) e a ação "Abrir pasta de logs". Montar a LogsScreen com a timeline ao vivo e a última sessão persistida. Verificar executando um teste de abertura/fechamento e reiniciando o app
+- [ ] 3.7 Montar a SettingsScreen (todos os campos da spec app-settings, validação com Zod, aplicação imediata, seção Sobre com versão e link do repo). Verificar mudando cada configuração e reiniciando
+- [ ] 3.8 Configurar o i18n (i18next, pt-BR padrão, en, fallback) cobrindo 100% dos textos da UI e das mensagens de erro por `kind`, além do tema `system | light | dark` com reação a `prefers-color-scheme`. Verificar com teste Vitest comparando as chaves de pt-BR e en e alternando idioma/tema em tempo real
+- [ ] 3.9 Montar o OnboardingWizard (3–4 passos, presets de simulador aplicados ao perfil de exemplo, pular/concluir → `onboardingCompleted`). Verificar apagando o app data dir e abrindo o app
+- [ ] 3.10 Revisar acessibilidade e movimento: foco visível, `prefers-reduced-motion`, contraste nos dois temas e animações sutis nos cards. Verificar navegando só pelo teclado
+- [ ] 3.11 CHECKPOINT Fase 3: apresentar o resumo e o checklist de validação manual no Windows (bandeja, single-instance, autostart após reboot, elevação, logs, idioma, onboarding) e aguardar a validação do mantenedor
+
+## 4. Fase 4 — Distribuição e documentação
+
+- [ ] 4.1 Gerar ícones do app e da bandeja (`pnpm tauri icon` com placeholder) e configurar o bundle NSIS (currentUser, PortugueseBR + English, atalho no menu Iniciar). Verificar gerando o instalador no Windows e instalando sem UAC
+- [ ] 4.2 Gerar as chaves do updater (`pnpm tauri signer generate`), configurar `pubkey` + endpoint do GitHub Releases + `createUpdaterArtifacts`, integrar plugin-updater + plugin-process (verificação ao iniciar se habilitada, botão manual, diálogo com notas, instalar e reiniciar). Orientar o mantenedor a cadastrar os secrets no repositório. Verificar com uma chave de teste e um `latest.json` apontando para uma versão maior
+- [ ] 4.3 Criar `.github/workflows/release.yml` (tag `v*`, windows-latest, checagem tag × versão, tauri-action publicando o instalador, `.sig` e `latest.json`) com o passo Azure Trusted Signing comentado e o `signCommand` documentado. Verificar com a tag `v0.1.0` gerando o release completo
+- [ ] 4.4 Escrever o README (pt-BR com resumo em en): o que é, instalação e aviso do SmartScreen, como descobrir o nome de um processo, uso de perfis e import/export, elevação, desenvolvimento no Windows e no macOS, build, chaves do updater, secrets, release e ativação da assinatura. Verificar seguindo o README em um clone limpo
+- [ ] 4.5 Validação final contra as specs: rodar `openspec validate bootstrap-autostart-app --strict`, CI verde, e percorrer os cenários de cada spec no Windows com o instalador do release, registrando os resultados
+- [ ] 4.6 CHECKPOINT Fase 4: apresentar o resumo do release v0.1.0 e as pendências (arte final dos ícones, assinatura de código) e aguardar a validação do mantenedor

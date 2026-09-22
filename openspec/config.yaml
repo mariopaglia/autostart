@@ -1,0 +1,19 @@
+schema: spec-driven
+
+context: |
+  Product: AutoStart — Windows tray app for virtual pilots. Launches a profile's helper apps/URLs
+  when a trigger process (e.g. FlightSimulator2024.exe) starts and closes them when it exits.
+  Distributed for free to the maintainer's YouTube community (public repo mariopaglia/autostart).
+  Stack: Tauri 2, React 19 + TypeScript + Vite, Tailwind CSS 4 + shadcn/ui, lucide-react, Zustand,
+  dnd-kit, Zod, i18next. Rust: sysinfo, windows, serde, tokio, thiserror, ts-rs. pnpm.
+  Development happens on macOS (non-Windows stubs); real behavior is validated on Windows / CI.
+  Maintainer is a senior TS fullstack dev with no Rust experience: keep the Rust layer small and idiomatic.
+
+rules:
+  proposal:
+    - Planning docs are written in Portuguese (pt-BR)
+  design:
+    - Code identifiers, file names and examples in English
+  tasks:
+    - Code is always in English, following Clean Code; comments only when necessary (why, unsafe, WinAPI quirks)
+    - Group tasks into phases ending with a validation checkpoint for the maintainer
