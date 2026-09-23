@@ -2,4 +2,4 @@
 import type { LaunchItem } from "./LaunchItem";
 import type { Trigger } from "./Trigger";
 
-export type Profile = { id: string, name: string, trigger: Trigger, items: Array<LaunchItem>, enabled: boolean, };
+export type Profile = { id: string, name: string, triggers: Array<Trigger>, items: Array<LaunchItem>, enabled: boolean, };

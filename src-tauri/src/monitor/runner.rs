@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use tauri::AppHandle;
 
-use super::app_watch;
 use super::reporter::{lock, Reporter, SharedSession};
+use super::{app_watch, crash_watch};
 use crate::closer::{self, CloseOutcome};
 use crate::error::AppError;
 use crate::launcher::{self, LaunchOutcome};
@@ -11,11 +11,11 @@ use crate::models::{ItemRuntime, ItemStatus, LaunchItem, TimelineKind};
 use crate::simconnect;
 
 pub async fn launch_items(app: AppHandle, session: SharedSession, reporter: Reporter) {
-    let (items, trigger, is_test) = {
+    let (items, supports_simconnect, is_test) = {
         let session = lock(&session);
         (
             session.enabled_items(),
-            session.profile().trigger.process_name.clone(),
+            session.supports_simconnect(),
             session.is_test(),
         )
     };
@@ -25,7 +25,7 @@ pub async fn launch_items(app: AppHandle, session: SharedSession, reporter: Repo
         launch_one(&app, &session, &reporter, item).await;
     }
     if deferred.is_empty()
-        || !await_simconnect(&session, &reporter, &deferred, &trigger, is_test).await
+        || !await_simconnect(&session, &reporter, &deferred, supports_simconnect, is_test).await
     {
         return;
     }
@@ -46,10 +46,10 @@ async fn await_simconnect(
     session: &SharedSession,
     reporter: &Reporter,
     deferred: &[LaunchItem],
-    trigger: &str,
+    supports_simconnect: bool,
     is_test: bool,
 ) -> bool {
-    if !simconnect::supports_simconnect(trigger) {
+    if !supports_simconnect {
         return true;
     }
     if is_test {
@@ -88,16 +88,40 @@ async fn launch_one(
     tokio::time::sleep(Duration::from_millis(u64::from(item.delay_ms()))).await;
     reporter.item(session, status(item.id(), ItemStatus::Launching));
 
+    let watches_crashes = matches!(item, LaunchItem::App(app_item) if app_item.restart_on_crash)
+        && !lock(session).is_test();
     let outcome = match (launcher::launch_item(app, item).await, item) {
         (LaunchOutcome::AppLaunched(launched), LaunchItem::App(app_item)) => {
-            tauri::async_runtime::spawn(app_watch::watch(
+            let (app, session, reporter, app_item) = (
                 app.clone(),
                 session.clone(),
                 reporter.clone(),
                 app_item.clone(),
-                launched,
-            ));
+            );
+            tauri::async_runtime::spawn(async move {
+                // Crash watching needs the learned process name, so it starts after learning.
+                app_watch::watch(
+                    app.clone(),
+                    session.clone(),
+                    reporter.clone(),
+                    app_item.clone(),
+                    launched,
+                )
+                .await;
+                if watches_crashes {
+                    crash_watch::watch(app, session, reporter, app_item.id).await;
+                }
+            });
             LaunchOutcome::Launched
+        }
+        (LaunchOutcome::AlreadyRunning, _) if watches_crashes => {
+            tauri::async_runtime::spawn(crash_watch::watch(
+                app.clone(),
+                session.clone(),
+                reporter.clone(),
+                item.id().to_owned(),
+            ));
+            LaunchOutcome::AlreadyRunning
         }
         (outcome, _) => outcome,
     };
@@ -162,6 +186,7 @@ mod tests {
             run_as_admin: false,
             start_minimized: false,
             wait_for_sim_connect,
+            restart_on_crash: false,
             on_close: OnClose::Graceful,
             enabled: true,
         })

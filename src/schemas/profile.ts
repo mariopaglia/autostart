@@ -9,6 +9,7 @@ import type { UrlItem } from "@/bindings/UrlItem";
 
 export const DEFAULT_DELAY_MS = 800;
 export const MAX_DELAY_MS = 60_000;
+export const MAX_TRIGGERS = 5;
 
 export const nameSchema = z
   .string()
@@ -43,6 +44,17 @@ export const triggerSchema = z.object({
   label: nameSchema,
 }) satisfies z.ZodType<Trigger>;
 
+export const triggersSchema = z
+  .array(triggerSchema)
+  .min(1, { error: "validation.triggers" })
+  .max(MAX_TRIGGERS, { error: "validation.triggers" })
+  .refine(
+    (triggers) =>
+      new Set(triggers.map((trigger) => trigger.processName.toLowerCase())).size ===
+      triggers.length,
+    { error: "validation.triggerDuplicate" },
+  );
+
 export const appItemSchema = z.object({
   id: z.uuid(),
   name: nameSchema,
@@ -56,6 +68,7 @@ export const appItemSchema = z.object({
   runAsAdmin: z.boolean().default(false),
   startMinimized: z.boolean().default(false),
   waitForSimConnect: z.boolean().default(false),
+  restartOnCrash: z.boolean().default(false),
   onClose: onCloseSchema.default("graceful"),
   enabled: z.boolean().default(true),
 }) satisfies z.ZodType<AppItem>;
@@ -73,10 +86,22 @@ export const launchItemSchema = z.discriminatedUnion("type", [
   urlItemSchema.extend({ type: z.literal("url") }),
 ]) satisfies z.ZodType<LaunchItem>;
 
-export const profileSchema = z.object({
-  id: z.uuid(),
-  name: nameSchema,
-  trigger: triggerSchema,
-  items: z.array(launchItemSchema).default([]),
-  enabled: z.boolean().default(true),
-}) satisfies z.ZodType<Profile>;
+/** Profiles exported before v0.3.0 have a single `trigger` instead of a `triggers` list. */
+function withTriggersList(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || !("trigger" in raw) || "triggers" in raw) {
+    return raw;
+  }
+  const { trigger, ...rest } = raw;
+  return { ...rest, triggers: [trigger] };
+}
+
+export const profileSchema = z.preprocess(
+  withTriggersList,
+  z.object({
+    id: z.uuid(),
+    name: nameSchema,
+    triggers: triggersSchema,
+    items: z.array(launchItemSchema).default([]),
+    enabled: z.boolean().default(true),
+  }),
+) satisfies z.ZodType<Profile>;

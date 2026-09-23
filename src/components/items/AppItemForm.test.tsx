@@ -58,4 +58,16 @@ describe("AppItemForm", () => {
       processNameMode: "auto",
     });
   });
+
+  it("saves the reopen-on-crash option", async () => {
+    const onSubmit = renderForm([]);
+
+    fireEvent.click(screen.getByRole("switch", { name: i18n.t("itemForm.restartOnCrash") }));
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.save") }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledOnce();
+    });
+    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ restartOnCrash: true });
+  });
 });

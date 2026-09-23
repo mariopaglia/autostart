@@ -1,4 +1,6 @@
 mod app_watch;
+mod crash_watch;
+mod detection;
 mod reporter;
 mod runner;
 mod session;
@@ -13,11 +15,12 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::MissedTickBehavior;
 
 use crate::error::{AppError, AppResult};
-use crate::models::{MonitorSnapshot, Profile, SessionLog};
+use crate::models::{MonitorSnapshot, Profile, SessionLog, TimelineKind, Trigger};
 use crate::processes::ProcessTable;
 use crate::state::AppState;
+pub use app_watch::PROFILE_CHANGED_EVENT;
 use reporter::{lock, Reporter, SharedSession};
-use session::Session;
+use session::{now_ms, Session};
 use state_machine::{Input, SessionAction, State};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
@@ -26,6 +29,8 @@ const COMMAND_BUFFER: usize = 32;
 enum MonitorCommand {
     Pause,
     Resume,
+    CloseNow,
+    KeepApps,
     ClosingFinished,
     TestLaunch {
         profile_id: String,
@@ -57,6 +62,7 @@ impl MonitorHandle {
             state: State::default(),
             processes: ProcessTable::snapshot(),
             session: None,
+            pending_start: None,
             launch_task: None,
             test_session: None,
             test_task: None,
@@ -80,6 +86,14 @@ impl MonitorHandle {
 
     pub async fn resume(&self) {
         self.send(MonitorCommand::Resume).await;
+    }
+
+    pub async fn close_now(&self) {
+        self.send(MonitorCommand::CloseNow).await;
+    }
+
+    pub async fn keep_apps_open(&self) {
+        self.send(MonitorCommand::KeepApps).await;
     }
 
     pub async fn test_launch(&self, profile_id: String) -> AppResult<()> {
@@ -110,6 +124,7 @@ struct Monitor {
     state: State,
     processes: ProcessTable,
     session: Option<SharedSession>,
+    pending_start: Option<(Profile, Trigger)>,
     launch_task: Option<JoinHandle<()>>,
     test_session: Option<SharedSession>,
     test_task: Option<JoinHandle<()>>,
@@ -132,31 +147,34 @@ impl Monitor {
     }
 
     fn poll(&mut self) {
-        let Some(trigger) = self.watched_trigger() else {
+        if self.state == State::Paused {
             return;
-        };
+        }
         self.processes.refresh();
-        let input = if self.processes.is_running(&trigger) {
+        let is_running = |name: &str| self.processes.is_running(name);
+
+        // A running session keeps watching its own profile even if the profiles change meanwhile.
+        let seen = match &self.session {
+            Some(session) => detection::any_trigger_running(lock(session).profile(), is_running),
+            None => {
+                let profiles = self.app.state::<AppState>().profiles();
+                self.pending_start = detection::first_running_profile(&profiles, is_running);
+                self.pending_start.is_some()
+            }
+        };
+        self.apply(if seen {
             Input::TriggerSeen
         } else {
             Input::TriggerMissing
-        };
-        self.apply(input);
-    }
-
-    /// A running session keeps watching its own trigger even if the active profile changes.
-    fn watched_trigger(&self) -> Option<String> {
-        if let Some(session) = &self.session {
-            return Some(lock(session).profile().trigger.process_name.clone());
-        }
-        let profile = self.active_profile()?;
-        profile.enabled.then_some(profile.trigger.process_name)
+        });
     }
 
     fn handle(&mut self, command: MonitorCommand) {
         match command {
             MonitorCommand::Pause => self.apply(Input::Pause),
             MonitorCommand::Resume => self.apply(Input::Resume),
+            MonitorCommand::CloseNow => self.apply(Input::CloseNow),
+            MonitorCommand::KeepApps => self.apply(Input::KeepApps),
             MonitorCommand::ClosingFinished => {
                 self.session = None;
                 self.apply(Input::ClosingFinished);
@@ -171,7 +189,7 @@ impl Monitor {
     }
 
     fn apply(&mut self, input: Input) {
-        let (next_state, action) = state_machine::next(self.state, input);
+        let (next_state, action) = state_machine::next(self.state, input, self.close_delay_ticks());
         let previous = std::mem::replace(&mut self.state, next_state);
         if previous.public() != next_state.public() {
             self.reporter.set_state(next_state.public());
@@ -179,7 +197,10 @@ impl Monitor {
 
         match action {
             Some(SessionAction::Start) => self.start_session(),
+            Some(SessionAction::DelayClose) => self.delay_close(),
+            Some(SessionAction::Continue) => self.continue_session(),
             Some(SessionAction::End) => self.end_session(),
+            Some(SessionAction::Release) => self.release_session(),
             Some(SessionAction::Discard) => self.discard_session(),
             None => {}
         }
@@ -189,14 +210,42 @@ impl Monitor {
         abort(self.test_task.take());
         self.test_session = None;
 
-        let Some(profile) = self.active_profile() else {
+        let Some((profile, trigger)) = self.pending_start.take() else {
             self.state = State::Idle;
             self.reporter.set_state(self.state.public());
             return;
         };
-        let session = self.attach(Session::start(profile, false));
+        let session = self.attach(Session::start(profile, Some(trigger), false));
         self.launch_task = Some(self.spawn_launch(session.clone()));
         self.session = Some(session);
+    }
+
+    fn delay_close(&mut self) {
+        let Some(session) = &self.session else {
+            return;
+        };
+        lock(session).set_relaunch_allowed(false);
+        let delay_ms = self.app.state::<AppState>().settings().close_delay_ms;
+        self.reporter
+            .close_delayed(session, now_ms() + u64::from(delay_ms), delay_ms / 1000);
+    }
+
+    fn continue_session(&mut self) {
+        let Some(session) = &self.session else {
+            return;
+        };
+        lock(session).set_relaunch_allowed(true);
+        self.reporter
+            .timeline(session, TimelineKind::SimulatorReturned, None, None);
+    }
+
+    fn release_session(&mut self) {
+        abort(self.launch_task.take());
+        if let Some(session) = self.session.take() {
+            self.reporter
+                .timeline(&session, TimelineKind::KeptByUser, None, None);
+            self.reporter.finish(&session);
+        }
     }
 
     fn end_session(&mut self) {
@@ -204,6 +253,7 @@ impl Monitor {
         let Some(session) = self.session.clone() else {
             return;
         };
+        lock(&session).set_relaunch_allowed(false);
 
         let (close_only, timeout) = self.close_settings();
         let reporter = self.reporter.clone();
@@ -226,7 +276,7 @@ impl Monitor {
         self.ensure_no_session()?;
         abort(self.test_task.take());
 
-        let session = self.attach(Session::start(self.profile(profile_id)?, true));
+        let session = self.attach(Session::start(self.profile(profile_id)?, None, true));
         let launch = self.spawn_launch(session.clone());
         let reporter = self.reporter.clone();
         let finished_session = session.clone();
@@ -252,7 +302,7 @@ impl Monitor {
                 session
             }
             None => {
-                let mut session = Session::start(self.profile(profile_id)?, true);
+                let mut session = Session::start(self.profile(profile_id)?, None, true);
                 session.assume_all_launched();
                 self.attach(session)
             }
@@ -296,10 +346,9 @@ impl Monitor {
         )
     }
 
-    fn active_profile(&self) -> Option<Profile> {
-        let state = self.app.state::<AppState>();
-        let active_id = state.settings().active_profile_id?;
-        state.profile(&active_id).ok()
+    fn close_delay_ticks(&self) -> u32 {
+        let delay_ms = self.app.state::<AppState>().settings().close_delay_ms;
+        detection::close_delay_ticks(delay_ms, POLL_INTERVAL)
     }
 
     fn profile(&self, profile_id: &str) -> AppResult<Profile> {

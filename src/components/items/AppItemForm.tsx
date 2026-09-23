@@ -191,6 +191,12 @@ export function AppItemForm({
             }
             disabled={!simConnectSupported}
           />
+          <SwitchField
+            control={form.control}
+            name="restartOnCrash"
+            label={t("itemForm.restartOnCrash")}
+            description={t("itemForm.restartOnCrashHint")}
+          />
         </div>
 
         <Collapsible

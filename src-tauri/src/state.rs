@@ -1,8 +1,9 @@
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use crate::error::{AppError, AppResult};
-use crate::models::{LaunchItem, ProcessNameMode, Profile, SessionLog, Settings};
+use crate::models::{LaunchItem, ProcessNameMode, Profile, ProfilesUpdate, SessionLog, Settings};
 use crate::storage::Storage;
+use crate::trigger_conflicts::{disable, profiles_to_disable, resolve_conflicts, shares_trigger};
 use crate::validation::{validate_profile, validate_settings};
 
 struct AppData {
@@ -17,15 +18,12 @@ pub struct AppState {
 
 impl AppState {
     pub fn load(storage: Storage) -> AppResult<Self> {
-        let profiles = storage.load_profiles()?;
-        let mut settings = storage.load_settings()?;
-
-        let active_is_valid = settings
-            .active_profile_id
-            .as_ref()
-            .is_some_and(|id| profiles.iter().any(|profile| &profile.id == id));
-        if !active_is_valid {
-            settings.active_profile_id = profiles.first().map(|profile| profile.id.clone());
+        let mut profiles = storage.load_profiles()?;
+        let settings = storage.load_settings()?;
+        let legacy_active_id = storage.legacy_active_profile_id();
+        let disabled = resolve_conflicts(&mut profiles, legacy_active_id.as_deref());
+        if !disabled.is_empty() {
+            log::info!("disabled {} profile(s) sharing a trigger", disabled.len());
         }
 
         storage.save_profiles(&profiles)?;
@@ -50,8 +48,11 @@ impl AppState {
             .ok_or_else(|| AppError::ProfileNotFound(id.to_owned()))
     }
 
-    pub fn save_profile(&self, profile: Profile) -> AppResult<Profile> {
+    /// A new profile never switches off an existing one; saving an existing enabled profile
+    /// disables the other enabled profiles that watch one of its triggers.
+    pub fn save_profile(&self, mut profile: Profile) -> AppResult<ProfilesUpdate> {
         validate_profile(&profile)?;
+        let profile_id = profile.id.clone();
         let mut data = self.data();
 
         match data
@@ -59,11 +60,37 @@ impl AppState {
             .iter_mut()
             .find(|existing| existing.id == profile.id)
         {
-            Some(existing) => *existing = profile.clone(),
-            None => data.profiles.push(profile.clone()),
+            Some(existing) => *existing = profile,
+            None => {
+                profile.enabled &= !data
+                    .profiles
+                    .iter()
+                    .any(|existing| existing.enabled && shares_trigger(existing, &profile));
+                data.profiles.push(profile);
+            }
         }
+        self.save_with_winner(&mut data, &profile_id)
+    }
+
+    pub fn set_profile_enabled(&self, id: &str, enabled: bool) -> AppResult<ProfilesUpdate> {
+        let mut data = self.data();
+        let profile = data
+            .profiles
+            .iter_mut()
+            .find(|profile| profile.id == id)
+            .ok_or_else(|| AppError::ProfileNotFound(id.to_owned()))?;
+        profile.enabled = enabled;
+        self.save_with_winner(&mut data, id)
+    }
+
+    fn save_with_winner(&self, data: &mut AppData, winner_id: &str) -> AppResult<ProfilesUpdate> {
+        let disabled_profile_ids = profiles_to_disable(&data.profiles, winner_id);
+        disable(&mut data.profiles, &disabled_profile_ids);
         self.storage.save_profiles(&data.profiles)?;
-        Ok(profile)
+        Ok(ProfilesUpdate {
+            profiles: data.profiles.clone(),
+            disabled_profile_ids,
+        })
     }
 
     /// Returns the updated profile, or `None` when the item was removed, switched to manual
@@ -98,7 +125,7 @@ impl AppState {
         Ok(Some(updated))
     }
 
-    pub fn delete_profile(&self, id: &str) -> AppResult<Settings> {
+    pub fn delete_profile(&self, id: &str) -> AppResult<Vec<Profile>> {
         let mut data = self.data();
         if !data.profiles.iter().any(|profile| profile.id == id) {
             return Err(AppError::ProfileNotFound(id.to_owned()));
@@ -108,13 +135,8 @@ impl AppState {
         }
 
         data.profiles.retain(|profile| profile.id != id);
-        if data.settings.active_profile_id.as_deref() == Some(id) {
-            data.settings.active_profile_id =
-                data.profiles.first().map(|profile| profile.id.clone());
-            self.storage.save_settings(&data.settings)?;
-        }
         self.storage.save_profiles(&data.profiles)?;
-        Ok(data.settings.clone())
+        Ok(data.profiles.clone())
     }
 
     pub fn settings(&self) -> Settings {
@@ -123,7 +145,7 @@ impl AppState {
 
     pub fn save_settings(&self, settings: Settings) -> AppResult<Settings> {
         let mut data = self.data();
-        validate_settings(&settings, &data.profiles)?;
+        validate_settings(&settings)?;
         self.storage.save_settings(&settings)?;
         data.settings = settings.clone();
         Ok(settings)
@@ -138,14 +160,6 @@ impl AppState {
             start_with_windows: registered,
             ..settings
         })
-    }
-
-    pub fn set_active_profile(&self, id: &str) -> AppResult<Settings> {
-        let settings = Settings {
-            active_profile_id: Some(id.to_owned()),
-            ..self.settings()
-        };
-        self.save_settings(settings)
     }
 
     pub fn load_last_session(&self) -> Option<SessionLog> {
@@ -175,6 +189,7 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::Trigger;
     use crate::storage::example_profile;
 
     fn state() -> (tempfile::TempDir, AppState) {
@@ -183,26 +198,131 @@ mod tests {
         (dir, AppState::load(storage).expect("state"))
     }
 
-    #[test]
-    fn first_load_activates_example_profile() {
-        let (_dir, state) = state();
-        let profiles = state.profiles();
+    fn xplane_profile() -> Profile {
+        Profile {
+            name: "X-Plane".into(),
+            triggers: vec![Trigger {
+                process_name: "X-Plane.exe".into(),
+                label: "X-Plane 12".into(),
+            }],
+            ..example_profile()
+        }
+    }
 
-        assert_eq!(
-            state.settings().active_profile_id,
-            Some(profiles[0].id.clone())
-        );
+    fn enabled_names(update: &ProfilesUpdate) -> Vec<&str> {
+        update
+            .profiles
+            .iter()
+            .filter(|profile| profile.enabled)
+            .map(|profile| profile.name.as_str())
+            .collect()
     }
 
     #[test]
-    fn deleting_active_profile_activates_first_remaining() {
+    fn first_load_enables_example_profile() {
+        let (_dir, state) = state();
+
+        assert!(state.profiles()[0].enabled);
+    }
+
+    #[test]
+    fn new_profile_for_a_watched_simulator_is_created_disabled() {
+        let (_dir, state) = state();
+        let copy = Profile {
+            name: "MSFS copy".into(),
+            ..example_profile()
+        };
+
+        let update = state.save_profile(copy).expect("save");
+
+        assert_eq!(enabled_names(&update), ["MSFS 2024"]);
+        assert!(update.disabled_profile_ids.is_empty());
+    }
+
+    #[test]
+    fn new_profile_for_another_simulator_stays_enabled() {
+        let (_dir, state) = state();
+
+        let update = state.save_profile(xplane_profile()).expect("save");
+
+        assert_eq!(enabled_names(&update), ["MSFS 2024", "X-Plane"]);
+    }
+
+    #[test]
+    fn enabling_a_profile_disables_the_one_sharing_its_trigger() {
         let (_dir, state) = state();
         let original = state.profiles()[0].clone();
-        let second = state.save_profile(example_profile()).expect("save");
+        let offline = Profile {
+            name: "MSFS Offline".into(),
+            ..example_profile()
+        };
+        let offline_id = offline.id.clone();
+        state.save_profile(offline).expect("save");
 
-        let settings = state.delete_profile(&original.id).expect("delete");
+        let update = state
+            .set_profile_enabled(&offline_id, true)
+            .expect("enable");
 
-        assert_eq!(settings.active_profile_id, Some(second.id));
+        assert_eq!(enabled_names(&update), ["MSFS Offline"]);
+        assert_eq!(update.disabled_profile_ids, [original.id]);
+    }
+
+    #[test]
+    fn adding_a_trigger_to_an_enabled_profile_disables_the_conflicting_one() {
+        let (_dir, state) = state();
+        let msfs = state.profiles()[0].clone();
+        let xplane = state.save_profile(xplane_profile()).expect("save").profiles[1].clone();
+
+        let mut widened = msfs.clone();
+        widened.triggers.push(xplane.triggers[0].clone());
+        let update = state.save_profile(widened).expect("save");
+
+        assert_eq!(enabled_names(&update), ["MSFS 2024"]);
+        assert_eq!(update.disabled_profile_ids, [xplane.id]);
+    }
+
+    #[test]
+    fn deleting_a_profile_keeps_the_others_as_they_were() {
+        let (_dir, state) = state();
+        let original = state.profiles()[0].clone();
+        state.save_profile(xplane_profile()).expect("save");
+
+        let profiles = state.delete_profile(&original.id).expect("delete");
+
+        assert_eq!(profiles.len(), 1);
+        assert!(profiles[0].enabled);
+    }
+
+    #[test]
+    fn load_disables_profiles_sharing_a_trigger_with_the_legacy_active_one() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let storage = Storage::new(dir.path().to_path_buf()).expect("storage");
+        let online = Profile {
+            name: "Online".into(),
+            ..example_profile()
+        };
+        let offline = Profile {
+            name: "Offline".into(),
+            ..example_profile()
+        };
+        storage
+            .save_profiles(&[offline.clone(), online.clone()])
+            .expect("save");
+        std::fs::write(
+            dir.path().join("settings.json"),
+            format!(r#"{{"schemaVersion":1,"activeProfileId":"{}"}}"#, online.id),
+        )
+        .expect("write");
+
+        let state = AppState::load(storage).expect("load");
+
+        let enabled: Vec<String> = state
+            .profiles()
+            .into_iter()
+            .filter(|profile| profile.enabled)
+            .map(|profile| profile.name)
+            .collect();
+        assert_eq!(enabled, ["Online"]);
     }
 
     #[test]
@@ -231,10 +351,17 @@ mod tests {
             run_as_admin: false,
             start_minimized: false,
             wait_for_sim_connect: false,
+            restart_on_crash: false,
             on_close: crate::models::OnClose::Graceful,
             enabled: true,
         })];
         profile
+    }
+
+    fn saved(state: &AppState, profile: Profile) -> Profile {
+        let id = profile.id.clone();
+        state.save_profile(profile).expect("save");
+        state.profile(&id).expect("profile")
     }
 
     fn first_process_name(profile: &Profile) -> &str {
@@ -247,9 +374,7 @@ mod tests {
     #[test]
     fn learned_name_is_persisted_for_auto_items() {
         let (dir, state) = state();
-        let profile = state
-            .save_profile(profile_with_app(ProcessNameMode::Auto))
-            .expect("save");
+        let profile = saved(&state, profile_with_app(ProcessNameMode::Auto));
         let item_id = profile.items[0].id().to_owned();
 
         let updated = state
@@ -268,9 +393,7 @@ mod tests {
     #[test]
     fn learning_ignores_manual_items_and_unknown_ids() {
         let (_dir, state) = state();
-        let profile = state
-            .save_profile(profile_with_app(ProcessNameMode::Manual))
-            .expect("save");
+        let profile = saved(&state, profile_with_app(ProcessNameMode::Manual));
         let item_id = profile.items[0].id().to_owned();
 
         assert!(state

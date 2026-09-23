@@ -3,19 +3,23 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::closer::CloseTarget;
 use crate::error::AppError;
 use crate::models::{
-    ItemRuntime, ItemStatus, LaunchItem, ProcessNameMode, Profile, SessionLog, TimelineEntry,
-    TimelineKind,
+    AppItem, ItemRuntime, ItemStatus, LaunchItem, ProcessNameMode, Profile, SessionLog,
+    TimelineEntry, TimelineKind, Trigger,
 };
+use crate::simconnect;
 
 /// One run of a profile, real or test: a frozen copy of the profile, per-item runtime and timeline.
 pub struct Session {
     profile: Profile,
+    started_by: Option<Trigger>,
+    relaunch_allowed: bool,
     items: Vec<ItemRuntime>,
     log: SessionLog,
 }
 
 impl Session {
-    pub fn start(profile: Profile, is_test: bool) -> Self {
+    /// `started_by` is the trigger that was seen running; test sessions have none.
+    pub fn start(profile: Profile, started_by: Option<Trigger>, is_test: bool) -> Self {
         let items = profile
             .items
             .iter()
@@ -38,6 +42,8 @@ impl Session {
 
         let mut session = Self {
             profile,
+            relaunch_allowed: started_by.is_some(),
+            started_by,
             items,
             log,
         };
@@ -51,6 +57,39 @@ impl Session {
 
     pub fn is_test(&self) -> bool {
         self.log.is_test
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.log.ended_at_ms.is_some()
+    }
+
+    /// Tests skip the wait anyway, so any MSFS trigger of the profile counts for them.
+    pub fn supports_simconnect(&self) -> bool {
+        match &self.started_by {
+            Some(trigger) => simconnect::supports_simconnect(&trigger.process_name),
+            None => self
+                .profile
+                .triggers
+                .iter()
+                .any(|trigger| simconnect::supports_simconnect(&trigger.process_name)),
+        }
+    }
+
+    /// Crashed apps are only reopened while the simulator is running in a real session.
+    pub fn relaunch_allowed(&self) -> bool {
+        self.relaunch_allowed && !self.is_finished()
+    }
+
+    pub fn set_relaunch_allowed(&mut self, allowed: bool) {
+        self.relaunch_allowed = allowed && self.started_by.is_some();
+    }
+
+    /// The session's copy, which includes a process name learned during this session.
+    pub fn app_item(&self, item_id: &str) -> Option<AppItem> {
+        self.profile.items.iter().find_map(|item| match item {
+            LaunchItem::App(app) if app.id == item_id => Some(app.clone()),
+            _ => None,
+        })
     }
 
     pub fn items(&self) -> &[ItemRuntime] {
@@ -97,10 +136,10 @@ impl Session {
     pub fn record_detail(
         &mut self,
         kind: TimelineKind,
-        item_id: &str,
+        item_id: Option<&str>,
         detail: String,
     ) -> TimelineEntry {
-        self.push_entry(kind, Some(item_id), None, Some(detail))
+        self.push_entry(kind, item_id, None, Some(detail))
     }
 
     /// Returns whether the name changed; items in manual mode keep what the user typed.
@@ -191,7 +230,7 @@ pub fn now_ms() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AppItem, OnClose, ProcessNameMode, Trigger, UrlItem};
+    use crate::models::{OnClose, ProcessNameMode, UrlItem};
 
     fn app(name: &str, on_close: OnClose, enabled: bool) -> LaunchItem {
         LaunchItem::App(AppItem {
@@ -207,19 +246,31 @@ mod tests {
             run_as_admin: false,
             start_minimized: false,
             wait_for_sim_connect: false,
+            restart_on_crash: false,
             on_close,
             enabled,
         })
+    }
+
+    fn msfs() -> Trigger {
+        Trigger {
+            process_name: "FlightSimulator2024.exe".into(),
+            label: "MSFS 2024".into(),
+        }
+    }
+
+    fn xplane() -> Trigger {
+        Trigger {
+            process_name: "X-Plane.exe".into(),
+            label: "X-Plane 12".into(),
+        }
     }
 
     fn profile() -> Profile {
         Profile {
             id: "profile".into(),
             name: "MSFS".into(),
-            trigger: Trigger {
-                process_name: "FlightSimulator2024.exe".into(),
-                label: "MSFS 2024".into(),
-            },
+            triggers: vec![msfs()],
             items: vec![
                 app("launched", OnClose::Graceful, true),
                 app("preexisting", OnClose::Graceful, true),
@@ -247,7 +298,7 @@ mod tests {
     }
 
     fn session_after_launch() -> Session {
-        let mut session = Session::start(profile(), false);
+        let mut session = Session::start(profile(), Some(msfs()), false);
         session.update(runtime("launched", ItemStatus::Running, true));
         session.update(runtime("preexisting", ItemStatus::Skipped, false));
         session.update(runtime("kept", ItemStatus::Running, true));
@@ -264,7 +315,7 @@ mod tests {
 
     #[test]
     fn start_tracks_only_enabled_items_as_pending() {
-        let session = Session::start(profile(), false);
+        let session = Session::start(profile(), Some(msfs()), false);
 
         let ids: Vec<&str> = session.items().iter().map(|r| r.item_id.as_str()).collect();
         assert_eq!(ids, ["launched", "preexisting", "kept", "site"]);
@@ -302,7 +353,7 @@ mod tests {
 
     #[test]
     fn assume_all_launched_targets_every_enabled_app() {
-        let mut session = Session::start(profile(), true);
+        let mut session = Session::start(profile(), None, true);
         session.assume_all_launched();
 
         assert_eq!(
@@ -313,7 +364,7 @@ mod tests {
 
     #[test]
     fn timeline_resolves_item_names_and_finish_sets_end_time() {
-        let mut session = Session::start(profile(), false);
+        let mut session = Session::start(profile(), Some(msfs()), false);
         let entry = session.record(TimelineKind::Launched, Some("launched"), None);
         session.finish();
 
@@ -327,7 +378,7 @@ mod tests {
 
     #[test]
     fn learned_name_is_used_to_close_the_session() {
-        let mut session = Session::start(profile(), false);
+        let mut session = Session::start(profile(), Some(msfs()), false);
         session.assume_all_launched();
 
         assert!(session.learn_process_name("launched", "Volanta.exe"));
@@ -345,10 +396,54 @@ mod tests {
         if let Some(LaunchItem::App(app)) = manual.items.first_mut() {
             app.process_name_mode = ProcessNameMode::Manual;
         }
-        let mut session = Session::start(manual, false);
+        let mut session = Session::start(manual, Some(msfs()), false);
 
         assert!(!session.learn_process_name("launched", "Volanta.exe"));
         assert!(!session.learn_process_name("preexisting", "preexisting.exe"));
         assert!(!session.learn_process_name("missing", "Volanta.exe"));
+    }
+
+    #[test]
+    fn simconnect_follows_the_trigger_that_started_the_session() {
+        let mixed = Profile {
+            triggers: vec![msfs(), xplane()],
+            ..profile()
+        };
+
+        assert!(Session::start(mixed.clone(), Some(msfs()), false).supports_simconnect());
+        assert!(!Session::start(mixed.clone(), Some(xplane()), false).supports_simconnect());
+        assert!(Session::start(mixed, None, true).supports_simconnect());
+    }
+
+    #[test]
+    fn relaunch_is_allowed_only_in_real_unfinished_sessions() {
+        let mut real = Session::start(profile(), Some(msfs()), false);
+        let mut test = Session::start(profile(), None, true);
+        test.set_relaunch_allowed(true);
+
+        assert!(real.relaunch_allowed());
+        assert!(!test.relaunch_allowed());
+
+        real.set_relaunch_allowed(false);
+        assert!(!real.relaunch_allowed());
+        real.set_relaunch_allowed(true);
+        real.finish();
+        assert!(!real.relaunch_allowed());
+    }
+
+    #[test]
+    fn relaunched_item_stays_marked_as_launched_by_autostart() {
+        let mut session = session_after_launch();
+        session.update(runtime("preexisting", ItemStatus::Restarting, false));
+        session.update(runtime("preexisting", ItemStatus::Running, true));
+
+        assert_eq!(
+            target_ids(&session.close_targets(true)),
+            ["launched", "preexisting", "kept"]
+        );
+        assert_eq!(
+            session.runtime("preexisting").map(|runtime| runtime.status),
+            Some(ItemStatus::Running)
+        );
     }
 }

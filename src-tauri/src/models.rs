@@ -8,6 +8,9 @@ pub const MAX_DELAY_MS: u32 = 60_000;
 pub const DEFAULT_GRACEFUL_TIMEOUT_MS: u32 = 5_000;
 pub const MIN_GRACEFUL_TIMEOUT_MS: u32 = 1_000;
 pub const MAX_GRACEFUL_TIMEOUT_MS: u32 = 60_000;
+pub const DEFAULT_CLOSE_DELAY_MS: u32 = 60_000;
+pub const MAX_CLOSE_DELAY_MS: u32 = 600_000;
+pub const MAX_TRIGGERS: usize = 5;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -63,6 +66,8 @@ pub struct AppItem {
     pub start_minimized: bool,
     #[serde(default)]
     pub wait_for_sim_connect: bool,
+    #[serde(default)]
+    pub restart_on_crash: bool,
     #[serde(default)]
     pub on_close: OnClose,
     #[serde(default = "default_true")]
@@ -126,11 +131,19 @@ impl LaunchItem {
 pub struct Profile {
     pub id: String,
     pub name: String,
-    pub trigger: Trigger,
+    pub triggers: Vec<Trigger>,
     #[serde(default)]
     pub items: Vec<LaunchItem>,
     #[serde(default = "default_true")]
     pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct ProfilesUpdate {
+    pub profiles: Vec<Profile>,
+    pub disabled_profile_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -157,11 +170,12 @@ pub enum Language {
 #[serde(rename_all = "camelCase", default)]
 #[ts(export)]
 pub struct Settings {
-    pub active_profile_id: Option<String>,
     pub start_with_windows: bool,
     pub start_minimized: bool,
     pub graceful_timeout_ms: u32,
+    pub close_delay_ms: u32,
     pub close_only_if_launched_by_app: bool,
+    pub show_notifications: bool,
     pub theme: Theme,
     pub language: Language,
     pub onboarding_completed: bool,
@@ -171,11 +185,12 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            active_profile_id: None,
             start_with_windows: false,
             start_minimized: true,
             graceful_timeout_ms: DEFAULT_GRACEFUL_TIMEOUT_MS,
+            close_delay_ms: DEFAULT_CLOSE_DELAY_MS,
             close_only_if_launched_by_app: true,
+            show_notifications: true,
             theme: Theme::default(),
             language: Language::default(),
             onboarding_completed: false,
@@ -193,6 +208,7 @@ pub enum ItemStatus {
     WaitingSimConnect,
     Launching,
     Running,
+    Restarting,
     Skipped,
     Closing,
     Closed,
@@ -218,6 +234,7 @@ pub enum MonitorState {
     #[default]
     Idle,
     SimRunning,
+    ClosePending,
     Closing,
     Paused,
 }
@@ -230,6 +247,8 @@ pub struct MonitorSnapshot {
     pub session_profile_id: Option<String>,
     pub is_test_session: bool,
     pub items: Vec<ItemRuntime>,
+    #[ts(type = "number | null")]
+    pub closes_at_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -246,6 +265,11 @@ pub enum TimelineKind {
     ProcessNameLearned,
     SimConnectReady,
     SimConnectWaitSkipped,
+    CloseDelayed,
+    SimulatorReturned,
+    KeptByUser,
+    Crashed,
+    Relaunched,
     Error,
     SessionEnded,
 }
@@ -403,6 +427,7 @@ mod tests {
         assert_eq!(app.process_name_mode, ProcessNameMode::Auto);
         assert!(!app.start_minimized);
         assert!(!app.wait_for_sim_connect);
+        assert!(!app.restart_on_crash);
     }
 
     #[test]
@@ -412,6 +437,24 @@ mod tests {
         assert_eq!(settings.language, Language::En);
         assert_eq!(settings.graceful_timeout_ms, DEFAULT_GRACEFUL_TIMEOUT_MS);
         assert!(settings.close_only_if_launched_by_app);
+        assert_eq!(settings.close_delay_ms, DEFAULT_CLOSE_DELAY_MS);
+        assert!(settings.show_notifications);
+    }
+
+    #[test]
+    fn new_states_and_statuses_use_camel_case() {
+        assert_eq!(
+            serde_json::to_value(MonitorState::ClosePending).expect("serializable"),
+            "closePending"
+        );
+        assert_eq!(
+            serde_json::to_value(ItemStatus::Restarting).expect("serializable"),
+            "restarting"
+        );
+        assert_eq!(
+            serde_json::to_value(TimelineKind::KeptByUser).expect("serializable"),
+            "keptByUser"
+        );
     }
 
     #[test]

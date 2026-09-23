@@ -8,7 +8,7 @@ export function createProfile(name: string): Profile {
   return {
     id: crypto.randomUUID(),
     name: name.trim(),
-    trigger: DEFAULT_TRIGGER ?? { processName: "FlightSimulator2024.exe", label: "MSFS 2024" },
+    triggers: [DEFAULT_TRIGGER ?? { processName: "FlightSimulator2024.exe", label: "MSFS 2024" }],
     items: [],
     enabled: true,
   };
@@ -22,6 +22,11 @@ export function withFreshIds(profile: Profile): Profile {
   };
 }
 
+/** A copy watches the same simulators, so it starts disabled instead of taking over. */
 export function duplicateProfile(profile: Profile, copySuffix: string): Profile {
-  return { ...withFreshIds(profile), name: `${profile.name}${copySuffix}`.slice(0, 80) };
+  return {
+    ...withFreshIds(profile),
+    name: `${profile.name}${copySuffix}`.slice(0, 80),
+    enabled: false,
+  };
 }

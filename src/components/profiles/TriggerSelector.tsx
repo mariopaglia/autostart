@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Check, ChevronsUpDown, Cpu, Plane } from "lucide-react";
+import { Check, Cpu, Plane, Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProcessInfo } from "@/bindings/ProcessInfo";
 import type { Trigger } from "@/bindings/Trigger";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -15,15 +16,22 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { notifyError } from "@/lib/notify";
 import { commands } from "@/lib/tauri";
-import { TRIGGER_PRESETS, triggerFromProcessName } from "@/lib/trigger-presets";
+import {
+  addTrigger,
+  hasTrigger,
+  MAX_TRIGGERS,
+  removeTrigger,
+  TRIGGER_PRESETS,
+  triggerFromProcessName,
+} from "@/lib/trigger-presets";
 import { processNameSchema } from "@/schemas/profile";
 
 interface TriggerSelectorProps {
-  trigger: Trigger;
-  onChange: (trigger: Trigger) => void;
+  triggers: Trigger[];
+  onChange: (triggers: Trigger[]) => void;
 }
 
-export function TriggerSelector({ trigger, onChange }: TriggerSelectorProps) {
+export function TriggerSelector({ triggers, onChange }: TriggerSelectorProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -40,88 +48,113 @@ export function TriggerSelector({ trigger, onChange }: TriggerSelectorProps) {
     }
   }
 
-  function choose(next: Trigger) {
-    onChange(next);
+  function add(trigger: Trigger) {
+    onChange(addTrigger(triggers, trigger));
     setOpen(false);
   }
 
   const customTrigger = triggerFromProcessName(search);
   const canUseCustom =
-    search.trim() !== "" && processNameSchema.safeParse(customTrigger.processName).success;
-  const isSelected = (processName: string) =>
-    processName.toLowerCase() === trigger.processName.toLowerCase();
+    search.trim() !== "" &&
+    processNameSchema.safeParse(customTrigger.processName).success &&
+    !hasTrigger(triggers, customTrigger);
+  const isFull = triggers.length >= MAX_TRIGGERS;
+
+  function option(trigger: Trigger, icon: React.ReactNode, key: string, value: string) {
+    const added = hasTrigger(triggers, trigger);
+    return (
+      <CommandItem
+        key={key}
+        value={value}
+        disabled={added}
+        onSelect={() => {
+          add(trigger);
+        }}
+      >
+        {icon}
+        <span className="truncate">{trigger.label}</span>
+        <span className="truncate text-xs text-muted-foreground">{trigger.processName}</span>
+        {added && <Check className="ml-auto" />}
+      </CommandItem>
+    );
+  }
 
   return (
-    <Popover open={open} onOpenChange={(next) => void handleOpenChange(next)}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className="max-w-64 justify-between"
-          aria-label={t("trigger.change")}
+    <div
+      role="group"
+      className="flex flex-wrap items-center gap-1.5"
+      aria-label={t("trigger.listLabel")}
+    >
+      {triggers.map((trigger) => (
+        <Badge
+          key={trigger.processName}
+          variant="secondary"
+          className="h-7 gap-1.5 pr-1 pl-2"
+          title={trigger.processName}
         >
           <Plane />
-          <span className="truncate">{trigger.label}</span>
-          <span className="truncate text-xs text-muted-foreground">{trigger.processName}</span>
-          <ChevronsUpDown className="opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
-        <Command>
-          <CommandInput
-            placeholder={t("trigger.search")}
-            value={search}
-            onValueChange={setSearch}
-          />
-          <CommandList>
-            <CommandEmpty>{t("trigger.empty")}</CommandEmpty>
-            {canUseCustom && (
-              <CommandGroup>
-                <CommandItem
-                  value={`custom-${customTrigger.processName}`}
-                  onSelect={() => {
-                    choose(customTrigger);
-                  }}
-                >
-                  {t("trigger.useCustom", { processName: customTrigger.processName })}
-                </CommandItem>
+          <span className="max-w-40 truncate">{trigger.label}</span>
+          <button
+            type="button"
+            className="rounded-sm p-0.5 hover:bg-muted-foreground/20 disabled:opacity-40"
+            aria-label={t("trigger.remove", { label: trigger.label })}
+            disabled={triggers.length === 1}
+            onClick={() => {
+              onChange(removeTrigger(triggers, trigger));
+            }}
+          >
+            <X className="size-3" />
+          </button>
+        </Badge>
+      ))}
+
+      <Popover open={open} onOpenChange={(next) => void handleOpenChange(next)}>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="sm" disabled={isFull} aria-label={t("trigger.add")}>
+            <Plus />
+            {t("trigger.add")}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0" align="start">
+          <Command>
+            <CommandInput
+              placeholder={t("trigger.search")}
+              value={search}
+              onValueChange={setSearch}
+            />
+            <CommandList>
+              <CommandEmpty>{t("trigger.empty")}</CommandEmpty>
+              {canUseCustom && (
+                <CommandGroup>
+                  <CommandItem
+                    value={`custom-${customTrigger.processName}`}
+                    onSelect={() => {
+                      add(customTrigger);
+                    }}
+                  >
+                    {t("trigger.useCustom", { processName: customTrigger.processName })}
+                  </CommandItem>
+                </CommandGroup>
+              )}
+              <CommandGroup heading={t("trigger.presets")}>
+                {TRIGGER_PRESETS.map((preset) =>
+                  option(
+                    preset,
+                    <Plane />,
+                    preset.processName,
+                    `${preset.label} ${preset.processName}`,
+                  ),
+                )}
               </CommandGroup>
-            )}
-            <CommandGroup heading={t("trigger.presets")}>
-              {TRIGGER_PRESETS.map((preset) => (
-                <CommandItem
-                  key={preset.processName}
-                  value={`${preset.label} ${preset.processName}`}
-                  onSelect={() => {
-                    choose(preset);
-                  }}
-                >
-                  <Plane />
-                  <span>{preset.label}</span>
-                  <span className="text-xs text-muted-foreground">{preset.processName}</span>
-                  {isSelected(preset.processName) && <Check className="ml-auto" />}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            <CommandGroup heading={t("trigger.running")}>
-              {running.map((process) => (
-                <CommandItem
-                  key={process.name}
-                  value={process.name}
-                  onSelect={() => {
-                    choose(triggerFromProcessName(process.name));
-                  }}
-                >
-                  <Cpu />
-                  <span className="truncate">{process.name}</span>
-                  {isSelected(triggerFromProcessName(process.name).processName) && (
-                    <Check className="ml-auto" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+              <CommandGroup heading={t("trigger.running")}>
+                {running.map((process) =>
+                  option(triggerFromProcessName(process.name), <Cpu />, process.name, process.name),
+                )}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }

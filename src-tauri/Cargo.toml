@@ -29,6 +29,7 @@ sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 ts-rs = { version = "12", features = ["serde-json-impl"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 log = "0.4"
+tauri-plugin-notification = "2.4"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2.5"

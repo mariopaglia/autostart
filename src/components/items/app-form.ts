@@ -16,6 +16,7 @@ export const EMPTY_APP_FORM: AppFormInput = {
   runAsAdmin: false,
   startMinimized: false,
   waitForSimConnect: false,
+  restartOnCrash: false,
   onClose: "graceful",
   enabled: true,
 };

@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import type { Profile } from "@/bindings/Profile";
-import { notifyError } from "@/lib/notify";
+import type { ProfilesUpdate } from "@/bindings/ProfilesUpdate";
+import { i18n } from "@/i18n";
+import { notifyError, notifyInfo } from "@/lib/notify";
 import { commands } from "@/lib/tauri";
-import { useSettingsStore } from "@/stores/settings-store";
 
 interface ProfilesState {
   profiles: Profile[];
@@ -10,6 +11,7 @@ interface ProfilesState {
   load: () => Promise<void>;
   select: (profileId: string) => void;
   save: (profile: Profile) => Promise<boolean>;
+  setEnabled: (profileId: string, enabled: boolean) => Promise<void>;
   remove: (profileId: string) => Promise<void>;
   replace: (profile: Profile) => void;
 }
@@ -21,14 +23,29 @@ function upsert(profiles: Profile[], profile: Profile): Profile[] {
     : [...profiles, profile];
 }
 
+/** Tells the pilot which profiles stopped being watched because another one took their simulator. */
+function announce(update: ProfilesUpdate, requested: Profile | undefined) {
+  const names = update.profiles
+    .filter((profile) => update.disabledProfileIds.includes(profile.id))
+    .map((profile) => profile.name);
+  if (names.length > 0) {
+    notifyInfo(i18n.t("profiles.conflictDisabled", { names: names.join(", ") }));
+  }
+
+  const saved = update.profiles.find((profile) => profile.id === requested?.id);
+  if (requested?.enabled && saved && !saved.enabled) {
+    notifyInfo(i18n.t("profiles.createdDisabled", { name: saved.name }));
+  }
+}
+
 export const useProfilesStore = create<ProfilesState>()((set, get) => ({
   profiles: [],
   selectedId: null,
 
   load: async () => {
     const profiles = await commands.getProfiles();
-    const activeId = useSettingsStore.getState().settings?.activeProfileId ?? null;
-    set({ profiles, selectedId: activeId ?? profiles[0]?.id ?? null });
+    const preferred = profiles.find((profile) => profile.enabled) ?? profiles[0];
+    set({ profiles, selectedId: preferred?.id ?? null });
   },
 
   select: (profileId) => {
@@ -39,12 +56,24 @@ export const useProfilesStore = create<ProfilesState>()((set, get) => ({
     const previous = get().profiles;
     set({ profiles: upsert(previous, profile) });
     try {
-      await commands.saveProfile(profile);
+      const update = await commands.saveProfile(profile);
+      set({ profiles: update.profiles });
+      announce(update, profile);
       return true;
     } catch (error) {
       set({ profiles: previous });
       notifyError(error);
       return false;
+    }
+  },
+
+  setEnabled: async (profileId, enabled) => {
+    try {
+      const update = await commands.setProfileEnabled(profileId, enabled);
+      set({ profiles: update.profiles });
+      announce(update, undefined);
+    } catch (error) {
+      notifyError(error);
     }
   },
 
@@ -54,11 +83,9 @@ export const useProfilesStore = create<ProfilesState>()((set, get) => ({
 
   remove: async (profileId) => {
     try {
-      const settings = await commands.deleteProfile(profileId);
-      useSettingsStore.getState().replace(settings);
-      const profiles = get().profiles.filter((profile) => profile.id !== profileId);
+      const profiles = await commands.deleteProfile(profileId);
       const selectedId =
-        get().selectedId === profileId ? (settings.activeProfileId ?? null) : get().selectedId;
+        get().selectedId === profileId ? (profiles[0]?.id ?? null) : get().selectedId;
       set({ profiles, selectedId });
     } catch (error) {
       notifyError(error);

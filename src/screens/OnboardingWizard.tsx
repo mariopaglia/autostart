@@ -40,7 +40,7 @@ export function OnboardingWizard() {
 
   if (!settings || settings.onboardingCompleted) return null;
 
-  const exampleProfile = profiles.find((profile) => profile.id === settings.activeProfileId);
+  const [exampleProfile] = profiles;
   const current = STEPS[stepIndex] ?? STEPS[0];
   if (!current) return null;
   const isLast = stepIndex === STEPS.length - 1;
@@ -52,7 +52,7 @@ export function OnboardingWizard() {
 
   async function next() {
     if (current?.step === "simulator" && trigger && exampleProfile) {
-      await saveProfile({ ...exampleProfile, name: trigger.label, trigger });
+      await saveProfile({ ...exampleProfile, name: trigger.label, triggers: [trigger] });
     }
     if (isLast) {
       finish();
@@ -83,7 +83,7 @@ export function OnboardingWizard() {
         >
           {current.step === "simulator" && (
             <SimulatorChoice
-              value={trigger ?? exampleProfile?.trigger ?? null}
+              value={trigger ?? exampleProfile?.triggers[0] ?? null}
               onChange={setTrigger}
             />
           )}

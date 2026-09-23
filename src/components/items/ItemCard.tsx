@@ -6,6 +6,7 @@ import {
   MoreVertical,
   Pencil,
   Plug,
+  RotateCcw,
   ShieldAlert,
   Trash2,
   TriangleAlert,
@@ -108,6 +109,12 @@ export function ItemCard({
               <Badge variant="outline" className="gap-1">
                 <Plug className="size-3" />
                 {t("items.simConnect")}
+              </Badge>
+            )}
+            {item.type === "app" && item.restartOnCrash && (
+              <Badge variant="outline" className="gap-1">
+                <RotateCcw className="size-3" />
+                {t("items.restartOnCrash")}
               </Badge>
             )}
             {item.delayMs > 0 && (

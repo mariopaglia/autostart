@@ -25,7 +25,9 @@ describe("profile factory", () => {
 
     expect(profileSchema.safeParse(profile).success).toBe(true);
     expect(profile.name).toBe("Live");
-    expect(profile.trigger.processName).toBe("FlightSimulator2024.exe");
+    expect(profile.triggers.map((trigger) => trigger.processName)).toEqual([
+      "FlightSimulator2024.exe",
+    ]);
   });
 
   it("regenerates the profile and item ids", () => {
@@ -41,5 +43,9 @@ describe("profile factory", () => {
     const copy = duplicateProfile(profileWithItem(), " (cópia)");
 
     expect(copy.name).toBe("Live (cópia)");
+  });
+
+  it("creates the copy disabled so it does not take over the original's simulator", () => {
+    expect(duplicateProfile(profileWithItem(), " (copy)").enabled).toBe(false);
   });
 });

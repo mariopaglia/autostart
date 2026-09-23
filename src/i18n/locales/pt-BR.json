@@ -13,7 +13,8 @@
       "idle": "Aguardando simulador",
       "simRunning": "Simulador rodando",
       "closing": "Fechando apps",
-      "paused": "Pausado"
+      "paused": "Pausado",
+      "closePending": "Fechando em breve"
     },
     "pause": "Pausar monitoramento",
     "resume": "Retomar monitoramento",
@@ -24,13 +25,14 @@
       "title": "Fechar os apps deste perfil?",
       "description": "Nenhuma abertura de teste foi feita para este perfil. Todos os apps do perfil que estiverem em execução serão fechados conforme a regra de cada um.",
       "confirm": "Fechar apps"
-    }
+    },
+    "closingIn": "Simulador fechado. Fechando apps em {{seconds}} s",
+    "closeNow": "Fechar agora",
+    "keepApps": "Manter apps abertos"
   },
   "profiles": {
     "title": "Perfis",
     "new": "Novo perfil",
-    "active": "Ativo",
-    "setActive": "Tornar ativo",
     "rename": "Renomear",
     "duplicate": "Duplicar",
     "delete": "Excluir",
@@ -52,16 +54,21 @@
     "importInvalidField": "Campo {{field}}: {{message}}",
     "imported": "Perfil \"{{name}}\" importado",
     "exported": "Perfil exportado",
-    "fileFilter": "Perfil do AutoStart"
+    "fileFilter": "Perfil do AutoStart",
+    "conflictDisabled": "Desligados por monitorarem o mesmo simulador: {{names}}",
+    "createdDisabled": "\"{{name}}\" foi criado desligado porque outro perfil já monitora o mesmo simulador",
+    "inSession": "Em sessão"
   },
   "trigger": {
     "label": "Gatilho",
-    "change": "Trocar gatilho",
     "presets": "Simuladores",
     "running": "Processos em execução",
     "search": "Buscar ou digitar um processo…",
     "empty": "Nenhum processo encontrado",
-    "useCustom": "Usar \"{{processName}}\""
+    "useCustom": "Usar \"{{processName}}\"",
+    "add": "Adicionar simulador",
+    "remove": "Remover {{label}}",
+    "listLabel": "Simuladores"
   },
   "items": {
     "addApp": "Adicionar app",
@@ -91,10 +98,12 @@
       "skipped": "Já estava aberto",
       "closing": "Fechando…",
       "closed": "Fechado",
-      "error": "Erro"
+      "error": "Erro",
+      "restarting": "Reabrindo"
     },
     "dragHint": "Dica: você também pode arrastar atalhos de apps, arquivos .exe ou atalhos de sites para esta janela.",
-    "dragUnavailableAsAdmin": "Arrastar arquivos para o AutoStart não funciona enquanto ele roda como administrador. Use \"Adicionar app\"."
+    "dragUnavailableAsAdmin": "Arrastar arquivos para o AutoStart não funciona enquanto ele roda como administrador. Use \"Adicionar app\".",
+    "restartOnCrash": "Reabre se travar"
   },
   "itemForm": {
     "addTitle": "Adicionar item",
@@ -125,6 +134,8 @@
     "waitForSimConnect": "Aguardar o SimConnect",
     "waitForSimConnectHint": "Abre depois dos outros itens, quando o simulador estiver pronto para conexões de addons.",
     "waitForSimConnectUnsupported": "Disponível apenas para o MSFS 2020 e o MSFS 2024.",
+    "restartOnCrash": "Reabrir se travar",
+    "restartOnCrashHint": "Com o simulador aberto, o AutoStart reabre o app se ele travar (até 3 vezes por sessão). Apps que você fecha normalmente não são reabertos.",
     "processNameAuto": "Detectado automaticamente",
     "processNameAutoHint": "O AutoStart descobre sozinho o processo real, mesmo quando o executável é só um launcher.",
     "processNameManualHint": "Definido manualmente. O AutoStart não vai alterar este nome.",
@@ -138,6 +149,9 @@
     "url": "Informe uma URL http ou https",
     "delay": "Use um número entre 0 e 60000",
     "timeout": "Use um valor entre 1000 e 60000 ms",
+    "closeDelay": "Use um valor entre 0 e 600 segundos",
+    "triggers": "Mantenha entre 1 e 5 simuladores",
+    "triggerDuplicate": "Este simulador já está no perfil",
     "invalid": "Valor inválido"
   },
   "errors": {
@@ -155,6 +169,7 @@
     "sessionInProgress": "Há uma sessão em andamento",
     "autostart": "Não foi possível atualizar a inicialização com o Windows",
     "simConnectUnavailable": "SimConnect não ficou disponível",
+    "keptCrashing": "O app continuou travando e não foi reaberto",
     "unsupported": "Não suportado nesta plataforma",
     "internal": "Erro inesperado"
   },
@@ -184,8 +199,14 @@
       "simConnectReady": "SimConnect disponível",
       "simConnectWaitSkipped": "Espera pelo SimConnect ignorada no teste",
       "error": "Erro",
-      "sessionEnded": "Sessão encerrada"
-    }
+      "sessionEnded": "Sessão encerrada",
+      "closeDelayed": "Simulador fechado, fechamento adiado",
+      "simulatorReturned": "Simulador voltou, apps mantidos",
+      "keptByUser": "Apps mantidos abertos pelo usuário",
+      "crashed": "Travou",
+      "relaunched": "Reaberto após travar"
+    },
+    "seconds": "{{seconds}} s"
   },
   "settings": {
     "title": "Configurações",
@@ -194,7 +215,8 @@
       "closing": "Fechamento",
       "appearance": "Aparência",
       "maintenance": "Manutenção",
-      "about": "Sobre"
+      "about": "Sobre",
+      "notifications": "Notificações"
     },
     "startWithWindows": "Iniciar com o Windows",
     "startWithWindowsHint": "Abre o AutoStart ao entrar no Windows, sem privilégios de administrador.",
@@ -217,7 +239,11 @@
     "logsHint": "Arquivos usados para diagnosticar problemas.",
     "version": "Versão",
     "license": "Licença",
-    "repository": "Repositório"
+    "repository": "Repositório",
+    "closeDelay": "Esperar antes de fechar (segundos)",
+    "closeDelayHint": "Depois que o simulador fecha, o AutoStart espera esse tempo antes de fechar os apps. Se o simulador for reaberto nesse meio-tempo (por exemplo, após um crash), nada é fechado. 0 fecha na hora.",
+    "showNotifications": "Mostrar notificações",
+    "showNotificationsHint": "Notificações do Windows para falhas, apps que travaram e a contagem antes de fechar, mesmo com o AutoStart na bandeja."
   },
   "onboarding": {
     "trigger": {
@@ -282,5 +308,16 @@
       "unsupportedUrl": "só endereços http e https são aceitos",
       "unsupportedShortcut": "o atalho não aponta para um app"
     }
+  },
+  "notifications": {
+    "launchFailedTitle": "Não foi possível abrir {{name}}",
+    "simConnectTitle": "O SimConnect não ficou disponível",
+    "simConnectBody": "Os apps que aguardam o SimConnect não foram abertos.",
+    "closeDelayedTitle": "Simulador fechado",
+    "closeDelayedBody": "Seus apps serão fechados em {{seconds}} s. Para mantê-los abertos, use o AutoStart ou o menu da bandeja.",
+    "relaunchedTitle": "{{name}} foi reaberto",
+    "relaunchedBody": "O app travou e o AutoStart o abriu de novo.",
+    "gaveUpTitle": "{{name}} não foi reaberto",
+    "gaveUpBody": "O app continuou travando nesta sessão."
   }
 }

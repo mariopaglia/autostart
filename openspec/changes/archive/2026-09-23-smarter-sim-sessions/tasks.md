@@ -1,0 +1,41 @@
+## 1. Data model and migration
+
+- [x] 1.1 In `models.rs`, replace `Profile.trigger` with `triggers: Vec<Trigger>`, add `AppItem.restart_on_crash` (default false), `ItemStatus::Restarting`, `MonitorState::ClosePending`, `MonitorSnapshot.closes_at_ms`, the `TimelineKind`s `CloseDelayed`, `SimulatorReturned`, `KeptByUser`, `Crashed` and `Relaunched`, and in `Settings` remove `active_profile_id` and add `close_delay_ms` (default 60 000) and `show_notifications` (default true); add `AppError::KeptCrashing`; update the serde tests in `models.rs` and verify `cargo test` regenerates `src/bindings/`
+- [x] 1.2 In `validation.rs`, validate 1–5 triggers, each `.exe`, unique case-insensitively, and `close_delay_ms` in 0–600 000; drop the active-profile check; verify with unit tests for each rule
+- [x] 1.3 In `storage.rs`, bump the profiles `SCHEMA_VERSION` to 2, convert `trigger` into `triggers` in the raw-JSON migration, and expose the legacy `activeProfileId` read from the raw settings JSON; verify with tests loading v0.1/v0.2 fixtures (profiles and settings)
+- [x] 1.4 Add the pure `profiles_to_disable(profiles, winner_id)` and `resolve_conflicts(profiles, legacy_active_id)` (in `trigger_conflicts.rs`, run on every load so the invariant holds even for hand-edited files) and run the latter in `AppState::load`, saving the result once; verify with unit tests covering the upgrade scenario in the profile-management spec (active wins, first in order when the active one is not in the group, different simulators untouched)
+- [x] 1.5 Update the Zod schemas (`profile.ts` with `triggers`, `restartOnCrash` and a `z.preprocess` converting the legacy `trigger` on import; `settings.ts` with the new fields) keeping the `satisfies` checks against the bindings; verify with `schemas/*.test.ts` cases for old exports and the new limits, and `pnpm typecheck`
+
+## 2. Watched profiles
+
+- [x] 2.1 In `AppState`, apply `profiles_to_disable` in `save_profile` when the profile is enabled, add `set_profile_enabled(id, enabled)`, and return `ProfilesUpdate { profiles, disabled_profile_ids }` (new `TS` struct) from both; remove `set_active_profile` and the active-profile handling in `delete_profile`; verify with `state.rs` tests for enabling, saving a new trigger and deleting
+- [x] 2.2 Update `commands.rs` and `src/lib/tauri.ts` (`saveProfile`/`setProfileEnabled` return `ProfilesUpdate`; remove `setActiveProfile`); make duplicate create a disabled copy and import create a disabled profile when it would conflict; verify with `profile-factory.test.ts` and `stores.test.ts` cases
+- [x] 2.3 Update the profiles and settings stores and the UI: sidebar without "Active"/"Set active" and with a running indicator on `snapshot.sessionProfileId`, main screen selection falling back to the first profile, top-bar enabled toggle calling `setProfileEnabled`, and a notice naming the disabled profiles (pt-BR/en keys); verify with store tests and `pnpm typecheck && pnpm lint && pnpm test`
+- [x] 2.4 Turn `TriggerSelector` into a chip list with an "Add trigger" popover (presets, running processes, typed name) that blocks duplicates and keeps the last chip; update `OnboardingWizard` and `profile-factory` to write `triggers`; make `supportsSimConnect` accept a profile's triggers (any MSFS) for the item form; verify with component tests for add/remove/duplicate and `trigger-presets.test.ts`
+- [x] 2.5 In `tray.rs`, make the profile submenu reflect `enabled` and toggle it through `set_profile_enabled`, emitting `profiles://changed`; change the tooltip to the session profile or "Watching N profiles"; verify with the `tray.rs` tooltip unit tests in both languages
+
+## 3. Monitor: multi-profile detection and close delay
+
+- [x] 3.1 Add the pure `first_running_profile(profiles, is_running)` and use it in `Monitor::poll` (session profile's triggers during a session, enabled profiles in sidebar order otherwise) with `pending_start`; store `started_by: Trigger` in `Session` and pass it to `simconnect::supports_simconnect` in `runner::launch_items`; verify with unit tests for order, disabled profiles, multi-trigger profiles and the "MSFS and another simulator" SimConnect scenario
+- [x] 3.2 Extend `state_machine::next` with `ClosePending { remaining_ticks }`, the `close_delay_ticks` parameter, the `CloseNow`/`KeepApps` inputs and the `DelayClose`/`Continue`/`Release` actions per the design table; verify with state-machine unit tests for every transition, including delay 0, return during the delay and pause during the delay
+- [x] 3.3 Wire the new actions in `monitor/mod.rs` and `reporter.rs`: record `CloseDelayed` (seconds as detail) and set `closes_at_ms`, record `SimulatorReturned`, finish the session with `KeptByUser` on `Release`, and add `close_now`/`keep_apps_open` to `MonitorHandle`, `commands.rs`, `src/lib/tauri.ts`, the tray (`closePending` only) and the monitor store; verify with `session.rs`/reporter unit tests and `pnpm test`
+- [x] 3.4 Show the `closePending` countdown (`CloseCountdown` in `AppShell`) from `closesAtMs` with "Close now" and "Keep apps open", disable the test buttons during `closePending`, and add the "Closing in N s" status, new timeline kinds in `TimelineRow` and the `restarting` status in `ItemStatusBadge` (pt-BR/en); verify with component tests for the countdown and disabled buttons
+
+## 4. Relaunch after a crash
+
+- [x] 4.1 Add `platform::windows::process_exit::ExitWatcher` (`OpenProcess` with `PROCESS_QUERY_LIMITED_INFORMATION`, `GetExitCodeProcess`, handles closed on drop, `unsafe` invariants commented) and a fallback that never reports exit codes; verify with integration tests in `platform/windows/tests.rs` that read exit code 3 and 0 from `cmd /c exit N` and a non-zero code from a killed `notepad.exe`
+- [x] 4.2 Add the pure `crash_verdict(exit_codes)` and the relaunch-attempt rule (max 3 per session); verify with unit tests for running, normal exit, mixed codes and the cap
+- [x] 4.3 Add `monitor/crash_watch.rs` started at the end of `app_watch::watch` for launched items and right away for pre-existing ones with `restart_on_crash` in real sessions; use `Session.relaunch_allowed` (set by the monitor on entering/leaving `SimRunning`) to skip relaunches outside `simRunning`; report `restarting`, `Crashed`, `Relaunched`, and `error` with `KeptCrashing`, marking relaunched items as launched by AutoStart; verify with `session.rs` tests for the flag and `launched_by_app`, and the Windows integration test from 4.1
+- [x] 4.4 Add the "Reopen if it crashes" switch with its hint to `AppItemForm` and the badge to `ItemCard` (pt-BR/en); verify with `AppItemForm.test.tsx` saving `restartOnCrash = true`
+
+## 5. Notifications and settings
+
+- [x] 5.1 Add `tauri-plugin-notification` (Cargo, npm, plugin init in `lib.rs`, permission in `capabilities/default.json`) and verify `cargo clippy --all-targets -- -D warnings` and `pnpm typecheck` pass
+- [x] 5.2 Add the pure `notificationFor(entry, context)` for launch errors, SimConnect timeout, `CloseDelayed`, `Relaunched` and `KeptCrashing`, returning null for test sessions, successes and `showNotifications = false`, and a `useSessionNotifications` hook mounted in `App.tsx` that requests permission once and sends them; verify with unit tests for each mapped and ignored entry in both languages
+- [x] 5.3 Add the close delay (seconds) and "Show notifications" fields to `SettingsScreen`, with validation messages in pt-BR/en; verify with settings schema tests and `locales.test.ts`
+
+## 6. Docs and final checks
+
+- [x] 6.1 Update the README (watched profiles and the one-profile-per-simulator rule, multiple triggers, close delay, notifications, "Reopen if it crashes", tray menu) and verify every new UI label matches the pt-BR/en translations
+- [x] 6.2 Run `pnpm typecheck && pnpm lint && pnpm test` and `cd src-tauri && cargo clippy --all-targets -- -D warnings && cargo test`, and verify all pass with the bindings committed
+- [x] 6.3 Add the user-facing changes under `## [Unreleased]` in `CHANGELOG.md` (Added: watched profiles, multiple triggers, close delay, notifications, reopen on crash; Changed: no active profile, migration of existing profiles; note that older versions cannot read the migrated data)

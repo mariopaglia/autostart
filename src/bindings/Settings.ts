@@ -2,4 +2,4 @@
 import type { Language } from "./Language";
 import type { Theme } from "./Theme";
 
-export type Settings = { activeProfileId: string | null, startWithWindows: boolean, startMinimized: boolean, gracefulTimeoutMs: number, closeOnlyIfLaunchedByApp: boolean, theme: Theme, language: Language, onboardingCompleted: boolean, checkUpdatesOnStartup: boolean, };
+export type Settings = { startWithWindows: boolean, startMinimized: boolean, gracefulTimeoutMs: number, closeDelayMs: number, closeOnlyIfLaunchedByApp: boolean, showNotifications: boolean, theme: Theme, language: Language, onboardingCompleted: boolean, checkUpdatesOnStartup: boolean, };

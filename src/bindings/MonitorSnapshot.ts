@@ -2,4 +2,4 @@
 import type { ItemRuntime } from "./ItemRuntime";
 import type { MonitorState } from "./MonitorState";
 
-export type MonitorSnapshot = { state: MonitorState, sessionProfileId: string | null, isTestSession: boolean, items: Array<ItemRuntime>, };
+export type MonitorSnapshot = { state: MonitorState, sessionProfileId: string | null, isTestSession: boolean, items: Array<ItemRuntime>, closesAtMs: number | null, };

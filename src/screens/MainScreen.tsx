@@ -155,7 +155,7 @@ export function MainScreen() {
       <ItemFormDialog
         target={formTarget}
         profileItems={profile.items}
-        simConnectSupported={supportsSimConnect(profile.trigger)}
+        simConnectSupported={supportsSimConnect(profile.triggers)}
         onSave={saveItem}
         onClose={() => {
           setFormTarget(null);

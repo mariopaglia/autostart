@@ -7,8 +7,6 @@ interface SettingsState {
   settings: Settings | null;
   load: () => Promise<void>;
   save: (patch: Partial<Settings>) => Promise<void>;
-  setActiveProfile: (profileId: string) => Promise<void>;
-  replace: (settings: Settings) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
@@ -26,17 +24,5 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     } catch (error) {
       notifyError(error);
     }
-  },
-
-  setActiveProfile: async (profileId) => {
-    try {
-      set({ settings: await commands.setActiveProfile(profileId) });
-    } catch (error) {
-      notifyError(error);
-    }
-  },
-
-  replace: (settings) => {
-    set({ settings });
   },
 }));

@@ -1,0 +1,103 @@
+# process-monitor Specification
+
+## Purpose
+Continuously watches system processes to detect when the simulator (the active profile's trigger process) starts or exits, triggering the launch and closing of items.
+
+## Requirements
+
+### Requirement: Trigger detection by name
+The monitor SHALL check every 2 seconds whether any process exists whose executable name matches one of the triggers of an enabled profile, using a case-insensitive comparison. When no session is in progress, the first enabled profile in sidebar order with a running trigger SHALL start the session. While a session is in progress, the monitor SHALL watch only the triggers of the session's profile, and the simulator SHALL count as running while any of them is running.
+
+#### Scenario: Simulator starts
+- **WHEN** the state is `idle` and a `flightsimulator2024.exe` process appears, with an enabled profile whose triggers include `FlightSimulator2024.exe`
+- **THEN** within 2 seconds the state changes to `simRunning` and that profile's items start launching
+
+#### Scenario: Another simulator without switching profiles
+- **WHEN** the enabled profiles are "MSFS" (trigger `FlightSimulator2024.exe`) and "X-Plane" (trigger `X-Plane.exe`) and the user opens X-Plane
+- **THEN** the "X-Plane" profile's session starts without the user selecting any profile
+
+#### Scenario: Profile with two triggers
+- **WHEN** a profile has the triggers `FlightSimulator.exe` and `FlightSimulator2024.exe` and the user opens MSFS 2020
+- **THEN** the profile's session starts, and it lasts while either process is running
+
+#### Scenario: Disabled profile
+- **WHEN** a profile is disabled and its trigger process appears
+- **THEN** no session starts for that profile
+
+#### Scenario: Two different simulators at once
+- **WHEN** no session is in progress and the triggers of two enabled profiles are running in the same check
+- **THEN** only the profile higher in the sidebar starts a session
+
+### Requirement: State machine
+The monitor SHALL operate with the states `idle`, `simRunning`, `closePending`, `closing` and `paused`, with the transitions: `idle → simRunning` (trigger detected), `simRunning → closePending` (triggers missing in 2 consecutive checks and `closeDelayMs > 0`), `simRunning → closing` (triggers missing in 2 consecutive checks and `closeDelayMs = 0`), `closePending → simRunning` (a trigger of the session's profile reappears), `closePending → closing` (the delay expires or the user chooses "close now"), `closePending → idle` (the user chooses "keep apps open"), `closing → idle` (closing finished), any state → `paused` (user pauses) and `paused → idle` (user resumes). While in `closing`, the monitor SHALL NOT start a new launch.
+
+#### Scenario: Simulator exits
+- **WHEN** the state is `simRunning`, `closeDelayMs = 0` and the triggers are missing in two consecutive checks
+- **THEN** the state changes to `closing`, the items are closed according to the rules and the state returns to `idle`
+
+#### Scenario: Simulator exits with a close delay
+- **WHEN** the state is `simRunning`, `closeDelayMs = 60000` and the triggers are missing in two consecutive checks
+- **THEN** the state changes to `closePending`, and the items are closed only if no trigger of the session's profile reappears within 60 seconds
+
+#### Scenario: Momentary flapping
+- **WHEN** the trigger disappears in one check and reappears in the next
+- **THEN** the state stays `simRunning` and nothing is closed
+
+#### Scenario: Simulator reopened during closing
+- **WHEN** the trigger reappears while the state is `closing`
+- **THEN** closing finishes, the state goes to `idle` and, on the next check, it enters `simRunning` and launches the items again
+
+### Requirement: Monitoring pause
+The user SHALL be able to pause and resume monitoring from the tray and from the UI. Pausing during `simRunning` or `closePending` SHALL NOT close the launched items, and the ongoing session SHALL be discarded.
+
+#### Scenario: Pause with the simulator running
+- **WHEN** the user pauses with the simulator running and then closes the simulator
+- **THEN** no item is closed
+
+#### Scenario: Pause during the close delay
+- **WHEN** the user pauses while the state is `closePending`
+- **THEN** no item is closed and the state becomes `paused`
+
+### Requirement: App started with the simulator already running
+If the trigger is already running when AutoStart starts (or when monitoring is resumed), the monitor SHALL enter `simRunning` and launch normally, with already-running items marked as pre-existing.
+
+#### Scenario: AutoStart opened after the simulator
+- **WHEN** AutoStart starts with MSFS already running and Volanta already open
+- **THEN** Volanta is marked `skipped` (pre-existing) and the other enabled items are launched
+
+### Requirement: Profile snapshot for the session
+The session SHALL use a copy of the profile that started it, taken at the moment of the transition to `simRunning`. Editing, disabling or deleting that profile during the session SHALL NOT affect that session's launch, closing or crash relaunch.
+
+#### Scenario: Profile switch during a flight
+- **WHEN** the user disables the session's profile with the simulator running
+- **THEN** when the simulator exits, the items of the profile that opened the session are closed
+
+### Requirement: Events for the interface
+The monitor SHALL emit events to the frontend on every monitor state change, on every item status change (`pending`, `waitingSimConnect`, `launching`, `running`, `restarting`, `skipped`, `closing`, `closed`, `error`) and on every log entry. While in `closePending`, the state SHALL include the moment when the items will be closed. The current state SHALL also be available on demand.
+
+#### Scenario: Window opened after the start
+- **WHEN** the window is opened from the tray in the middle of a session
+- **THEN** the UI queries the current state and correctly shows the status of the monitor and of each item
+
+#### Scenario: Item waiting for SimConnect
+- **WHEN** an item starts waiting for SimConnect during the session
+- **THEN** the UI receives the item's `waitingSimConnect` status without needing to reload
+
+#### Scenario: Countdown after the window opens
+- **WHEN** the window is opened while the state is `closePending`
+- **THEN** the UI shows how many seconds remain before the items are closed
+
+### Requirement: Close delay
+When the session's triggers are missing and `closeDelayMs` is greater than zero, the monitor SHALL wait `closeDelayMs` in the `closePending` state before closing the items. If a trigger of the session's profile reappears during the wait, the session SHALL continue in `simRunning` without closing or launching any item. The user SHALL be able to end the wait early with "close now" (the items are closed according to the rules) or "keep apps open" (the session ends without closing any item). Crash relaunch SHALL NOT happen during `closePending`.
+
+#### Scenario: Crash to desktop and restart
+- **WHEN** MSFS crashes, the state enters `closePending` and the pilot reopens MSFS 30 seconds later, with `closeDelayMs = 60000`
+- **THEN** the state returns to `simRunning`, no item is closed or launched again, and the timeline records that the simulator returned
+
+#### Scenario: Close now
+- **WHEN** the state is `closePending` and the user chooses "close now"
+- **THEN** the state changes to `closing` immediately and the items are closed according to the rules
+
+#### Scenario: Keep apps open
+- **WHEN** the state is `closePending` and the user chooses "keep apps open"
+- **THEN** the session ends, no item is closed, the state becomes `idle` and the timeline records that the apps were kept by the user

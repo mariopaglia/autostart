@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAppearance } from "@/hooks/use-appearance";
 import { useMonitorEvents } from "@/hooks/use-monitor-events";
 import { useProfileEvents } from "@/hooks/use-profile-events";
-import { useSettingsEvents } from "@/hooks/use-settings-events";
+import { useSessionNotifications } from "@/hooks/use-session-notifications";
 import { notifyError } from "@/lib/notify";
 import { useProfilesStore } from "@/stores/profiles-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -28,7 +28,7 @@ export function App() {
   const theme = useAppearance();
   useMonitorEvents();
   useProfileEvents();
-  useSettingsEvents();
+  useSessionNotifications();
 
   useEffect(() => {
     loadInitialData()

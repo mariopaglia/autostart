@@ -3,6 +3,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { warn } from "@tauri-apps/plugin-log";
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -13,6 +18,7 @@ import type { ItemRuntime } from "@/bindings/ItemRuntime";
 import type { MonitorSnapshot } from "@/bindings/MonitorSnapshot";
 import type { ProcessInfo } from "@/bindings/ProcessInfo";
 import type { Profile } from "@/bindings/Profile";
+import type { ProfilesUpdate } from "@/bindings/ProfilesUpdate";
 import type { SessionLog } from "@/bindings/SessionLog";
 import type { Settings } from "@/bindings/Settings";
 import type { TimelineEntry } from "@/bindings/TimelineEntry";
@@ -20,9 +26,10 @@ import { appCandidatesSchema, dropResolutionSchema } from "@/schemas/app-candida
 
 export const commands = {
   getProfiles: () => invoke<Profile[]>("get_profiles"),
-  saveProfile: (profile: Profile) => invoke<Profile>("save_profile", { profile }),
-  deleteProfile: (profileId: string) => invoke<Settings>("delete_profile", { profileId }),
-  setActiveProfile: (profileId: string) => invoke<Settings>("set_active_profile", { profileId }),
+  saveProfile: (profile: Profile) => invoke<ProfilesUpdate>("save_profile", { profile }),
+  setProfileEnabled: (profileId: string, enabled: boolean) =>
+    invoke<ProfilesUpdate>("set_profile_enabled", { profileId, enabled }),
+  deleteProfile: (profileId: string) => invoke<Profile[]>("delete_profile", { profileId }),
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
   inspectExe: (path: string) => invoke<ExeInfo>("inspect_exe", { path }),
@@ -47,6 +54,8 @@ export const commands = {
   getSessionLog: () => invoke<SessionLog | null>("get_session_log"),
   pauseMonitor: () => invoke<null>("pause_monitor"),
   resumeMonitor: () => invoke<null>("resume_monitor"),
+  closeAppsNow: () => invoke<null>("close_apps_now"),
+  keepAppsOpen: () => invoke<null>("keep_apps_open"),
   testLaunch: (profileId: string) => invoke<null>("test_launch", { profileId }),
   testClose: (profileId: string) => invoke<null>("test_close", { profileId }),
 };
@@ -56,6 +65,20 @@ export const system = {
   openUrl: (url: string) => openUrl(url),
   relaunch: () => relaunch(),
   logWarning: (message: string) => warn(message),
+};
+
+let notificationPermission: Promise<boolean> | null = null;
+
+async function ensureNotificationPermission(): Promise<boolean> {
+  if (await isPermissionGranted()) return true;
+  return (await requestPermission()) === "granted";
+}
+
+export const systemNotifications = {
+  send: async (title: string, body: string) => {
+    notificationPermission ??= ensureNotificationPermission();
+    if (await notificationPermission) sendNotification({ title, body });
+  },
 };
 
 export type { Update };
@@ -82,13 +105,6 @@ export const monitorEvents = {
 export const profileEvents = {
   onChanged: (handler: (profile: Profile) => void): Promise<UnlistenFn> =>
     listen<Profile>("profiles://changed", (event) => {
-      handler(event.payload);
-    }),
-};
-
-export const settingsEvents = {
-  onChanged: (handler: (settings: Settings) => void): Promise<UnlistenFn> =>
-    listen<Settings>("settings://changed", (event) => {
       handler(event.payload);
     }),
 };

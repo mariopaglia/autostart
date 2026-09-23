@@ -1,42 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Profile } from "@/bindings/Profile";
-import type { Settings } from "@/bindings/Settings";
 import { createProfile } from "@/lib/profile-factory";
 import { commands } from "@/lib/tauri";
 import { useMonitorStore } from "@/stores/monitor-store";
 import { useProfilesStore } from "@/stores/profiles-store";
-import { useSettingsStore } from "@/stores/settings-store";
 
 vi.mock("@/lib/tauri", () => ({
   commands: {
     getProfiles: vi.fn(),
     saveProfile: vi.fn(),
+    setProfileEnabled: vi.fn(),
     deleteProfile: vi.fn(),
-    getSettings: vi.fn(),
-    saveSettings: vi.fn(),
-    setActiveProfile: vi.fn(),
   },
   errorKindOf: () => "internal",
   isAppError: () => false,
 }));
 
-vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+const toast = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }));
+vi.mock("sonner", () => ({ toast }));
 
 const mocked = vi.mocked(commands);
-
-function settingsFor(activeProfileId: string | null): Settings {
-  return {
-    activeProfileId,
-    startWithWindows: false,
-    startMinimized: true,
-    gracefulTimeoutMs: 5000,
-    closeOnlyIfLaunchedByApp: true,
-    theme: "dark",
-    language: "pt-BR",
-    onboardingCompleted: true,
-    checkUpdatesOnStartup: true,
-  };
-}
 
 describe("profiles store", () => {
   let first: Profile;
@@ -44,24 +27,24 @@ describe("profiles store", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    first = createProfile("First");
+    first = { ...createProfile("First"), enabled: false };
     second = createProfile("Second");
-    mocked.getSettings.mockResolvedValue(settingsFor(second.id));
     mocked.getProfiles.mockResolvedValue([first, second]);
-    await useSettingsStore.getState().load();
     await useProfilesStore.getState().load();
   });
 
-  it("selects the active profile after loading", () => {
+  it("selects the first enabled profile after loading", () => {
     expect(useProfilesStore.getState().selectedId).toBe(second.id);
   });
 
-  it("keeps an optimistic save when the backend accepts it", async () => {
-    mocked.saveProfile.mockResolvedValue({ ...first, name: "Renamed" });
+  it("keeps the profiles returned by the backend after saving", async () => {
+    const renamed = { ...first, name: "Renamed" };
+    mocked.saveProfile.mockResolvedValue({ profiles: [renamed, second], disabledProfileIds: [] });
 
-    await useProfilesStore.getState().save({ ...first, name: "Renamed" });
+    await useProfilesStore.getState().save(renamed);
 
     expect(useProfilesStore.getState().profiles[0]?.name).toBe("Renamed");
+    expect(toast.info).not.toHaveBeenCalled();
   });
 
   it("rolls back an optimistic save when the backend rejects it", async () => {
@@ -73,6 +56,36 @@ describe("profiles store", () => {
     expect(useProfilesStore.getState().profiles[0]?.name).toBe("First");
   });
 
+  it("names the profiles disabled when enabling one with the same simulator", async () => {
+    mocked.setProfileEnabled.mockResolvedValue({
+      profiles: [
+        { ...first, enabled: true },
+        { ...second, enabled: false },
+      ],
+      disabledProfileIds: [second.id],
+    });
+
+    await useProfilesStore.getState().setEnabled(first.id, true);
+
+    expect(useProfilesStore.getState().profiles.map((profile) => profile.enabled)).toEqual([
+      true,
+      false,
+    ]);
+    expect(toast.info).toHaveBeenCalledWith(expect.stringContaining("Second"));
+  });
+
+  it("tells the pilot when a new profile was created disabled", async () => {
+    const created = createProfile("Third");
+    mocked.saveProfile.mockResolvedValue({
+      profiles: [first, second, { ...created, enabled: false }],
+      disabledProfileIds: [],
+    });
+
+    await useProfilesStore.getState().save(created);
+
+    expect(toast.info).toHaveBeenCalledWith(expect.stringContaining("Third"));
+  });
+
   it("applies a profile changed by the backend without saving it again", () => {
     useProfilesStore.getState().replace({ ...first, name: "Learned" });
 
@@ -80,26 +93,26 @@ describe("profiles store", () => {
     expect(mocked.saveProfile).not.toHaveBeenCalled();
   });
 
-  it("moves selection to the new active profile after deleting the selected one", async () => {
-    mocked.deleteProfile.mockResolvedValue(settingsFor(first.id));
+  it("moves selection to the first remaining profile after deleting the selected one", async () => {
+    mocked.deleteProfile.mockResolvedValue([first]);
 
     await useProfilesStore.getState().remove(second.id);
 
-    expect(useProfilesStore.getState().profiles).toHaveLength(1);
+    expect(useProfilesStore.getState().profiles).toEqual([first]);
     expect(useProfilesStore.getState().selectedId).toBe(first.id);
-    expect(useSettingsStore.getState().settings?.activeProfileId).toBe(first.id);
   });
 });
 
 describe("monitor store", () => {
   it("replaces the snapshot", () => {
     useMonitorStore.getState().setSnapshot({
-      state: "simRunning",
+      state: "closePending",
       sessionProfileId: "p",
       isTestSession: false,
       items: [],
+      closesAtMs: 1_000,
     });
 
-    expect(useMonitorStore.getState().snapshot.state).toBe("simRunning");
+    expect(useMonitorStore.getState().snapshot.state).toBe("closePending");
   });
 });

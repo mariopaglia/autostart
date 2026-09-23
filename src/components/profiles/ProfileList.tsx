@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  CircleCheck,
-  Copy,
-  Download,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Copy, Download, MoreHorizontal, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Profile } from "@/bindings/Profile";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
@@ -24,8 +15,8 @@ import {
 import { notifySuccess } from "@/lib/notify";
 import { createProfile, duplicateProfile } from "@/lib/profile-factory";
 import { cn } from "@/lib/utils";
+import { useHasSession, useMonitorStore } from "@/stores/monitor-store";
 import { useProfilesStore } from "@/stores/profiles-store";
-import { useSettingsStore } from "@/stores/settings-store";
 import { exportProfileToFile, readProfileFromFile } from "./profile-files";
 import { ProfileNameDialog } from "./ProfileNameDialog";
 
@@ -34,8 +25,10 @@ type NameDialogState = { mode: "create" } | { mode: "rename"; profile: Profile }
 export function ProfileList() {
   const { t } = useTranslation();
   const { profiles, selectedId, select, save, remove } = useProfilesStore();
-  const activeId = useSettingsStore((state) => state.settings?.activeProfileId);
-  const setActiveProfile = useSettingsStore((state) => state.setActiveProfile);
+  const hasSession = useHasSession();
+  const sessionProfileId = useMonitorStore((state) =>
+    state.snapshot.isTestSession ? null : state.snapshot.sessionProfileId,
+  );
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [pendingDelete, setPendingDelete] = useState<Profile | null>(null);
 
@@ -92,12 +85,14 @@ export function ProfileList() {
             >
               <span className="flex w-full items-center gap-2">
                 <span className="truncate font-medium">{profile.name}</span>
-                {profile.id === activeId && (
-                  <Badge className="h-4 px-1.5 text-[10px]">{t("profiles.active")}</Badge>
+                {hasSession && profile.id === sessionProfileId && (
+                  <Badge className="h-4 px-1.5 text-[10px]">{t("profiles.inSession")}</Badge>
                 )}
               </span>
-              <span className="truncate text-xs text-muted-foreground">
-                {profile.enabled ? profile.trigger.label : t("profiles.disabled")}
+              <span className="w-full truncate text-xs text-muted-foreground">
+                {profile.enabled
+                  ? profile.triggers.map((trigger) => trigger.label).join(" · ")
+                  : t("profiles.disabled")}
               </span>
             </button>
 
@@ -113,13 +108,6 @@ export function ProfileList() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  disabled={profile.id === activeId}
-                  onSelect={() => void setActiveProfile(profile.id)}
-                >
-                  <CircleCheck />
-                  {t("profiles.setActive")}
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => {
                     setNameDialog({ mode: "rename", profile });

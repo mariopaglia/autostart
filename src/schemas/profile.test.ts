@@ -4,11 +4,14 @@ import { launchItemSchema, profileSchema } from "./profile";
 const PROFILE_ID = "6f1c1d52-8f8e-4c4b-9a53-2f0a5f3a1d10";
 const ITEM_ID = "0b6f0c2e-3f4d-4a8e-9b1a-7c2d5e6f7a8b";
 
+const MSFS_2024 = { processName: "FlightSimulator2024.exe", label: "MSFS 2024" };
+const MSFS_2020 = { processName: "FlightSimulator.exe", label: "MSFS 2020" };
+
 function buildProfile(overrides: Record<string, unknown> = {}) {
   return {
     id: PROFILE_ID,
     name: "Live MSFS 2024",
-    trigger: { processName: "FlightSimulator2024.exe", label: "MSFS 2024" },
+    triggers: [MSFS_2024],
     ...overrides,
   };
 }
@@ -30,11 +33,40 @@ describe("profileSchema", () => {
 
   it("rejects a trigger that is not an executable", () => {
     const result = profileSchema.safeParse(
-      buildProfile({ trigger: { processName: "FlightSimulator", label: "MSFS" } }),
+      buildProfile({ triggers: [{ processName: "FlightSimulator", label: "MSFS" }] }),
     );
 
     expect(result.success).toBe(false);
-    expect(result.error?.issues[0]?.path).toEqual(["trigger", "processName"]);
+    expect(result.error?.issues[0]?.path).toEqual(["triggers", 0, "processName"]);
+  });
+
+  it("accepts several distinct triggers", () => {
+    const profile = profileSchema.parse(buildProfile({ triggers: [MSFS_2020, MSFS_2024] }));
+
+    expect(profile.triggers).toEqual([MSFS_2020, MSFS_2024]);
+  });
+
+  it("rejects no triggers, more than five or a repeated one", () => {
+    const six = ["A", "B", "C", "D", "E", "F"].map((name) => ({
+      processName: `${name}.exe`,
+      label: name,
+    }));
+    const repeated = [MSFS_2024, { processName: "flightsimulator2024.EXE", label: "Copy" }];
+
+    expect(profileSchema.safeParse(buildProfile({ triggers: [] })).success).toBe(false);
+    expect(profileSchema.safeParse(buildProfile({ triggers: six })).success).toBe(false);
+    const result = profileSchema.safeParse(buildProfile({ triggers: repeated }));
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe("validation.triggerDuplicate");
+  });
+
+  it("converts the single trigger of files exported by v0.2.0", () => {
+    const exported = { id: PROFILE_ID, name: "Live MSFS 2020", trigger: MSFS_2020 };
+
+    const profile = profileSchema.parse(exported);
+
+    expect(profile.triggers).toEqual([MSFS_2020]);
+    expect(profile).not.toHaveProperty("trigger");
   });
 });
 
@@ -76,6 +108,7 @@ describe("launchItemSchema", () => {
       processNameMode: "auto",
       startMinimized: false,
       waitForSimConnect: false,
+      restartOnCrash: false,
     });
   });
 

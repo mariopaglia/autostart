@@ -12,10 +12,11 @@ AutoStart is a free Windows tray app for virtual pilots. Pick a trigger process 
 
 ## What it does
 
-- **Profiles**: each profile has a trigger (the simulator process) and a list of items (apps or URLs).
+- **Profiles**: each profile has one or more triggers (simulator processes) and a list of items (apps or URLs). Every enabled profile is watched, so switching simulators needs no clicks.
 - **Ordered launch**: when the trigger appears, the enabled items open in list order, with a configurable delay before each one. Apps that are already running are skipped.
-- **Smart shutdown**: when the simulator exits, each app is closed normally (like clicking the X), force-closed, or kept open, as you choose. By default, only what AutoStart itself opened gets closed.
-- **Unobtrusive**: lives in the system tray, can start with Windows and keeps a log of every session.
+- **Smart shutdown**: when the simulator exits, each app is closed normally (like clicking the X), force-closed, or kept open, as you choose. By default, only what AutoStart itself opened gets closed, and only after a short wait, so a simulator reopened after a crash keeps its apps.
+- **Crash recovery**: apps marked "Reopen if it crashes" are opened again if they crash mid-flight.
+- **Unobtrusive**: lives in the system tray, can start with Windows, shows Windows notifications when something needs your attention and keeps a log of every session.
 
 ## Installation
 
@@ -35,7 +36,25 @@ AutoStart checks for new versions on startup (you can turn this off in Settings)
 2. On the main screen, use **Add app** to pick one of your apps (see [Adding apps](#adding-apps)) or **Add URL** to open a website.
 3. Drag the cards to set the order. The keyboard works too: focus the handle, press Space and use the arrow keys.
 4. Use **Test launch** and **Test close** to check everything without opening the simulator.
-5. The **active** profile (marked in the list, also switchable from the tray) is the one AutoStart watches.
+5. Every **enabled** profile is watched (the switch next to the profile name, also available in the tray's profile menu). When a simulator starts, the profile that has it as a trigger runs.
+
+### Profiles and simulators
+
+A profile can have several triggers: add **MSFS 2020** and **MSFS 2024** to the same profile to use the same apps with both. Use **Add simulator** next to the profile name to pick a preset, a running process or type a process name.
+
+Only one enabled profile can watch a given simulator. If you keep variations of the same setup (e.g. "MSFS Online" and "MSFS Offline"), enabling one turns off the other and AutoStart tells you which one was turned off. New, duplicated and imported profiles start turned off when their simulator is already watched by another profile.
+
+### Closing delay
+
+When the simulator exits, AutoStart waits **60 seconds** before closing your apps (configurable in **Settings → Closing**, 0 closes right away). If the simulator is reopened meanwhile, for example after a crash to desktop, the session continues and nothing is closed or opened again. During the wait, the top of the window shows a countdown with **Close now** and **Keep apps open**; the same actions are in the tray menu.
+
+### Reopen if it crashes
+
+Turn on **Reopen if it crashes** on an app to have AutoStart open it again when it crashes while the simulator is running (up to 3 times per session). AutoStart tells a crash from a normal close by the app's exit code: apps you close yourself are not reopened. The option does not apply to **Test launch**, and crashes in the first 30 seconds after an app opens are not detected.
+
+### Notifications
+
+AutoStart shows Windows notifications when an app could not be opened, SimConnect did not become available, the closing countdown starts, and an app was reopened after a crash (or kept crashing). Successful launches and test sessions never notify. Turn them off in **Settings → Notifications**.
 
 ### Adding apps
 
@@ -81,7 +100,7 @@ Some add-ons need Microsoft Flight Simulator's **SimConnect** to be ready before
 2. Items **with** the option show as "Waiting for SimConnect" and open, also in order, as soon as SimConnect accepts connections (usually around the main menu).
 3. If SimConnect doesn't become available within 10 minutes, those items are marked as failed.
 
-The option only works with the **MSFS 2020** (`FlightSimulator.exe`) and **MSFS 2024** (`FlightSimulator2024.exe`) triggers. **Test launch** skips the wait so you can check everything without the simulator. "SimConnect available" means the simulator accepts add-on connections, not that the flight has loaded. If you changed the simulator's `SimConnect.xml` (pipe name or TCP only), detection may not work.
+The option only works when the session was started by **MSFS 2020** (`FlightSimulator.exe`) or **MSFS 2024** (`FlightSimulator2024.exe`); in a profile that also has another simulator, those items open without waiting when the other simulator starts. **Test launch** skips the wait so you can check everything without the simulator. "SimConnect available" means the simulator accepts add-on connections, not that the flight has loaded. If you changed the simulator's `SimConnect.xml` (pipe name or TCP only), detection may not work.
 
 ### Importing and exporting profiles
 

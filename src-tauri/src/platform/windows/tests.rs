@@ -265,3 +265,49 @@ fn dropped_shortcut_executable_and_web_shortcut_are_resolved() {
         DropRejection::UnsupportedFile
     );
 }
+
+/// A `cmd.exe` that stays alive for about a second, then exits with `exit_code`.
+fn spawn_cmd_exiting_with(exit_code: u32) -> u32 {
+    std::process::Command::new(system32().join("cmd.exe"))
+        .args([
+            "/c",
+            &format!("ping -n 2 127.0.0.1 >nul & exit /b {exit_code}"),
+        ])
+        .spawn()
+        .unwrap()
+        .id()
+}
+
+fn watch_until_exited(pid: u32) -> Option<u32> {
+    let mut watcher = ExitWatcher::default();
+    watcher.watch(pid);
+    assert_eq!(
+        watcher.exit_codes().len(),
+        1,
+        "the process should be watchable"
+    );
+    assert!(wait_until(|| watcher.exit_codes() != [None]));
+    watcher.exit_codes()[0]
+}
+
+#[test]
+fn exit_watcher_reads_normal_and_failing_exit_codes() {
+    let normal = spawn_cmd_exiting_with(0);
+    let failing = spawn_cmd_exiting_with(3);
+
+    assert_eq!(watch_until_exited(normal), Some(0));
+    assert_eq!(watch_until_exited(failing), Some(3));
+}
+
+#[test]
+fn exit_watcher_sees_a_killed_process_as_failing() {
+    let process = LaunchedProcess::start(LaunchOptions::default());
+    let mut watcher = ExitWatcher::default();
+    watcher.watch(process.0);
+    assert_eq!(watcher.exit_codes(), [None]);
+
+    terminate(process.0, "notepad.exe").unwrap();
+
+    assert!(wait_until(|| watcher.exit_codes() != [None]));
+    assert_ne!(watcher.exit_codes(), [Some(0)]);
+}

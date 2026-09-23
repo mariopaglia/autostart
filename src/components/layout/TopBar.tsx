@@ -24,6 +24,7 @@ async function run(action: () => Promise<unknown>) {
 export function TopBar({ profile }: { profile: Profile }) {
   const { t } = useTranslation();
   const save = useProfilesStore((state) => state.save);
+  const setEnabled = useProfilesStore((state) => state.setEnabled);
   const snapshot = useMonitorStore((state) => state.snapshot);
   const hasSession = useHasSession();
   const [confirmingClose, setConfirmingClose] = useState(false);
@@ -66,11 +67,11 @@ export function TopBar({ profile }: { profile: Profile }) {
         <Switch
           checked={profile.enabled}
           aria-label={t("profiles.enabledToggle")}
-          onCheckedChange={(enabled) => void save({ ...profile, enabled })}
+          onCheckedChange={(enabled) => void setEnabled(profile.id, enabled)}
         />
         <TriggerSelector
-          trigger={profile.trigger}
-          onChange={(trigger) => void save({ ...profile, trigger })}
+          triggers={profile.triggers}
+          onChange={(triggers) => void save({ ...profile, triggers })}
         />
       </div>
 

@@ -2,4 +2,4 @@
 import type { OnClose } from "./OnClose";
 import type { ProcessNameMode } from "./ProcessNameMode";
 
-export type AppItem = { id: string, name: string, exePath: string, args?: string, workingDir?: string, processName: string, processNameMode: ProcessNameMode, iconBase64?: string, delayMs: number, runAsAdmin: boolean, startMinimized: boolean, waitForSimConnect: boolean, onClose: OnClose, enabled: boolean, };
+export type AppItem = { id: string, name: string, exePath: string, args?: string, workingDir?: string, processName: string, processNameMode: ProcessNameMode, iconBase64?: string, delayMs: number, runAsAdmin: boolean, startMinimized: boolean, waitForSimConnect: boolean, restartOnCrash: boolean, onClose: OnClose, enabled: boolean, };

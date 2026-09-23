@@ -13,7 +13,8 @@
       "idle": "Waiting for simulator",
       "simRunning": "Simulator running",
       "closing": "Closing apps",
-      "paused": "Paused"
+      "paused": "Paused",
+      "closePending": "Closing soon"
     },
     "pause": "Pause monitoring",
     "resume": "Resume monitoring",
@@ -24,13 +25,14 @@
       "title": "Close this profile's apps?",
       "description": "No test launch was run for this profile. Every running app in the profile will be closed according to its own rule.",
       "confirm": "Close apps"
-    }
+    },
+    "closingIn": "Simulator closed. Closing apps in {{seconds}} s",
+    "closeNow": "Close now",
+    "keepApps": "Keep apps open"
   },
   "profiles": {
     "title": "Profiles",
     "new": "New profile",
-    "active": "Active",
-    "setActive": "Make active",
     "rename": "Rename",
     "duplicate": "Duplicate",
     "delete": "Delete",
@@ -52,16 +54,21 @@
     "importInvalidField": "Field {{field}}: {{message}}",
     "imported": "Profile \"{{name}}\" imported",
     "exported": "Profile exported",
-    "fileFilter": "AutoStart profile"
+    "fileFilter": "AutoStart profile",
+    "conflictDisabled": "Turned off because they watch the same simulator: {{names}}",
+    "createdDisabled": "\"{{name}}\" was created turned off because another profile already watches the same simulator",
+    "inSession": "In session"
   },
   "trigger": {
     "label": "Trigger",
-    "change": "Change trigger",
     "presets": "Simulators",
     "running": "Running processes",
     "search": "Search or type a process…",
     "empty": "No process found",
-    "useCustom": "Use \"{{processName}}\""
+    "useCustom": "Use \"{{processName}}\"",
+    "add": "Add simulator",
+    "remove": "Remove {{label}}",
+    "listLabel": "Simulators"
   },
   "items": {
     "addApp": "Add app",
@@ -91,10 +98,12 @@
       "skipped": "Already open",
       "closing": "Closing…",
       "closed": "Closed",
-      "error": "Error"
+      "error": "Error",
+      "restarting": "Reopening"
     },
     "dragHint": "Tip: you can also drag app shortcuts, .exe files or web shortcuts into this window.",
-    "dragUnavailableAsAdmin": "Dragging files into AutoStart is unavailable while it runs as administrator. Use \"Add app\" instead."
+    "dragUnavailableAsAdmin": "Dragging files into AutoStart is unavailable while it runs as administrator. Use \"Add app\" instead.",
+    "restartOnCrash": "Reopens if it crashes"
   },
   "itemForm": {
     "addTitle": "Add item",
@@ -125,6 +134,8 @@
     "waitForSimConnect": "Wait for SimConnect",
     "waitForSimConnectHint": "Opens after the other items, once the simulator accepts addon connections.",
     "waitForSimConnectUnsupported": "Available only for MSFS 2020 and MSFS 2024.",
+    "restartOnCrash": "Reopen if it crashes",
+    "restartOnCrashHint": "While the simulator is running, AutoStart reopens the app if it crashes (up to 3 times per session). Apps you close normally are not reopened.",
     "processNameAuto": "Detected automatically",
     "processNameAutoHint": "AutoStart finds the real process on its own, even when the executable is just a launcher.",
     "processNameManualHint": "Set manually. AutoStart will not change this name.",
@@ -138,6 +149,9 @@
     "url": "Enter an http or https URL",
     "delay": "Use a number between 0 and 60000",
     "timeout": "Use a value between 1000 and 60000 ms",
+    "closeDelay": "Use a value between 0 and 600 seconds",
+    "triggers": "Keep between 1 and 5 simulators",
+    "triggerDuplicate": "This simulator is already in the profile",
     "invalid": "Invalid value"
   },
   "errors": {
@@ -155,6 +169,7 @@
     "sessionInProgress": "A session is in progress",
     "autostart": "Could not update the Windows startup entry",
     "simConnectUnavailable": "SimConnect did not become available",
+    "keptCrashing": "The app kept crashing and was not reopened",
     "unsupported": "Not supported on this platform",
     "internal": "Unexpected error"
   },
@@ -184,8 +199,14 @@
       "simConnectReady": "SimConnect available",
       "simConnectWaitSkipped": "SimConnect wait skipped in test",
       "error": "Error",
-      "sessionEnded": "Session ended"
-    }
+      "sessionEnded": "Session ended",
+      "closeDelayed": "Simulator closed, closing delayed",
+      "simulatorReturned": "Simulator returned, apps kept",
+      "keptByUser": "Apps kept open by the user",
+      "crashed": "Crashed",
+      "relaunched": "Reopened after a crash"
+    },
+    "seconds": "{{seconds}} s"
   },
   "settings": {
     "title": "Settings",
@@ -194,7 +215,8 @@
       "closing": "Closing",
       "appearance": "Appearance",
       "maintenance": "Maintenance",
-      "about": "About"
+      "about": "About",
+      "notifications": "Notifications"
     },
     "startWithWindows": "Start with Windows",
     "startWithWindowsHint": "Opens AutoStart when you sign in to Windows, without administrator rights.",
@@ -217,7 +239,11 @@
     "logsHint": "Files used to diagnose problems.",
     "version": "Version",
     "license": "License",
-    "repository": "Repository"
+    "repository": "Repository",
+    "closeDelay": "Wait before closing (seconds)",
+    "closeDelayHint": "After the simulator exits, AutoStart waits this long before closing the apps. If the simulator is reopened meanwhile (e.g. after a crash), nothing is closed. 0 closes right away.",
+    "showNotifications": "Show notifications",
+    "showNotificationsHint": "Windows notifications for failures, crashed apps and the countdown before closing, even while AutoStart is in the tray."
   },
   "onboarding": {
     "trigger": {
@@ -282,5 +308,16 @@
       "unsupportedUrl": "only http and https web addresses are supported",
       "unsupportedShortcut": "the shortcut does not point to an app"
     }
+  },
+  "notifications": {
+    "launchFailedTitle": "Could not open {{name}}",
+    "simConnectTitle": "SimConnect did not become available",
+    "simConnectBody": "The apps that wait for SimConnect were not opened.",
+    "closeDelayedTitle": "Simulator closed",
+    "closeDelayedBody": "Your apps will be closed in {{seconds}} s. To keep them open, use AutoStart or its tray menu.",
+    "relaunchedTitle": "{{name}} was reopened",
+    "relaunchedBody": "The app crashed and AutoStart opened it again.",
+    "gaveUpTitle": "{{name}} was not reopened",
+    "gaveUpBody": "The app kept crashing during this session."
   }
 }

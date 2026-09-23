@@ -50,6 +50,9 @@ impl Reporter {
         let snapshot = {
             let mut published = self.published();
             published.snapshot.state = state;
+            if state != MonitorState::ClosePending {
+                published.snapshot.closes_at_ms = None;
+            }
             published.snapshot.clone()
         };
         self.emit(STATE_EVENT, snapshot);
@@ -110,14 +113,53 @@ impl Reporter {
         self.emit(LOG_EVENT, entry);
     }
 
+    pub fn close_delayed(&self, session: &SharedSession, closes_at_ms: u64, delay_seconds: u32) {
+        let snapshot = {
+            let mut published = self.published();
+            published.snapshot.closes_at_ms = Some(closes_at_ms);
+            published.snapshot.clone()
+        };
+        self.emit(STATE_EVENT, snapshot);
+
+        let entry = {
+            let mut session = lock(session);
+            let entry =
+                session.record_detail(TimelineKind::CloseDelayed, None, delay_seconds.to_string());
+            self.published().session_log = Some(session.log().clone());
+            entry
+        };
+        log::info!("closing delayed by {delay_seconds} s");
+        self.emit(LOG_EVENT, entry);
+    }
+
     pub fn process_name_learned(&self, session: &SharedSession, item_id: &str, process_name: &str) {
-        let entry = lock(session).record_detail(
+        log::info!("learned process name {process_name} for item {item_id}");
+        self.timeline_detail(
+            session,
             TimelineKind::ProcessNameLearned,
             item_id,
             process_name.to_owned(),
         );
-        self.published().session_log = Some(lock(session).log().clone());
-        log::info!("learned process name {process_name} for item {item_id}");
+    }
+
+    pub fn timeline_detail(
+        &self,
+        session: &SharedSession,
+        kind: TimelineKind,
+        item_id: &str,
+        detail: String,
+    ) {
+        let entry = {
+            let mut session = lock(session);
+            let entry = session.record_detail(kind, Some(item_id), detail);
+            self.published().session_log = Some(session.log().clone());
+            entry
+        };
+        log::info!(
+            "{kind:?} {}: {}",
+            entry.item_name.as_deref().unwrap_or(""),
+            entry.detail.as_deref().unwrap_or("")
+        );
         self.emit(LOG_EVENT, entry);
     }
 

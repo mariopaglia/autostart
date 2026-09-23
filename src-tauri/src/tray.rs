@@ -5,16 +5,16 @@ use tauri::menu::{
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, Wry};
 
-use crate::models::{Language, MonitorState, Profile, Settings};
-use crate::monitor::MonitorHandle;
+use crate::models::{Language, MonitorSnapshot, MonitorState, Profile};
+use crate::monitor::{MonitorHandle, PROFILE_CHANGED_EVENT};
 use crate::state::AppState;
 use crate::window;
-
-pub const SETTINGS_CHANGED_EVENT: &str = "settings://changed";
 
 const TRAY_ID: &str = "main";
 const PROFILE_ID_PREFIX: &str = "profile:";
 const TOGGLE_PAUSE_ID: &str = "toggle-pause";
+const CLOSE_NOW_ID: &str = "close-now";
+const KEEP_APPS_ID: &str = "keep-apps";
 const OPEN_ID: &str = "open";
 const QUIT_ID: &str = "quit";
 
@@ -27,11 +27,15 @@ struct TrayLabels {
     profiles: &'static str,
     pause: &'static str,
     resume: &'static str,
+    close_now: &'static str,
+    keep_apps: &'static str,
     open: &'static str,
     quit: &'static str,
-    no_profile: &'static str,
+    watching_one: &'static str,
+    watching_many: &'static str,
     idle: &'static str,
     sim_running: &'static str,
+    close_pending: &'static str,
     closing: &'static str,
     paused: &'static str,
 }
@@ -40,11 +44,15 @@ const PT_BR_LABELS: TrayLabels = TrayLabels {
     profiles: "Perfis",
     pause: "Pausar monitoramento",
     resume: "Retomar monitoramento",
+    close_now: "Fechar apps agora",
+    keep_apps: "Manter apps abertos",
     open: "Abrir AutoStart",
     quit: "Sair",
-    no_profile: "Nenhum perfil ativo",
+    watching_one: "1 perfil monitorado",
+    watching_many: "{count} perfis monitorados",
     idle: "Aguardando simulador",
     sim_running: "Simulador em execução",
+    close_pending: "Fechando apps em breve",
     closing: "Fechando apps",
     paused: "Pausado",
 };
@@ -53,11 +61,15 @@ const EN_LABELS: TrayLabels = TrayLabels {
     profiles: "Profiles",
     pause: "Pause monitoring",
     resume: "Resume monitoring",
+    close_now: "Close apps now",
+    keep_apps: "Keep apps open",
     open: "Open AutoStart",
     quit: "Quit",
-    no_profile: "No active profile",
+    watching_one: "Watching 1 profile",
+    watching_many: "Watching {count} profiles",
     idle: "Waiting for simulator",
     sim_running: "Simulator running",
+    close_pending: "Closing apps soon",
     closing: "Closing apps",
     paused: "Paused",
 };
@@ -71,43 +83,49 @@ fn labels(language: Language) -> &'static TrayLabels {
 
 struct TrayView {
     labels: &'static TrayLabels,
-    state: MonitorState,
+    snapshot: MonitorSnapshot,
     profiles: Vec<Profile>,
-    settings: Settings,
 }
 
 impl TrayView {
     fn current(app: &AppHandle) -> Self {
         let app_state = app.state::<AppState>();
-        let settings = app_state.settings();
-        let state = app
+        let snapshot = app
             .try_state::<MonitorHandle>()
-            .map(|monitor| monitor.snapshot().state)
+            .map(|monitor| monitor.snapshot())
             .unwrap_or_default();
         Self {
-            labels: labels(settings.language),
-            state,
+            labels: labels(app_state.settings().language),
+            snapshot,
             profiles: app_state.profiles(),
-            settings,
         }
     }
 
     fn icon(&self) -> tauri::Result<Image<'static>> {
-        let bytes = match self.state {
+        let bytes = match self.snapshot.state {
             MonitorState::Idle => IDLE_ICON,
-            MonitorState::SimRunning | MonitorState::Closing => RUNNING_ICON,
+            MonitorState::SimRunning | MonitorState::ClosePending | MonitorState::Closing => {
+                RUNNING_ICON
+            }
             MonitorState::Paused => PAUSED_ICON,
         };
         Image::from_bytes(bytes)
     }
 
     fn tooltip(&self) -> String {
-        let profile_name = self
+        let session_profile = self
             .profiles
             .iter()
-            .find(|profile| Some(&profile.id) == self.settings.active_profile_id.as_ref())
-            .map_or(self.labels.no_profile, |profile| profile.name.as_str());
-        tooltip_text(self.labels, profile_name, self.state)
+            .find(|profile| Some(&profile.id) == self.snapshot.session_profile_id.as_ref())
+            .filter(|_| has_session(self.snapshot.state) && !self.snapshot.is_test_session);
+        let subject = match session_profile {
+            Some(profile) => profile.name.clone(),
+            None => watching_text(
+                self.labels,
+                self.profiles.iter().filter(|p| p.enabled).count(),
+            ),
+        };
+        tooltip_text(self.labels, &subject, self.snapshot.state)
     }
 
     fn menu(&self, app: &AppHandle) -> tauri::Result<Menu<Wry>> {
@@ -115,13 +133,12 @@ impl TrayView {
             .profiles
             .iter()
             .map(|profile| {
-                let is_active = Some(&profile.id) == self.settings.active_profile_id.as_ref();
                 CheckMenuItem::with_id(
                     app,
                     format!("{PROFILE_ID_PREFIX}{}", profile.id),
                     &profile.name,
                     true,
-                    is_active,
+                    profile.enabled,
                     None::<&str>,
                 )
             })
@@ -132,7 +149,7 @@ impl TrayView {
             .collect();
         let profiles = Submenu::with_items(app, self.labels.profiles, true, &profile_refs)?;
 
-        let pause_label = if self.state == MonitorState::Paused {
+        let pause_label = if self.snapshot.state == MonitorState::Paused {
             self.labels.resume
         } else {
             self.labels.pause
@@ -141,29 +158,49 @@ impl TrayView {
             MenuItem::with_id(app, TOGGLE_PAUSE_ID, pause_label, true, None::<&str>)?;
         let open = MenuItem::with_id(app, OPEN_ID, self.labels.open, true, None::<&str>)?;
         let quit = MenuItem::with_id(app, QUIT_ID, self.labels.quit, true, None::<&str>)?;
+        let separator = PredefinedMenuItem::separator(app)?;
+        let close_now =
+            MenuItem::with_id(app, CLOSE_NOW_ID, self.labels.close_now, true, None::<&str>)?;
+        let keep_apps =
+            MenuItem::with_id(app, KEEP_APPS_ID, self.labels.keep_apps, true, None::<&str>)?;
 
-        Menu::with_items(
-            app,
-            &[
-                &profiles,
-                &PredefinedMenuItem::separator(app)?,
-                &toggle_pause,
-                &open,
-                &PredefinedMenuItem::separator(app)?,
-                &quit,
-            ],
-        )
+        let mut entries: Vec<&dyn IsMenuItem<Wry>> = vec![&profiles, &separator];
+        if self.snapshot.state == MonitorState::ClosePending {
+            entries.extend([&close_now as &dyn IsMenuItem<Wry>, &keep_apps, &separator]);
+        }
+        entries.extend([
+            &toggle_pause as &dyn IsMenuItem<Wry>,
+            &open,
+            &separator,
+            &quit,
+        ]);
+        Menu::with_items(app, &entries)
     }
 }
 
-fn tooltip_text(labels: &TrayLabels, profile_name: &str, state: MonitorState) -> String {
+fn has_session(state: MonitorState) -> bool {
+    matches!(
+        state,
+        MonitorState::SimRunning | MonitorState::ClosePending | MonitorState::Closing
+    )
+}
+
+fn watching_text(labels: &TrayLabels, count: usize) -> String {
+    if count == 1 {
+        return labels.watching_one.to_owned();
+    }
+    labels.watching_many.replace("{count}", &count.to_string())
+}
+
+fn tooltip_text(labels: &TrayLabels, subject: &str, state: MonitorState) -> String {
     let state_label = match state {
         MonitorState::Idle => labels.idle,
         MonitorState::SimRunning => labels.sim_running,
+        MonitorState::ClosePending => labels.close_pending,
         MonitorState::Closing => labels.closing,
         MonitorState::Paused => labels.paused,
     };
-    format!("AutoStart · {profile_name} · {state_label}")
+    format!("AutoStart · {subject} · {state_label}")
 }
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
@@ -210,9 +247,11 @@ fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
         OPEN_ID => window::show_main(app),
         QUIT_ID => app.exit(0),
         TOGGLE_PAUSE_ID => toggle_pause(app),
+        CLOSE_NOW_ID => end_close_delay(app, true),
+        KEEP_APPS_ID => end_close_delay(app, false),
         id => {
             if let Some(profile_id) = id.strip_prefix(PROFILE_ID_PREFIX) {
-                activate_profile(app, profile_id);
+                toggle_profile(app, profile_id);
             }
         }
     }
@@ -229,14 +268,34 @@ fn toggle_pause(app: &AppHandle) {
     });
 }
 
-fn activate_profile(app: &AppHandle, profile_id: &str) {
-    match app.state::<AppState>().set_active_profile(profile_id) {
-        Ok(settings) => {
-            if let Err(error) = app.emit(SETTINGS_CHANGED_EVENT, settings) {
-                log::warn!("failed to emit {SETTINGS_CHANGED_EVENT}: {error}");
+fn end_close_delay(app: &AppHandle, close_now: bool) {
+    let monitor = app.state::<MonitorHandle>().inner().clone();
+    tauri::async_runtime::spawn(async move {
+        if close_now {
+            monitor.close_now().await;
+        } else {
+            monitor.keep_apps_open().await;
+        }
+    });
+}
+
+fn toggle_profile(app: &AppHandle, profile_id: &str) {
+    let state = app.state::<AppState>();
+    let Ok(profile) = state.profile(profile_id) else {
+        return;
+    };
+    match state.set_profile_enabled(profile_id, !profile.enabled) {
+        Ok(update) => {
+            let changed = update.profiles.iter().filter(|updated| {
+                updated.id == profile_id || update.disabled_profile_ids.contains(&updated.id)
+            });
+            for updated in changed {
+                if let Err(error) = app.emit(PROFILE_CHANGED_EVENT, updated) {
+                    log::warn!("failed to emit {PROFILE_CHANGED_EVENT}: {error}");
+                }
             }
         }
-        Err(error) => log::error!("could not activate profile from the tray: {error}"),
+        Err(error) => log::error!("could not toggle the profile from the tray: {error}"),
     }
     refresh(app);
 }
@@ -250,6 +309,22 @@ mod tests {
         assert_eq!(
             tooltip_text(&PT_BR_LABELS, "MSFS 2024", MonitorState::SimRunning),
             "AutoStart · MSFS 2024 · Simulador em execução"
+        );
+    }
+
+    #[test]
+    fn watching_text_counts_profiles_in_both_languages() {
+        assert_eq!(watching_text(&PT_BR_LABELS, 1), "1 perfil monitorado");
+        assert_eq!(watching_text(&PT_BR_LABELS, 2), "2 perfis monitorados");
+        assert_eq!(watching_text(&EN_LABELS, 1), "Watching 1 profile");
+        assert_eq!(watching_text(&EN_LABELS, 0), "Watching 0 profiles");
+    }
+
+    #[test]
+    fn tooltip_shows_close_pending() {
+        assert_eq!(
+            tooltip_text(&EN_LABELS, "MSFS 2024", MonitorState::ClosePending),
+            "AutoStart · MSFS 2024 · Closing apps soon"
         );
     }
 

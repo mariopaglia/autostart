@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { Language } from "@/bindings/Language";
 import type { Settings } from "@/bindings/Settings";
 import type { Theme } from "@/bindings/Theme";
+import { CloseDelayField } from "@/components/settings/CloseDelayField";
 import { GracefulTimeoutField } from "@/components/settings/GracefulTimeoutField";
 import { SettingRow } from "@/components/settings/SettingRow";
 import { SettingsSection } from "@/components/settings/SettingsSection";
@@ -88,6 +89,20 @@ export function SettingsScreen() {
 
         <SettingsSection title={t("settings.sections.closing")}>
           <SettingRow
+            id="close-delay"
+            label={t("settings.closeDelay")}
+            description={t("settings.closeDelayHint")}
+          >
+            <CloseDelayField
+              id="close-delay"
+              valueMs={settings.closeDelayMs}
+              onSave={(closeDelayMs) => {
+                save({ closeDelayMs });
+              }}
+            />
+          </SettingRow>
+          <Separator />
+          <SettingRow
             id="graceful-timeout"
             label={t("settings.gracefulTimeout")}
             description={t("settings.gracefulTimeoutHint")}
@@ -111,6 +126,22 @@ export function SettingsScreen() {
               checked={settings.closeOnlyIfLaunchedByApp}
               onCheckedChange={(closeOnlyIfLaunchedByApp) => {
                 save({ closeOnlyIfLaunchedByApp });
+              }}
+            />
+          </SettingRow>
+        </SettingsSection>
+
+        <SettingsSection title={t("settings.sections.notifications")}>
+          <SettingRow
+            id="show-notifications"
+            label={t("settings.showNotifications")}
+            description={t("settings.showNotificationsHint")}
+          >
+            <Switch
+              id="show-notifications"
+              checked={settings.showNotifications}
+              onCheckedChange={(showNotifications) => {
+                save({ showNotifications });
               }}
             />
           </SettingRow>

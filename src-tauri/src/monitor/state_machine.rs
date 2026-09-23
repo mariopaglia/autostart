@@ -10,6 +10,10 @@ pub enum State {
     SimRunning {
         missed_ticks: u8,
     },
+    /// Waiting before closing, so a simulator restarted after a crash keeps its apps.
+    ClosePending {
+        remaining_ticks: u32,
+    },
     Closing,
     Paused,
 }
@@ -19,6 +23,8 @@ pub enum Input {
     TriggerSeen,
     TriggerMissing,
     ClosingFinished,
+    CloseNow,
+    KeepApps,
     Pause,
     Resume,
 }
@@ -26,15 +32,21 @@ pub enum Input {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SessionAction {
     Start,
+    DelayClose,
+    Continue,
     End,
+    Release,
     Discard,
 }
 
-pub fn next(state: State, input: Input) -> (State, Option<SessionAction>) {
+/// `close_delay_ticks` is the configured close delay in polls; 0 closes right away.
+pub fn next(state: State, input: Input, close_delay_ticks: u32) -> (State, Option<SessionAction>) {
     match (state, input) {
         (State::Paused, Input::Resume) => (State::Idle, None),
         (State::Paused, _) => (State::Paused, None),
-        (State::SimRunning { .. }, Input::Pause) => (State::Paused, Some(SessionAction::Discard)),
+        (State::SimRunning { .. } | State::ClosePending { .. }, Input::Pause) => {
+            (State::Paused, Some(SessionAction::Discard))
+        }
         (_, Input::Pause) => (State::Paused, None),
 
         (State::Idle, Input::TriggerSeen) => (
@@ -46,12 +58,41 @@ pub fn next(state: State, input: Input) -> (State, Option<SessionAction>) {
         }
         (State::SimRunning { missed_ticks }, Input::TriggerMissing) => {
             let missed_ticks = missed_ticks.saturating_add(1);
-            if missed_ticks >= MISSED_TICKS_TO_CLOSE {
+            if missed_ticks < MISSED_TICKS_TO_CLOSE {
+                (State::SimRunning { missed_ticks }, None)
+            } else if close_delay_ticks == 0 {
                 (State::Closing, Some(SessionAction::End))
             } else {
-                (State::SimRunning { missed_ticks }, None)
+                (
+                    State::ClosePending {
+                        remaining_ticks: close_delay_ticks,
+                    },
+                    Some(SessionAction::DelayClose),
+                )
             }
         }
+
+        (State::ClosePending { .. }, Input::TriggerSeen) => (
+            State::SimRunning { missed_ticks: 0 },
+            Some(SessionAction::Continue),
+        ),
+        (State::ClosePending { remaining_ticks }, Input::TriggerMissing) => {
+            if remaining_ticks <= 1 {
+                (State::Closing, Some(SessionAction::End))
+            } else {
+                (
+                    State::ClosePending {
+                        remaining_ticks: remaining_ticks - 1,
+                    },
+                    None,
+                )
+            }
+        }
+        (State::ClosePending { .. }, Input::CloseNow) => (State::Closing, Some(SessionAction::End)),
+        (State::ClosePending { .. }, Input::KeepApps) => {
+            (State::Idle, Some(SessionAction::Release))
+        }
+
         (State::Closing, Input::ClosingFinished) => (State::Idle, None),
 
         (current, _) => (current, None),
@@ -63,13 +104,17 @@ impl State {
         match self {
             Self::Idle => MonitorState::Idle,
             Self::SimRunning { .. } => MonitorState::SimRunning,
+            Self::ClosePending { .. } => MonitorState::ClosePending,
             Self::Closing => MonitorState::Closing,
             Self::Paused => MonitorState::Paused,
         }
     }
 
     pub fn has_session(self) -> bool {
-        matches!(self, Self::SimRunning { .. } | Self::Closing)
+        matches!(
+            self,
+            Self::SimRunning { .. } | Self::ClosePending { .. } | Self::Closing
+        )
     }
 }
 
@@ -77,14 +122,112 @@ impl State {
 mod tests {
     use super::*;
 
-    fn run(inputs: &[Input]) -> (State, Vec<SessionAction>) {
+    const NO_DELAY: u32 = 0;
+    const DELAY: u32 = 3;
+
+    fn step(state: State, input: Input) -> (State, Option<SessionAction>) {
+        next(state, input, NO_DELAY)
+    }
+
+    fn run_with_delay(delay: u32, inputs: &[Input]) -> (State, Vec<SessionAction>) {
         inputs
             .iter()
             .fold((State::Idle, Vec::new()), |(state, mut actions), &input| {
-                let (next_state, action) = next(state, input);
+                let (next_state, action) = next(state, input, delay);
                 actions.extend(action);
                 (next_state, actions)
             })
+    }
+
+    fn run(inputs: &[Input]) -> (State, Vec<SessionAction>) {
+        run_with_delay(NO_DELAY, inputs)
+    }
+
+    const SIM_EXITED: [Input; 3] = [
+        Input::TriggerSeen,
+        Input::TriggerMissing,
+        Input::TriggerMissing,
+    ];
+
+    #[test]
+    fn simulator_exit_with_delay_waits_before_closing() {
+        let (state, actions) = run_with_delay(DELAY, &SIM_EXITED);
+
+        assert_eq!(state, State::ClosePending { remaining_ticks: 3 });
+        assert_eq!(state.public(), MonitorState::ClosePending);
+        assert!(state.has_session());
+        assert_eq!(actions, [SessionAction::Start, SessionAction::DelayClose]);
+    }
+
+    #[test]
+    fn delay_expires_after_its_ticks_and_ends_the_session() {
+        let inputs = [SIM_EXITED.as_slice(), &[Input::TriggerMissing; 3]].concat();
+        let (state, actions) = run_with_delay(DELAY, &inputs);
+
+        assert_eq!(state, State::Closing);
+        assert_eq!(
+            actions,
+            [
+                SessionAction::Start,
+                SessionAction::DelayClose,
+                SessionAction::End
+            ]
+        );
+    }
+
+    #[test]
+    fn simulator_back_during_delay_continues_the_session() {
+        let inputs = [
+            SIM_EXITED.as_slice(),
+            &[Input::TriggerMissing, Input::TriggerSeen],
+        ]
+        .concat();
+        let (state, actions) = run_with_delay(DELAY, &inputs);
+
+        assert_eq!(state, State::SimRunning { missed_ticks: 0 });
+        assert_eq!(
+            actions,
+            [
+                SessionAction::Start,
+                SessionAction::DelayClose,
+                SessionAction::Continue
+            ]
+        );
+    }
+
+    #[test]
+    fn close_now_ends_the_delay_immediately() {
+        let inputs = [SIM_EXITED.as_slice(), &[Input::CloseNow]].concat();
+        let (state, actions) = run_with_delay(DELAY, &inputs);
+
+        assert_eq!(state, State::Closing);
+        assert_eq!(actions.last(), Some(&SessionAction::End));
+    }
+
+    #[test]
+    fn keep_apps_releases_the_session_without_closing() {
+        let inputs = [SIM_EXITED.as_slice(), &[Input::KeepApps]].concat();
+        let (state, actions) = run_with_delay(DELAY, &inputs);
+
+        assert_eq!(state, State::Idle);
+        assert_eq!(actions.last(), Some(&SessionAction::Release));
+    }
+
+    #[test]
+    fn pausing_during_delay_discards_the_session() {
+        let inputs = [SIM_EXITED.as_slice(), &[Input::Pause]].concat();
+        let (state, actions) = run_with_delay(DELAY, &inputs);
+
+        assert_eq!(state, State::Paused);
+        assert_eq!(actions.last(), Some(&SessionAction::Discard));
+    }
+
+    #[test]
+    fn close_now_and_keep_apps_are_ignored_outside_the_delay() {
+        let running = State::SimRunning { missed_ticks: 0 };
+
+        assert_eq!(step(running, Input::CloseNow), (running, None));
+        assert_eq!(step(State::Idle, Input::KeepApps), (State::Idle, None));
     }
 
     #[test]
@@ -128,11 +271,11 @@ mod tests {
             Input::TriggerMissing,
         ];
         let (state, _) = run(&closing);
-        let (state, action) = next(state, Input::TriggerSeen);
+        let (state, action) = step(state, Input::TriggerSeen);
         assert_eq!((state, action), (State::Closing, None));
 
-        let (state, _) = next(state, Input::ClosingFinished);
-        let (state, action) = next(state, Input::TriggerSeen);
+        let (state, _) = step(state, Input::ClosingFinished);
+        let (state, action) = step(state, Input::TriggerSeen);
 
         assert_eq!(state, State::SimRunning { missed_ticks: 0 });
         assert_eq!(action, Some(SessionAction::Start));
@@ -161,7 +304,7 @@ mod tests {
 
     #[test]
     fn app_started_with_simulator_already_open_starts_session_on_first_poll() {
-        let (state, action) = next(State::default(), Input::TriggerSeen);
+        let (state, action) = step(State::default(), Input::TriggerSeen);
 
         assert_eq!(state.public(), MonitorState::SimRunning);
         assert_eq!(action, Some(SessionAction::Start));
@@ -169,7 +312,7 @@ mod tests {
 
     #[test]
     fn closing_finished_while_paused_stays_paused() {
-        let (state, action) = next(State::Paused, Input::ClosingFinished);
+        let (state, action) = step(State::Paused, Input::ClosingFinished);
 
         assert_eq!((state, action), (State::Paused, None));
     }

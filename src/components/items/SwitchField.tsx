@@ -3,7 +3,7 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import type { AppFormInput, AppFormOutput } from "./app-form";
 
-type BooleanField = "runAsAdmin" | "startMinimized" | "waitForSimConnect";
+type BooleanField = "runAsAdmin" | "startMinimized" | "waitForSimConnect" | "restartOnCrash";
 
 interface SwitchFieldProps {
   control: Control<AppFormInput, unknown, AppFormOutput>;

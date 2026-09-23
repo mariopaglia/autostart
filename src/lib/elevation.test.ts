@@ -15,6 +15,7 @@ function profileWith(overrides: Partial<AppItem>): Profile {
     runAsAdmin: true,
     startMinimized: false,
     waitForSimConnect: false,
+    restartOnCrash: false,
     onClose: "graceful",
     enabled: true,
     ...overrides,

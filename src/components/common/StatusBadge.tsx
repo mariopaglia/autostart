@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 const DOT_CLASSES: Record<MonitorState, string> = {
   idle: "bg-muted-foreground",
   simRunning: "bg-emerald-500 animate-pulse motion-reduce:animate-none",
+  closePending: "bg-amber-500",
   closing: "bg-amber-500 animate-pulse motion-reduce:animate-none",
   paused: "bg-sky-500",
 };

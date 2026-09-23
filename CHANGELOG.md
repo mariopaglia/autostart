@@ -12,6 +12,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Popular flight sim tools (Navigraph, SimBrief, Little Navmap, Volanta, vPilot, FSUIPC, SPAD.neXt, GSX and others) are suggested at the top of the installed apps list.
 - Drag and drop: drop an app shortcut, an `.exe` or a web shortcut (`.url`) onto the window to add it; dropping several files adds them all at once.
 - Apps already in the profile are marked in the picker, and the form warns when the same executable is added twice.
+- Every enabled profile is now watched: open any simulator and its profile runs, with no profile to switch first. Only one enabled profile can watch a given simulator; enabling one turns off the other and tells you.
+- A profile can have several simulators as triggers, e.g. MSFS 2020 and MSFS 2024 sharing the same apps.
+- Apps are closed 60 seconds after the simulator exits (configurable, 0 closes right away). If the simulator comes back in that time, e.g. after a crash to desktop, nothing is closed. A countdown offers "Close now" and "Keep apps open", also in the tray menu.
+- Windows notifications when an app could not be opened, SimConnect did not become available, the closing countdown starts or a crashed app was reopened. They can be turned off in Settings.
+- Per-app "Reopen if it crashes" option: during a flight, an app that crashes is opened again (up to 3 times per session); apps you close yourself are not reopened.
+
+### Changed
+
+- The "active profile" is gone: the switch next to each profile's name (and the tray's profile menu) now decides which profiles are watched. On the first start after updating, profiles that shared a simulator with the previously active one are turned off.
+- Profiles and settings saved by this version cannot be read by earlier versions.
 
 ## [0.2.0] - 2026-09-22
 

@@ -15,6 +15,7 @@ mod state;
 mod storage;
 mod system_autostart;
 mod tray;
+mod trigger_conflicts;
 mod validation;
 mod window;
 
@@ -46,6 +47,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec![launch_args::MINIMIZED_FLAG]),
@@ -56,7 +58,7 @@ pub fn run() {
             commands::get_profiles,
             commands::save_profile,
             commands::delete_profile,
-            commands::set_active_profile,
+            commands::set_profile_enabled,
             commands::get_settings,
             commands::save_settings,
             commands::inspect_exe,
@@ -74,6 +76,8 @@ pub fn run() {
             commands::get_session_log,
             commands::pause_monitor,
             commands::resume_monitor,
+            commands::close_apps_now,
+            commands::keep_apps_open,
             commands::test_launch,
             commands::test_close,
         ])

@@ -2,16 +2,17 @@ use std::collections::HashSet;
 
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    LaunchItem, Profile, Settings, MAX_DELAY_MS, MAX_GRACEFUL_TIMEOUT_MS, MIN_GRACEFUL_TIMEOUT_MS,
+    LaunchItem, Profile, Settings, Trigger, MAX_CLOSE_DELAY_MS, MAX_DELAY_MS,
+    MAX_GRACEFUL_TIMEOUT_MS, MAX_TRIGGERS, MIN_GRACEFUL_TIMEOUT_MS,
 };
+use crate::processes::normalize_process_name;
 
 const MAX_NAME_LENGTH: usize = 80;
 
 pub fn validate_profile(profile: &Profile) -> AppResult<()> {
     require_uuid("id", &profile.id)?;
     require_name("name", &profile.name)?;
-    require_executable_name("trigger.processName", &profile.trigger.process_name)?;
-    require_name("trigger.label", &profile.trigger.label)?;
+    validate_triggers(&profile.triggers)?;
 
     let mut seen_ids = HashSet::new();
     for (index, item) in profile.items.iter().enumerate() {
@@ -19,6 +20,27 @@ pub fn validate_profile(profile: &Profile) -> AppResult<()> {
             return Err(invalid(&format!("items.{index}.id"), "is duplicated"));
         }
         validate_item(index, item)?;
+    }
+    Ok(())
+}
+
+fn validate_triggers(triggers: &[Trigger]) -> AppResult<()> {
+    if triggers.is_empty() || triggers.len() > MAX_TRIGGERS {
+        return Err(invalid("triggers", "must have between 1 and 5 entries"));
+    }
+    let mut seen_names = HashSet::new();
+    for (index, trigger) in triggers.iter().enumerate() {
+        require_executable_name(
+            &format!("triggers.{index}.processName"),
+            &trigger.process_name,
+        )?;
+        require_name(&format!("triggers.{index}.label"), &trigger.label)?;
+        if !seen_names.insert(normalize_process_name(&trigger.process_name)) {
+            return Err(invalid(
+                &format!("triggers.{index}.processName"),
+                "is duplicated",
+            ));
+        }
     }
     Ok(())
 }
@@ -42,15 +64,13 @@ fn validate_item(index: usize, item: &LaunchItem) -> AppResult<()> {
     }
 }
 
-pub fn validate_settings(settings: &Settings, profiles: &[Profile]) -> AppResult<()> {
+pub fn validate_settings(settings: &Settings) -> AppResult<()> {
     if !(MIN_GRACEFUL_TIMEOUT_MS..=MAX_GRACEFUL_TIMEOUT_MS).contains(&settings.graceful_timeout_ms)
     {
         return Err(invalid("gracefulTimeoutMs", "is out of range"));
     }
-    if let Some(active_id) = &settings.active_profile_id {
-        if !profiles.iter().any(|profile| &profile.id == active_id) {
-            return Err(AppError::ProfileNotFound(active_id.clone()));
-        }
+    if settings.close_delay_ms > MAX_CLOSE_DELAY_MS {
+        return Err(invalid("closeDelayMs", "is out of range"));
     }
     Ok(())
 }
@@ -120,15 +140,47 @@ mod tests {
             ..example_profile()
         };
         let bad_trigger = Profile {
-            trigger: Trigger {
-                process_name: "FlightSimulator".into(),
-                label: "MSFS".into(),
-            },
+            triggers: vec![trigger("FlightSimulator")],
             ..example_profile()
         };
 
         assert!(validate_profile(&blank_name).is_err());
         assert!(validate_profile(&bad_trigger).is_err());
+    }
+
+    fn trigger(process_name: &str) -> Trigger {
+        Trigger {
+            process_name: process_name.into(),
+            label: "Sim".into(),
+        }
+    }
+
+    fn profile_with_triggers(process_names: &[&str]) -> Profile {
+        Profile {
+            triggers: process_names.iter().map(|name| trigger(name)).collect(),
+            ..example_profile()
+        }
+    }
+
+    #[test]
+    fn accepts_up_to_five_distinct_triggers() {
+        let both_msfs = profile_with_triggers(&["FlightSimulator.exe", "FlightSimulator2024.exe"]);
+        let five = profile_with_triggers(&["A.exe", "B.exe", "C.exe", "D.exe", "E.exe"]);
+
+        assert!(validate_profile(&both_msfs).is_ok());
+        assert!(validate_profile(&five).is_ok());
+    }
+
+    #[test]
+    fn rejects_missing_excess_and_repeated_triggers() {
+        let none = profile_with_triggers(&[]);
+        let six = profile_with_triggers(&["A.exe", "B.exe", "C.exe", "D.exe", "E.exe", "F.exe"]);
+        let repeated =
+            profile_with_triggers(&["FlightSimulator2024.exe", "flightsimulator2024.EXE"]);
+
+        assert!(validate_profile(&none).is_err());
+        assert!(validate_profile(&six).is_err());
+        assert!(validate_profile(&repeated).is_err());
     }
 
     #[test]
@@ -139,18 +191,22 @@ mod tests {
     }
 
     #[test]
-    fn rejects_out_of_range_timeout_and_unknown_active_profile() {
-        let profiles = vec![example_profile()];
+    fn rejects_out_of_range_timeout_and_close_delay() {
         let short_timeout = Settings {
             graceful_timeout_ms: 200,
             ..Settings::default()
         };
-        let unknown_active = Settings {
-            active_profile_id: Some(uuid::Uuid::new_v4().to_string()),
+        let long_delay = Settings {
+            close_delay_ms: MAX_CLOSE_DELAY_MS + 1,
+            ..Settings::default()
+        };
+        let no_delay = Settings {
+            close_delay_ms: 0,
             ..Settings::default()
         };
 
-        assert!(validate_settings(&short_timeout, &profiles).is_err());
-        assert!(validate_settings(&unknown_active, &profiles).is_err());
+        assert!(validate_settings(&short_timeout).is_err());
+        assert!(validate_settings(&long_delay).is_err());
+        assert!(validate_settings(&no_delay).is_ok());
     }
 }

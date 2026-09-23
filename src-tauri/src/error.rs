@@ -46,6 +46,9 @@ pub enum AppError {
     #[error("SimConnect did not become available in time")]
     SimConnectUnavailable,
 
+    #[error("{0} kept crashing and was not reopened")]
+    KeptCrashing(String),
+
     #[cfg_attr(windows, allow(dead_code))]
     #[error("not supported on this platform: {0}")]
     Unsupported(&'static str),
@@ -72,6 +75,7 @@ pub enum ErrorKind {
     SessionInProgress,
     Autostart,
     SimConnectUnavailable,
+    KeptCrashing,
     Unsupported,
     Internal,
 }
@@ -100,6 +104,7 @@ impl AppError {
             Self::SessionInProgress => ErrorKind::SessionInProgress,
             Self::Autostart(_) => ErrorKind::Autostart,
             Self::SimConnectUnavailable => ErrorKind::SimConnectUnavailable,
+            Self::KeptCrashing(_) => ErrorKind::KeptCrashing,
             Self::Unsupported(_) => ErrorKind::Unsupported,
             Self::Tauri(_) => ErrorKind::Internal,
         }

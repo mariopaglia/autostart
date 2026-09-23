@@ -11,7 +11,7 @@ use crate::error::AppResult;
 use crate::models::{LaunchItem, Profile, SessionLog, Settings, Trigger, UrlItem};
 use crate::processes::normalize_process_name;
 
-const SCHEMA_VERSION: u32 = 1;
+const SCHEMA_VERSION: u32 = 2;
 const PROFILES_FILE: &str = "profiles.json";
 const SETTINGS_FILE: &str = "settings.json";
 const LAST_SESSION_FILE: &str = "last-session.json";
@@ -43,7 +43,10 @@ impl Storage {
 
     pub fn load_profiles(&self) -> AppResult<Vec<Profile>> {
         let profiles = self
-            .read_migrated_or_recover::<ProfilesFile>(PROFILES_FILE, infer_process_name_modes)?
+            .read_migrated_or_recover::<ProfilesFile>(PROFILES_FILE, |raw| {
+                wrap_single_triggers(raw);
+                infer_process_name_modes(raw);
+            })?
             .map(|file| file.profiles)
             .unwrap_or_default();
 
@@ -74,6 +77,14 @@ impl Storage {
             settings: settings.clone(),
         };
         self.write_atomic(SETTINGS_FILE, &file)
+    }
+
+    /// v0.2.0 and earlier watched a single active profile; its id decides which profile stays
+    /// enabled when enabled profiles share a trigger after the upgrade.
+    pub fn legacy_active_profile_id(&self) -> Option<String> {
+        let content = fs::read_to_string(self.dir.join(SETTINGS_FILE)).ok()?;
+        let raw = serde_json::from_str::<Value>(&content).ok()?;
+        raw.get("activeProfileId")?.as_str().map(str::to_owned)
     }
 
     pub fn load_last_session(&self) -> AppResult<Option<SessionLog>> {
@@ -145,6 +156,20 @@ fn quarantine(path: &Path) -> AppResult<PathBuf> {
     Ok(quarantined)
 }
 
+/// Profiles saved before v0.3.0 had a single `trigger` object instead of a `triggers` list.
+fn wrap_single_triggers(raw: &mut Value) {
+    let Some(profiles) = raw.get_mut("profiles").and_then(Value::as_array_mut) else {
+        return;
+    };
+    for profile in profiles.iter_mut().filter_map(Value::as_object_mut) {
+        if let Some(trigger) = profile.remove("trigger") {
+            profile
+                .entry("triggers")
+                .or_insert_with(|| Value::Array(vec![trigger]));
+        }
+    }
+}
+
 /// Profiles saved before `processNameMode` existed: a process name that differs from the
 /// executable was typed by the user, so learning must not overwrite it.
 fn infer_process_name_modes(raw: &mut Value) {
@@ -178,10 +203,10 @@ pub fn example_profile() -> Profile {
     Profile {
         id: uuid::Uuid::new_v4().to_string(),
         name: "MSFS 2024".into(),
-        trigger: Trigger {
+        triggers: vec![Trigger {
             process_name: "FlightSimulator2024.exe".into(),
             label: "MSFS 2024".into(),
-        },
+        }],
         items: vec![LaunchItem::Url(UrlItem {
             id: uuid::Uuid::new_v4().to_string(),
             name: "Navigraph Charts (web)".into(),
@@ -196,7 +221,9 @@ pub fn example_profile() -> Profile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Language, ProcessNameMode, DEFAULT_GRACEFUL_TIMEOUT_MS};
+    use crate::models::{
+        Language, ProcessNameMode, DEFAULT_CLOSE_DELAY_MS, DEFAULT_GRACEFUL_TIMEOUT_MS,
+    };
 
     fn storage() -> (tempfile::TempDir, Storage) {
         let dir = tempfile::tempdir().expect("temp dir");
@@ -210,7 +237,10 @@ mod tests {
 
         let profiles = storage.load_profiles().expect("profiles");
         assert_eq!(profiles.len(), 1);
-        assert_eq!(profiles[0].trigger.process_name, "FlightSimulator2024.exe");
+        assert_eq!(
+            profiles[0].triggers[0].process_name,
+            "FlightSimulator2024.exe"
+        );
         assert_eq!(
             storage.load_settings().expect("settings"),
             Settings::default()
@@ -317,5 +347,32 @@ mod tests {
             .collect();
 
         assert_eq!(modes, [ProcessNameMode::Auto, ProcessNameMode::Manual]);
+        assert_eq!(
+            profiles[0].triggers,
+            [Trigger {
+                process_name: "FlightSimulator2024.exe".into(),
+                label: "MSFS 2024".into(),
+            }]
+        );
+    }
+
+    #[test]
+    fn v020_settings_keep_legacy_active_profile_and_gain_new_defaults() {
+        let (dir, storage) = storage();
+        fs::write(
+            dir.path().join(SETTINGS_FILE),
+            r#"{"schemaVersion":1,"activeProfileId":"abc","gracefulTimeoutMs":8000}"#,
+        )
+        .expect("write");
+
+        let settings = storage.load_settings().expect("settings");
+
+        assert_eq!(storage.legacy_active_profile_id().as_deref(), Some("abc"));
+        assert_eq!(settings.graceful_timeout_ms, 8000);
+        assert_eq!(settings.close_delay_ms, DEFAULT_CLOSE_DELAY_MS);
+        assert!(settings.show_notifications);
+
+        storage.save_settings(&settings).expect("save");
+        assert_eq!(storage.legacy_active_profile_id(), None);
     }
 }

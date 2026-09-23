@@ -11,6 +11,10 @@ export function notifySuccess(message: string) {
   toast.success(message);
 }
 
+export function notifyInfo(message: string) {
+  toast.info(message);
+}
+
 /** `description` may hold one entry per line. */
 export function notifyWarning(title: string, description: string) {
   toast.warning(title, { description, classNames: { description: "whitespace-pre-line" } });

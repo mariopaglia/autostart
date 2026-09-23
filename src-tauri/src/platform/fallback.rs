@@ -65,6 +65,26 @@ pub fn is_simconnect_available() -> bool {
     true
 }
 
+/// Exit codes of foreign processes are not read here, so nothing ever looks like a crash.
+#[derive(Default)]
+pub struct ExitWatcher {
+    pids: HashSet<u32>,
+}
+
+impl ExitWatcher {
+    pub fn watch(&mut self, pid: u32) {
+        self.pids.insert(pid);
+    }
+
+    pub fn exit_codes(&self) -> Vec<Option<u32>> {
+        let running = crate::processes::running_pids();
+        self.pids
+            .iter()
+            .map(|pid| if running.contains(pid) { None } else { Some(0) })
+            .collect()
+    }
+}
+
 pub fn is_elevated() -> bool {
     false
 }

@@ -15,6 +15,7 @@ const INITIAL_SNAPSHOT: MonitorSnapshot = {
   sessionProfileId: null,
   isTestSession: false,
   items: [],
+  closesAtMs: null,
 };
 
 export const useMonitorStore = create<MonitorStoreState>()((set) => ({
@@ -37,7 +38,7 @@ export function useItemRuntime(profileId: string, itemId: string): ItemRuntime |
 }
 
 export function useHasSession(): boolean {
-  return useMonitorStore(
-    (state) => state.snapshot.state === "simRunning" || state.snapshot.state === "closing",
+  return useMonitorStore((state) =>
+    ["simRunning", "closePending", "closing"].includes(state.snapshot.state),
   );
 }

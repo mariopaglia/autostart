@@ -5,8 +5,8 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    AppCandidate, DropResolution, ExeInfo, MonitorSnapshot, ProcessInfo, Profile, SessionLog,
-    Settings,
+    AppCandidate, DropResolution, ExeInfo, MonitorSnapshot, ProcessInfo, Profile, ProfilesUpdate,
+    SessionLog, Settings,
 };
 use crate::monitor::MonitorHandle;
 use crate::platform::LaunchOptions;
@@ -25,10 +25,22 @@ pub fn save_profile(
     app: AppHandle,
     state: State<'_, AppState>,
     profile: Profile,
-) -> AppResult<Profile> {
-    let saved = state.save_profile(profile)?;
+) -> AppResult<ProfilesUpdate> {
+    let update = state.save_profile(profile)?;
     tray::refresh(&app);
-    Ok(saved)
+    Ok(update)
+}
+
+#[tauri::command]
+pub fn set_profile_enabled(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    profile_id: String,
+    enabled: bool,
+) -> AppResult<ProfilesUpdate> {
+    let update = state.set_profile_enabled(&profile_id, enabled)?;
+    tray::refresh(&app);
+    Ok(update)
 }
 
 #[tauri::command]
@@ -36,21 +48,10 @@ pub fn delete_profile(
     app: AppHandle,
     state: State<'_, AppState>,
     profile_id: String,
-) -> AppResult<Settings> {
-    let settings = state.delete_profile(&profile_id)?;
+) -> AppResult<Vec<Profile>> {
+    let profiles = state.delete_profile(&profile_id)?;
     tray::refresh(&app);
-    Ok(settings)
-}
-
-#[tauri::command]
-pub fn set_active_profile(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    profile_id: String,
-) -> AppResult<Settings> {
-    let settings = state.set_active_profile(&profile_id)?;
-    tray::refresh(&app);
-    Ok(settings)
+    Ok(profiles)
 }
 
 /// The startup entry can be removed outside AutoStart (e.g. Task Manager), so the system wins.
@@ -180,6 +181,18 @@ pub async fn pause_monitor(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
 #[tauri::command]
 pub async fn resume_monitor(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
     monitor.resume().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn close_apps_now(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
+    monitor.close_now().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn keep_apps_open(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
+    monitor.keep_apps_open().await;
     Ok(())
 }
 
