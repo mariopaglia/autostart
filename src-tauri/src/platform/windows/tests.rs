@@ -266,19 +266,17 @@ fn dropped_shortcut_executable_and_web_shortcut_are_resolved() {
     );
 }
 
-/// A `cmd.exe` that stays alive for about a second, then exits with `exit_code`.
-fn spawn_cmd_exiting_with(exit_code: u32) -> u32 {
-    std::process::Command::new(system32().join("cmd.exe"))
+/// Watches a `cmd.exe` right after spawning it, since an exited process can no longer be
+/// opened; it stays alive for about a second, then exits with `exit_code`.
+fn watch_cmd_exiting_with(exit_code: u32) -> ExitWatcher {
+    let pid = std::process::Command::new(system32().join("cmd.exe"))
         .args([
             "/c",
             &format!("ping -n 2 127.0.0.1 >nul & exit /b {exit_code}"),
         ])
         .spawn()
         .unwrap()
-        .id()
-}
-
-fn watch_until_exited(pid: u32) -> Option<u32> {
+        .id();
     let mut watcher = ExitWatcher::default();
     watcher.watch(pid);
     assert_eq!(
@@ -286,17 +284,21 @@ fn watch_until_exited(pid: u32) -> Option<u32> {
         1,
         "the process should be watchable"
     );
+    watcher
+}
+
+fn wait_for_exit_code(watcher: &ExitWatcher) -> Option<u32> {
     assert!(wait_until(|| watcher.exit_codes() != [None]));
     watcher.exit_codes()[0]
 }
 
 #[test]
 fn exit_watcher_reads_normal_and_failing_exit_codes() {
-    let normal = spawn_cmd_exiting_with(0);
-    let failing = spawn_cmd_exiting_with(3);
+    let normal = watch_cmd_exiting_with(0);
+    let failing = watch_cmd_exiting_with(3);
 
-    assert_eq!(watch_until_exited(normal), Some(0));
-    assert_eq!(watch_until_exited(failing), Some(3));
+    assert_eq!(wait_for_exit_code(&normal), Some(0));
+    assert_eq!(wait_for_exit_code(&failing), Some(3));
 }
 
 #[test]
