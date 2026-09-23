@@ -92,7 +92,9 @@
       "closing": "Closing…",
       "closed": "Closed",
       "error": "Error"
-    }
+    },
+    "dragHint": "Tip: you can also drag app shortcuts, .exe files or web shortcuts into this window.",
+    "dragUnavailableAsAdmin": "Dragging files into AutoStart is unavailable while it runs as administrator. Use \"Add app\" instead."
   },
   "itemForm": {
     "addTitle": "Add item",
@@ -126,7 +128,8 @@
     "processNameAuto": "Detected automatically",
     "processNameAutoHint": "AutoStart finds the real process on its own, even when the executable is just a launcher.",
     "processNameManualHint": "Set manually. AutoStart will not change this name.",
-    "detectAutomatically": "Detect automatically"
+    "detectAutomatically": "Detect automatically",
+    "duplicate": "This app is already in this profile. You can still save it (e.g. with different arguments)."
   },
   "validation": {
     "required": "Required field",
@@ -228,7 +231,7 @@
     },
     "items": {
       "title": "Add your apps",
-      "description": "On the main screen, use \"Add app\" to pick an executable or \"Add URL\" to open a website. Drag the cards to set the order and use the test buttons to check without opening the simulator."
+      "description": "On the main screen, use \"Add app\" to pick an installed or open app (or drag the app's shortcut into the window) or \"Add URL\" to open a website. Drag the cards to set the order and use the test buttons to check without opening the simulator."
     },
     "startup": {
       "title": "Make it automatic",
@@ -251,5 +254,33 @@
     "upToDate": "You are already on the latest version",
     "checkFailed": "Could not check for updates",
     "installFailed": "The update failed and was cancelled"
+  },
+  "appPicker": {
+    "title": "Add app",
+    "description": "Pick an app installed on this computer or one that is open right now.",
+    "search": "Search apps…",
+    "installed": "Installed",
+    "open": "Open now",
+    "suggested": "Suggested for flight sim",
+    "apps": "Apps",
+    "alreadyAdded": "Already in profile",
+    "loading": "Looking for apps…",
+    "empty": "No app found",
+    "emptyOpen": "No open app found. Open the app and try again, or use the Installed tab.",
+    "browse": "Browse for file…",
+    "browseHint": "Can't find it? Choose the .exe manually."
+  },
+  "fileDrop": {
+    "overlayTitle": "Drop to add",
+    "overlayDescription": "Shortcuts, .exe files and web shortcuts are added to \"{{profile}}\".",
+    "added_one": "{{count}} item added to the profile",
+    "added_other": "{{count}} items added to the profile",
+    "rejectedTitle": "Some files could not be added",
+    "reasons": {
+      "unsupportedFile": "not an app, shortcut or web shortcut",
+      "executableNotFound": "the app was not found",
+      "unsupportedUrl": "only http and https web addresses are supported",
+      "unsupportedShortcut": "the shortcut does not point to an app"
+    }
   }
 }

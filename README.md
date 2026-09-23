@@ -32,10 +32,29 @@ AutoStart checks for new versions on startup (you can turn this off in Settings)
 ## How to use
 
 1. On first run, a wizard creates the sample profile and asks which simulator you use (MSFS 2024, MSFS 2020, X-Plane 12 or custom).
-2. On the main screen, use **Add app** to pick an `.exe` (name, icon and process are filled in automatically) or **Add URL** to open a website.
+2. On the main screen, use **Add app** to pick one of your apps (see [Adding apps](#adding-apps)) or **Add URL** to open a website.
 3. Drag the cards to set the order. The keyboard works too: focus the handle, press Space and use the arrow keys.
 4. Use **Test launch** and **Test close** to check everything without opening the simulator.
 5. The **active** profile (marked in the list, also switchable from the tray) is the one AutoStart watches.
+
+### Adding apps
+
+You don't need to know where an app is installed. **Add app** opens a picker with a search box and two lists:
+
+- **Installed**: apps found in the Start Menu and on the desktop. Popular flight sim tools (Navigraph, SimBrief, Little Navmap, Volanta, vPilot, FSUIPC, SPAD.neXt, GSX and others) appear first under **Suggested for flight sim**.
+- **Open now**: apps that have a window open right now. Handy for apps that are not in the Start Menu: open the app, then pick it here.
+
+Picking an app opens the item form already filled in (name, icon, path, arguments and process) so you can review it and save. If the app is in neither list, **Browse for file…** lets you choose the `.exe` yourself.
+
+You can also **drag** an app's shortcut (from the desktop or the Start Menu), an `.exe` file or a web shortcut (`.url`) onto the AutoStart window:
+
+- one file opens the item form already filled in;
+- several files are added to the end of the profile at once;
+- files that are not apps (documents, folders, `steam://` shortcuts…) are skipped with a notice.
+
+Apps already in the profile are marked "Already in profile" in the lists, and the form warns when you add the same executable twice (it is still allowed, e.g. with different arguments).
+
+Limitations: Microsoft Store apps are not listed and cannot be added, since they have no regular `.exe` to open. Dragging files in does not work while AutoStart runs **as administrator** (Windows blocks dragging from non-elevated windows); use **Add app** instead.
 
 ### Process name (detected automatically)
 

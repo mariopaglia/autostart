@@ -1,6 +1,7 @@
 mod elevation;
 mod exe_info;
 mod launch;
+mod shortcuts;
 mod simconnect;
 mod top_level_windows;
 mod windows_close;
@@ -11,7 +12,9 @@ use ::windows::Win32::Foundation::{CloseHandle, HANDLE};
 pub use elevation::is_elevated;
 pub use exe_info::{icon_png_base64, product_name};
 pub use launch::launch;
+pub use shortcuts::{shortcut_folders, ShortcutResolver};
 pub use simconnect::is_simconnect_available;
+pub use top_level_windows::pids_with_visible_windows;
 pub use windows_close::{request_close, terminate};
 pub use windows_minimize::minimize_new_windows;
 

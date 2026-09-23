@@ -1,6 +1,7 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { warn } from "@tauri-apps/plugin-log";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -15,6 +16,7 @@ import type { Profile } from "@/bindings/Profile";
 import type { SessionLog } from "@/bindings/SessionLog";
 import type { Settings } from "@/bindings/Settings";
 import type { TimelineEntry } from "@/bindings/TimelineEntry";
+import { appCandidatesSchema, dropResolutionSchema } from "@/schemas/app-candidate";
 
 export const commands = {
   getProfiles: () => invoke<Profile[]>("get_profiles"),
@@ -27,6 +29,14 @@ export const commands = {
   findMissingExecutables: (paths: string[]) =>
     invoke<string[]>("find_missing_executables", { paths }),
   listRunningProcesses: () => invoke<ProcessInfo[]>("list_running_processes"),
+  listInstalledApps: () =>
+    invoke<unknown>("list_installed_apps").then((apps) => appCandidatesSchema.parse(apps)),
+  listOpenApps: () =>
+    invoke<unknown>("list_open_apps").then((apps) => appCandidatesSchema.parse(apps)),
+  resolveDroppedPaths: (paths: string[]) =>
+    invoke<unknown>("resolve_dropped_paths", { paths }).then((resolution) =>
+      dropResolutionSchema.parse(resolution),
+    ),
   isElevated: () => invoke<boolean>("is_elevated"),
   relaunchAsAdmin: () => invoke<null>("relaunch_as_admin"),
   openLogDir: () => invoke<null>("open_log_dir"),
@@ -80,6 +90,18 @@ export const settingsEvents = {
   onChanged: (handler: (settings: Settings) => void): Promise<UnlistenFn> =>
     listen<Settings>("settings://changed", (event) => {
       handler(event.payload);
+    }),
+};
+
+export type FileDropEvent =
+  { kind: "enter" } | { kind: "leave" } | { kind: "drop"; paths: string[] };
+
+export const windowEvents = {
+  onFileDrop: (handler: (event: FileDropEvent) => void): Promise<UnlistenFn> =>
+    getCurrentWebview().onDragDropEvent(({ payload }) => {
+      if (payload.type === "enter") handler({ kind: "enter" });
+      if (payload.type === "leave") handler({ kind: "leave" });
+      if (payload.type === "drop") handler({ kind: "drop", paths: payload.paths });
     }),
 };
 

@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { shortenPath } from "@/lib/paths";
 import { cn } from "@/lib/utils";
 import { useItemRuntime } from "@/stores/monitor-store";
 import { ItemIcon } from "./ItemIcon";
@@ -33,11 +34,6 @@ interface ItemCardProps {
   onToggle: (enabled: boolean) => void;
   onEdit: () => void;
   onRemove: () => void;
-}
-
-function shortenPath(path: string): string {
-  const parts = path.split(/[\\/]/).filter(Boolean);
-  return parts.length > 3 ? `…\\${parts.slice(-2).join("\\")}` : path;
 }
 
 export function ItemCard({

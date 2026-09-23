@@ -1,36 +1,25 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import type { z } from "zod";
 import type { UrlItem } from "@/bindings/UrlItem";
 import { TextField } from "@/components/common/TextField";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
-import { DEFAULT_DELAY_MS, urlItemSchema } from "@/schemas/profile";
-
-const urlFormSchema = urlItemSchema.omit({ id: true });
-type UrlFormInput = z.input<typeof urlFormSchema>;
-type UrlFormOutput = z.output<typeof urlFormSchema>;
-
-const EMPTY_URL: UrlFormInput = {
-  name: "",
-  url: "https://",
-  delayMs: DEFAULT_DELAY_MS,
-  enabled: true,
-};
+import { EMPTY_URL_FORM, urlFormSchema, type UrlFormInput, type UrlFormOutput } from "./url-form";
 
 interface UrlItemFormProps {
   item?: UrlItem;
+  initial?: UrlFormInput;
   onSubmit: (item: UrlItem) => void;
   onCancel: () => void;
 }
 
-export function UrlItemForm({ item, onSubmit, onCancel }: UrlItemFormProps) {
+export function UrlItemForm({ item, initial, onSubmit, onCancel }: UrlItemFormProps) {
   const { t } = useTranslation();
   const form = useForm<UrlFormInput, unknown, UrlFormOutput>({
     resolver: zodResolver(urlFormSchema),
-    defaultValues: item ?? EMPTY_URL,
+    defaultValues: item ?? initial ?? EMPTY_URL_FORM,
   });
 
   return (

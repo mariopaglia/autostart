@@ -306,6 +306,77 @@ pub struct ProcessInfo {
     pub exe_path: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum CandidateSource {
+    Installed,
+    Open,
+    Dropped,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AppCandidate {
+    pub name: String,
+    pub exe_path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub args: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub working_dir: Option<String>,
+    pub process_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub icon_base64: Option<String>,
+    pub source: CandidateSource,
+    pub suggested: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct UrlCandidate {
+    pub name: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "lowercase")]
+#[ts(export)]
+pub enum DroppedCandidate {
+    App(AppCandidate),
+    Url(UrlCandidate),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum DropRejection {
+    UnsupportedFile,
+    ExecutableNotFound,
+    UnsupportedUrl,
+    UnsupportedShortcut,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct RejectedDrop {
+    pub path: String,
+    pub reason: DropRejection,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct DropResolution {
+    pub candidates: Vec<DroppedCandidate>,
+    pub rejected: Vec<RejectedDrop>,
+}
+
 fn default_delay_ms() -> u32 {
     DEFAULT_DELAY_MS
 }
@@ -341,5 +412,25 @@ mod tests {
         assert_eq!(settings.language, Language::En);
         assert_eq!(settings.graceful_timeout_ms, DEFAULT_GRACEFUL_TIMEOUT_MS);
         assert!(settings.close_only_if_launched_by_app);
+    }
+
+    #[test]
+    fn dropped_candidate_uses_type_tag_and_camel_case() {
+        let candidate = DroppedCandidate::Url(UrlCandidate {
+            name: "SimBrief".into(),
+            url: "https://www.simbrief.com".into(),
+        });
+        let json = serde_json::to_value(&candidate).expect("serializable");
+        assert_eq!(
+            json,
+            serde_json::json!({ "type": "url", "name": "SimBrief", "url": "https://www.simbrief.com" })
+        );
+
+        let rejected = RejectedDrop {
+            path: "C:\\a.pdf".into(),
+            reason: DropRejection::ExecutableNotFound,
+        };
+        let json = serde_json::to_value(&rejected).expect("serializable");
+        assert_eq!(json["reason"], "executableNotFound");
     }
 }

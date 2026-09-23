@@ -11,11 +11,12 @@ import {
 } from "@/components/ui/empty";
 
 interface EmptyItemsProps {
+  isElevated: boolean | null;
   onAddApp: () => void;
   onAddUrl: () => void;
 }
 
-export function EmptyItems({ onAddApp, onAddUrl }: EmptyItemsProps) {
+export function EmptyItems({ isElevated, onAddApp, onAddUrl }: EmptyItemsProps) {
   const { t } = useTranslation();
 
   return (
@@ -27,15 +28,20 @@ export function EmptyItems({ onAddApp, onAddUrl }: EmptyItemsProps) {
         <EmptyTitle>{t("items.emptyTitle")}</EmptyTitle>
         <EmptyDescription>{t("items.emptyDescription")}</EmptyDescription>
       </EmptyHeader>
-      <EmptyContent className="flex-row justify-center">
-        <Button onClick={onAddApp}>
-          <AppWindow />
-          {t("items.addApp")}
-        </Button>
-        <Button variant="outline" onClick={onAddUrl}>
-          <Globe />
-          {t("items.addUrl")}
-        </Button>
+      <EmptyContent>
+        <div className="flex justify-center gap-2">
+          <Button onClick={onAddApp}>
+            <AppWindow />
+            {t("items.addApp")}
+          </Button>
+          <Button variant="outline" onClick={onAddUrl}>
+            <Globe />
+            {t("items.addUrl")}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {isElevated ? t("items.dragUnavailableAsAdmin") : t("items.dragHint")}
+        </p>
       </EmptyContent>
     </Empty>
   );

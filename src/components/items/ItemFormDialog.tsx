@@ -4,26 +4,42 @@ import type { LaunchItem } from "@/bindings/LaunchItem";
 import type { UrlItem } from "@/bindings/UrlItem";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { AppFormInput } from "./app-form";
 import { AppItemForm } from "./AppItemForm";
+import type { UrlFormInput } from "./url-form";
 import { UrlItemForm } from "./UrlItemForm";
 
 export type ItemFormTarget =
-  { mode: "create"; type: LaunchItem["type"] } | { mode: "edit"; item: LaunchItem };
+  | { mode: "create"; type: "app"; initial?: AppFormInput }
+  | { mode: "create"; type: "url"; initial?: UrlFormInput }
+  | { mode: "edit"; item: LaunchItem };
 
 interface ItemFormDialogProps {
   target: ItemFormTarget | null;
+  profileItems: readonly LaunchItem[];
   simConnectSupported: boolean;
   onSave: (item: LaunchItem) => void;
   onClose: () => void;
 }
 
+function otherExePaths(items: readonly LaunchItem[], editedId: string | undefined): string[] {
+  return items.flatMap((item) =>
+    item.type === "app" && item.id !== editedId ? [item.exePath] : [],
+  );
+}
+
 export function ItemFormDialog({
   target,
+  profileItems,
   simConnectSupported,
   onSave,
   onClose,
 }: ItemFormDialogProps) {
   const { t } = useTranslation();
+  const exePaths = otherExePaths(
+    profileItems,
+    target?.mode === "edit" ? target.item.id : undefined,
+  );
 
   function saveApp(item: AppItem) {
     onSave({ ...item, type: "app" });
@@ -51,6 +67,7 @@ export function ItemFormDialog({
           (target.item.type === "app" ? (
             <AppItemForm
               item={target.item}
+              otherExePaths={exePaths}
               simConnectSupported={simConnectSupported}
               onSubmit={saveApp}
               onCancel={onClose}
@@ -59,7 +76,21 @@ export function ItemFormDialog({
             <UrlItemForm item={target.item} onSubmit={saveUrl} onCancel={onClose} />
           ))}
 
-        {target?.mode === "create" && (
+        {target?.mode === "create" && target.type === "app" && target.initial && (
+          <AppItemForm
+            initial={target.initial}
+            otherExePaths={exePaths}
+            simConnectSupported={simConnectSupported}
+            onSubmit={saveApp}
+            onCancel={onClose}
+          />
+        )}
+
+        {target?.mode === "create" && target.type === "url" && target.initial && (
+          <UrlItemForm initial={target.initial} onSubmit={saveUrl} onCancel={onClose} />
+        )}
+
+        {target?.mode === "create" && !target.initial && (
           <Tabs defaultValue={target.type}>
             <TabsList className="w-full">
               <TabsTrigger value="app">{t("itemForm.typeApp")}</TabsTrigger>
@@ -67,6 +98,7 @@ export function ItemFormDialog({
             </TabsList>
             <TabsContent value="app" className="pt-4">
               <AppItemForm
+                otherExePaths={exePaths}
                 simConnectSupported={simConnectSupported}
                 onSubmit={saveApp}
                 onCancel={onClose}

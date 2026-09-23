@@ -1,0 +1,35 @@
+## 1. Discovery model and pure logic (Rust)
+
+- [x] 1.1 Add to `models.rs` `AppCandidate`, `CandidateSource` (`installed` | `open` | `dropped`), `DroppedCandidate` (tagged `app` | `url`), `UrlCandidate`, `RejectedDrop`, `DropRejection` and `DropResolution` (design D4), all with `Serialize, Deserialize, TS`, `camelCase` and `#[ts(export)]`. Verify with `cargo test` regenerating `src/bindings/` and a serialization test of a tagged `DroppedCandidate`
+- [x] 1.2 Create `app_discovery.rs` with pure functions: `is_uninstaller`, `is_under_windows_dir`, `dedupe_candidates` (lowercase exe path + args, first wins), `sort_by_name`, `is_flight_sim_suggestion` with the `FLIGHT_SIM_SUGGESTIONS` list (design D5) and `parse_internet_shortcut`. Verify with unit tests: `unins000.exe` and "Uninstall App" filtered, same target from Start Menu and desktop kept once with the Start Menu name, case-insensitive sorting, Navigraph/Little Navmap flagged and Notepad not, `.url` with https accepted and `steam://` rejected, `.url` without `[InternetShortcut]` rejected
+- [x] 1.3 Add `classify_dropped_path` (pure, receives a `resolve_shortcut` function so it is testable without COM) mapping `.exe`/`.lnk`/`.url`/other/missing to candidates or `DropRejection`, building names from the shortcut or file stem. Verify with unit tests covering every scenario of the "Resolve dropped files" requirement, including shortcut arguments/working folder kept and broken shortcuts rejected with `executableNotFound`
+
+## 2. Windows discovery (platform layer)
+
+- [x] 2.1 Add the `Win32_System_Com` feature and implement `platform::resolve_shortcut` in `platform/windows/shortcuts.rs` with `IShellLinkW` + `IPersistFile`, a COM apartment guard handling `RPC_E_CHANGED_MODE` (design D2) and `// SAFETY:` comments; `fallback.rs` stub returns `None`. Verify with a Windows integration test in `tests.rs` that creates a `.lnk` to `notepad.exe` with arguments and working folder in a temp dir (through `IShellLinkW::SetPath`/`IPersistFile::Save`) and resolves it back
+- [x] 2.2 Implement `platform::shortcut_folders()` with `SHGetKnownFolderPath` for Common Programs, Programs, Public Desktop and Desktop (design D1); stub returns an empty list. Verify with a Windows integration test that the Start Menu programs folder is returned and exists
+- [x] 2.3 Implement `platform::pids_with_visible_windows()` next to `top_level_windows` (visible, unowned, not tool windows — design D3); stub returns an empty set. Verify with a Windows integration test that opens `notepad.exe` and finds its PID (the `LaunchedProcess` guard closes it)
+- [x] 2.4 Wire `app_discovery::list_installed_apps()` (walk folders with depth cap, resolve, filter, icon, suggestion, dedupe, sort) and `list_open_apps()` (visible PIDs + `processes::samples()`, exclude own PID/no path/Windows folder, product name + icon, dedupe, sort). Verify with unit tests of the composition using fake inputs and a Windows integration test that a running `System32\notepad.exe` is seen as a visible window but excluded from the open list (Windows folder; the "listed outside the Windows folder" case is covered by the composition unit test, since a copied `notepad.exe` cannot load its resources); log the elapsed time of `list_installed_apps()` on CI to check the icon cost risk
+- [x] 2.5 Add the commands `list_installed_apps`, `list_open_apps` and `resolve_dropped_paths` (async + `spawn_blocking`) and register them in `lib.rs`. Verify with `cargo clippy -- -D warnings && cargo test` on macOS and on CI
+
+## 3. Frontend foundation
+
+- [x] 3.1 Create `src/schemas/app-candidate.ts` (Zod, `satisfies z.ZodType<...>` against the bindings) and the typed wrappers `commands.listInstalledApps`, `commands.listOpenApps`, `commands.resolveDroppedPaths` and `windowEvents.onFileDrop` (webview drag-drop events) in `src/lib/tauri.ts`. Verify with Vitest parsing sample payloads and `pnpm typecheck`
+- [x] 3.2 Create `src/lib/app-candidates.ts` with `candidateToAppForm`, `candidateToItem`, `urlCandidateToItem` and `isAlreadyInProfile`, and extract `pickExecutable` from `AppItemForm.chooseExecutable` (design D6). Verify with Vitest tests: defaults applied, arguments/working folder carried, `processNameMode: "auto"`, case-insensitive duplicate detection, new ids for each multi-drop item
+- [x] 3.3 Extract `useIsElevated` from `ElevationBanner` into `src/hooks/use-is-elevated.ts` and reuse it in the banner. Verify with `pnpm typecheck && pnpm lint && pnpm test`
+
+## 4. App picker and pre-filled form
+
+- [x] 4.1 Let `ItemFormDialog`/`AppItemForm`/`UrlItemForm` open with an `initial` value (create mode without tabs) and pass `existingExePaths` to show the non-blocking "already in this profile" warning. Verify with Vitest + Testing Library: a form opened from a candidate shows its values; a duplicate path shows the warning and still submits
+- [x] 4.2 Build `AppPickerDialog` and `AppCandidateRow` (tabs Installed/Open now, shared search over name and path, "Suggested" group, "Already in profile" mark, loading and empty states, "Browse for file…" using `pickExecutable`), with pt-BR/en texts. Verify with Vitest + Testing Library using mocked commands: search filters, suggestions render first, choosing an entry calls `onPick` with the candidate, and the i18n key parity test passes
+- [x] 4.3 Wire `MainScreen` and `EmptyItems` so "Add app" opens the picker and a pick opens the pre-filled form; the empty state shows the drag hint or, when elevated, the "unavailable as administrator" hint. Verify with a Vitest test of `EmptyItems` for both hints and visually on macOS with `pnpm tauri dev` (run by the maintainer)
+
+## 5. Drag and drop
+
+- [x] 5.1 Create the `useFileDrop({ enabled, onDrop })` hook and `DropOverlay` (reduced-motion safe) in `MainScreen`; disable while the picker/form is open or any `[role="dialog"], [role="alertdialog"]` exists (design D6). Verify with Vitest tests of the hook using a mocked `windowEvents.onFileDrop`: overlay state on enter/leave, drop ignored while a dialog is open
+- [x] 5.2 Implement the drop outcome as a pure function `planDrop(resolution)` → `openForm` | `appendItems` | `none` plus rejected list, and apply it in `MainScreen` (append in drop order, success toast with count, rejection toast with translated reasons). Verify with Vitest tests of `planDrop` for single, multiple, mixed and all-rejected drops
+- [x] 5.3 Verify `dragDropEnabled` stays enabled for the main window in `tauri.conf.json` and card reordering still works; add a Windows integration test that `resolve_dropped_paths` resolves a real `.lnk`, an `.exe` and a `.url` file created in a temp dir. Verify with `cargo test` on CI
+
+## 6. Docs and changelog
+
+- [x] 6.1 Update the README "Adding apps" section (picker, open apps, drag and drop, admin limitation, suggested apps) and add the user-facing entries under `## [Unreleased]` in `CHANGELOG.md` (Added: app picker with installed and open apps, flight sim suggestions, drag and drop of shortcuts/exe/web shortcuts, duplicate warning). Verify with `pnpm format:check` and all checks green on CI

@@ -4,11 +4,16 @@ use tauri::{AppHandle, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::error::{AppError, AppResult};
-use crate::models::{ExeInfo, MonitorSnapshot, ProcessInfo, Profile, SessionLog, Settings};
+use crate::models::{
+    AppCandidate, DropResolution, ExeInfo, MonitorSnapshot, ProcessInfo, Profile, SessionLog,
+    Settings,
+};
 use crate::monitor::MonitorHandle;
 use crate::platform::LaunchOptions;
 use crate::state::AppState;
-use crate::{exe_inspection, launch_args, platform, processes, system_autostart, tray};
+use crate::{
+    app_discovery, exe_inspection, launch_args, platform, processes, system_autostart, tray,
+};
 
 #[tauri::command]
 pub fn get_profiles(state: State<'_, AppState>) -> Vec<Profile> {
@@ -118,6 +123,24 @@ pub fn open_log_dir(app: AppHandle) -> AppResult<()> {
 #[tauri::command]
 pub async fn list_running_processes() -> AppResult<Vec<ProcessInfo>> {
     Ok(tauri::async_runtime::spawn_blocking(processes::list_running).await?)
+}
+
+#[tauri::command]
+pub async fn list_installed_apps() -> AppResult<Vec<AppCandidate>> {
+    Ok(tauri::async_runtime::spawn_blocking(app_discovery::list_installed_apps).await?)
+}
+
+#[tauri::command]
+pub async fn list_open_apps() -> AppResult<Vec<AppCandidate>> {
+    Ok(tauri::async_runtime::spawn_blocking(app_discovery::list_open_apps).await?)
+}
+
+#[tauri::command]
+pub async fn resolve_dropped_paths(paths: Vec<PathBuf>) -> AppResult<DropResolution> {
+    Ok(
+        tauri::async_runtime::spawn_blocking(move || app_discovery::resolve_dropped_paths(&paths))
+            .await?,
+    )
 }
 
 /// Returns the raw JSON so the frontend can validate it with Zod and report field-level errors.

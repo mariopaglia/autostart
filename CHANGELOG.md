@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- "Add app" now opens a picker listing the apps installed on your computer (Start Menu and desktop) and the apps open right now, with search; no more hunting for the `.exe` in folders.
+- Popular flight sim tools (Navigraph, SimBrief, Little Navmap, Volanta, vPilot, FSUIPC, SPAD.neXt, GSX and others) are suggested at the top of the installed apps list.
+- Drag and drop: drop an app shortcut, an `.exe` or a web shortcut (`.url`) onto the window to add it; dropping several files adds them all at once.
+- Apps already in the profile are marked in the picker, and the form warns when the same executable is added twice.
+
 ## [0.2.0] - 2026-09-22
 
 ### Added

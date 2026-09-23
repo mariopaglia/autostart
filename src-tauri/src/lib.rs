@@ -1,3 +1,4 @@
+mod app_discovery;
 mod closer;
 mod commands;
 mod error;
@@ -61,6 +62,9 @@ pub fn run() {
             commands::inspect_exe,
             commands::find_missing_executables,
             commands::list_running_processes,
+            commands::list_installed_apps,
+            commands::list_open_apps,
+            commands::resolve_dropped_paths,
             commands::is_elevated,
             commands::relaunch_as_admin,
             commands::open_log_dir,

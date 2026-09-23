@@ -1,12 +1,12 @@
 //! Development-only stand-ins so the app builds and the UI runs on non-Windows hosts.
 
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, Signal, System};
 
-use super::LaunchOptions;
+use super::{LaunchOptions, ShortcutTarget};
 use crate::error::{AppError, AppResult};
 
 pub fn product_name(_exe_path: &Path) -> Option<String> {
@@ -15,6 +15,27 @@ pub fn product_name(_exe_path: &Path) -> Option<String> {
 
 pub fn icon_png_base64(_exe_path: &Path) -> Option<String> {
     None
+}
+
+/// Windows shortcuts cannot be resolved elsewhere, so dropped `.lnk` files are rejected.
+pub struct ShortcutResolver;
+
+impl ShortcutResolver {
+    pub fn new() -> Option<Self> {
+        Some(Self)
+    }
+
+    pub fn resolve(&self, _shortcut: &Path) -> Option<ShortcutTarget> {
+        None
+    }
+}
+
+pub fn shortcut_folders() -> Vec<PathBuf> {
+    Vec::new()
+}
+
+pub fn pids_with_visible_windows() -> HashSet<u32> {
+    HashSet::new()
 }
 
 pub fn launch(

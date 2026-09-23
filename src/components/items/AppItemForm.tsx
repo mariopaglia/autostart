@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { open } from "@tauri-apps/plugin-dialog";
-import { ChevronDown, FolderOpen } from "lucide-react";
+import { ChevronDown, CopyCheck, FolderOpen } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { AppItem } from "@/bindings/AppItem";
@@ -10,7 +9,7 @@ import { TextField } from "@/components/common/TextField";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DialogFooter } from "@/components/ui/dialog";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -18,47 +17,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { isAlreadyInProfile } from "@/lib/app-candidates";
 import { notifyError } from "@/lib/notify";
-import { commands } from "@/lib/tauri";
-import { DEFAULT_DELAY_MS } from "@/schemas/profile";
-import { appFormSchema, executableName, type AppFormInput, type AppFormOutput } from "./app-form";
+import {
+  appFormSchema,
+  EMPTY_APP_FORM,
+  executableName,
+  type AppFormInput,
+  type AppFormOutput,
+} from "./app-form";
 import { ItemIcon } from "./ItemIcon";
+import { pickExecutable } from "./pick-executable";
 import { ProcessNameField } from "./ProcessNameField";
 import { SwitchField } from "./SwitchField";
 
 const ON_CLOSE_OPTIONS: OnClose[] = ["graceful", "force", "keep"];
 
-const EMPTY_APP: AppFormInput = {
-  name: "",
-  exePath: "",
-  args: "",
-  workingDir: "",
-  processName: "",
-  processNameMode: "auto",
-  delayMs: DEFAULT_DELAY_MS,
-  runAsAdmin: false,
-  startMinimized: false,
-  waitForSimConnect: false,
-  onClose: "graceful",
-  enabled: true,
-};
-
 interface AppItemFormProps {
   item?: AppItem;
+  initial?: AppFormInput;
+  otherExePaths: readonly string[];
   simConnectSupported: boolean;
   onSubmit: (item: AppItem) => void;
   onCancel: () => void;
 }
 
-export function AppItemForm({ item, simConnectSupported, onSubmit, onCancel }: AppItemFormProps) {
+export function AppItemForm({
+  item,
+  initial,
+  otherExePaths,
+  simConnectSupported,
+  onSubmit,
+  onCancel,
+}: AppItemFormProps) {
   const { t } = useTranslation();
   const [inspecting, setInspecting] = useState(false);
   const form = useForm<AppFormInput, unknown, AppFormOutput>({
     resolver: zodResolver(appFormSchema),
-    defaultValues: item ?? EMPTY_APP,
+    defaultValues: item ?? initial ?? EMPTY_APP_FORM,
   });
   const iconBase64 = useWatch({ control: form.control, name: "iconBase64" });
   const exePath = useWatch({ control: form.control, name: "exePath" });
+  const isDuplicate = isAlreadyInProfile(exePath, otherExePaths);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // In automatic mode the process name follows the executable until AutoStart learns a better one.
@@ -71,11 +71,11 @@ export function AppItemForm({ item, simConnectSupported, onSubmit, onCancel }: A
   }, [exePath, form]);
 
   async function chooseExecutable() {
-    const path = await open({ filters: [{ name: t("itemForm.exeFilter"), extensions: ["exe"] }] });
-    if (!path) return;
     setInspecting(true);
     try {
-      const info = await commands.inspectExe(path);
+      const choice = await pickExecutable(t("itemForm.exeFilter"));
+      if (!choice) return;
+      const { path, info } = choice;
       form.setValue("exePath", path, { shouldValidate: true });
       form.setValue("processName", info.processName, { shouldValidate: true });
       form.setValue("processNameMode", "auto");
@@ -119,12 +119,23 @@ export function AppItemForm({ item, simConnectSupported, onSubmit, onCancel }: A
 
       <FieldGroup>
         <TextField control={form.control} name="name" label={t("itemForm.name")} />
-        <TextField
-          control={form.control}
-          name="exePath"
-          label={t("itemForm.exePath")}
-          inputProps={{ placeholder: "C:\\Program Files\\App\\App.exe" }}
-        />
+        <div className="flex flex-col gap-2">
+          <TextField
+            control={form.control}
+            name="exePath"
+            label={t("itemForm.exePath")}
+            inputProps={{ placeholder: "C:\\Program Files\\App\\App.exe" }}
+          />
+          {isDuplicate && (
+            <FieldDescription
+              role="status"
+              className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400"
+            >
+              <CopyCheck className="size-4 shrink-0" />
+              {t("itemForm.duplicate")}
+            </FieldDescription>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <TextField
             control={form.control}

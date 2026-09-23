@@ -1,12 +1,17 @@
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+use ::windows::core::{Interface, HSTRING};
+use ::windows::Win32::System::Com::{CoCreateInstance, IPersistFile, CLSCTX_INPROC_SERVER};
+use ::windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
 use ::windows::Win32::UI::WindowsAndMessaging::IsIconic;
 
 use super::top_level_windows::top_level_windows;
 use super::*;
+use crate::app_discovery;
+use crate::models::{DropRejection, DroppedCandidate};
 use crate::platform::LaunchOptions;
 use crate::processes;
 
@@ -130,4 +135,133 @@ fn exe_info_reads_product_name_and_icon() {
 #[test]
 fn simconnect_is_unavailable_without_a_simulator() {
     assert!(!is_simconnect_available());
+}
+
+/// Requires COM on the current thread, e.g. a live `ShortcutResolver`.
+fn create_shortcut(shortcut: &Path, target: &Path, args: &str, working_dir: &Path) {
+    // SAFETY: the caller keeps COM initialized on this thread; every string outlives its call.
+    unsafe {
+        let link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER).unwrap();
+        link.SetPath(&HSTRING::from(target.as_os_str())).unwrap();
+        link.SetArguments(&HSTRING::from(args)).unwrap();
+        link.SetWorkingDirectory(&HSTRING::from(working_dir.as_os_str()))
+            .unwrap();
+        link.cast::<IPersistFile>()
+            .unwrap()
+            .Save(&HSTRING::from(shortcut.as_os_str()), true)
+            .unwrap();
+    }
+}
+
+fn same_path(left: &str, right: &Path) -> bool {
+    left.eq_ignore_ascii_case(&right.display().to_string())
+}
+
+#[test]
+fn shortcut_resolver_reads_target_arguments_and_working_folder() {
+    let resolver = ShortcutResolver::new().expect("COM is available");
+    let dir = tempfile::tempdir().unwrap();
+    let shortcut = dir.path().join("Notepad.lnk");
+    create_shortcut(&shortcut, &notepad(), "--test", &system32());
+
+    let target = resolver.resolve(&shortcut).expect("shortcut resolves");
+
+    // The shell may normalize the path's casing when it stores the shortcut.
+    assert!(same_path(
+        &target.target_path.display().to_string(),
+        &notepad()
+    ));
+    assert_eq!(target.args.as_deref(), Some("--test"));
+    let working_dir = target.working_dir.expect("working folder kept");
+    assert!(same_path(&working_dir.display().to_string(), &system32()));
+    assert_eq!(resolver.resolve(&dir.path().join("Missing.lnk")), None);
+}
+
+#[test]
+fn shortcut_folders_include_the_start_menu() {
+    let folders = shortcut_folders();
+
+    assert!(folders.len() >= 2);
+    assert!(folders
+        .iter()
+        .any(|folder| folder.ends_with(r"Start Menu\Programs")));
+}
+
+#[test]
+fn visible_windows_include_an_open_app() {
+    let process = LaunchedProcess::start(LaunchOptions::default());
+
+    assert!(wait_until(
+        || pids_with_visible_windows().contains(&process.0)
+    ));
+}
+
+#[test]
+fn open_apps_exclude_apps_from_the_windows_folder() {
+    let process = LaunchedProcess::start(LaunchOptions::default());
+    assert!(wait_until(
+        || pids_with_visible_windows().contains(&process.0)
+    ));
+
+    let open = app_discovery::list_open_apps();
+
+    assert!(!open
+        .iter()
+        .any(|candidate| same_path(&candidate.exe_path, &notepad())));
+    assert!(!open
+        .iter()
+        .any(|candidate| candidate.process_name.eq_ignore_ascii_case("svchost.exe")));
+}
+
+#[test]
+fn installed_apps_are_listed_quickly_without_uninstallers() {
+    let started = Instant::now();
+    let installed = app_discovery::list_installed_apps();
+    let elapsed = started.elapsed();
+
+    eprintln!(
+        "list_installed_apps: {} apps in {elapsed:?}",
+        installed.len()
+    );
+    assert!(elapsed < Duration::from_secs(20), "took {elapsed:?}");
+    assert!(installed
+        .iter()
+        .all(|candidate| !candidate.name.to_lowercase().contains("uninstall")));
+}
+
+#[test]
+fn dropped_shortcut_executable_and_web_shortcut_are_resolved() {
+    let _com = ShortcutResolver::new().expect("COM is available");
+    let dir = tempfile::tempdir().unwrap();
+    let shortcut = dir.path().join("My Editor.lnk");
+    create_shortcut(&shortcut, &notepad(), "", &system32());
+    let web = dir.path().join("SimBrief.url");
+    std::fs::write(
+        &web,
+        "[InternetShortcut]\r\nURL=https://www.simbrief.com\r\n",
+    )
+    .unwrap();
+    let document = dir.path().join("notes.txt");
+    std::fs::write(&document, "hello").unwrap();
+
+    let resolution =
+        app_discovery::resolve_dropped_paths(&[shortcut, notepad(), web, document.clone()]);
+
+    let [DroppedCandidate::App(from_shortcut), DroppedCandidate::App(from_exe), DroppedCandidate::Url(url)] =
+        resolution.candidates.as_slice()
+    else {
+        panic!("unexpected candidates: {:?}", resolution.candidates);
+    };
+    assert_eq!(from_shortcut.name, "My Editor");
+    assert!(same_path(&from_shortcut.exe_path, &notepad()));
+    assert!(from_shortcut.icon_base64.is_some());
+    assert!(same_path(&from_exe.exe_path, &notepad()));
+    assert!(from_exe.process_name.eq_ignore_ascii_case("notepad.exe"));
+    assert_eq!(url.url, "https://www.simbrief.com");
+    assert_eq!(resolution.rejected.len(), 1);
+    assert_eq!(resolution.rejected[0].path, document.display().to_string());
+    assert_eq!(
+        resolution.rejected[0].reason,
+        DropRejection::UnsupportedFile
+    );
 }

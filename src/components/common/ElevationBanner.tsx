@@ -1,25 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useIsElevated } from "@/hooks/use-is-elevated";
 import { needsElevationWarning } from "@/lib/elevation";
 import { notifyError } from "@/lib/notify";
 import { commands, errorKindOf } from "@/lib/tauri";
 import { useProfilesStore } from "@/stores/profiles-store";
 import { useSettingsStore } from "@/stores/settings-store";
-
-function useIsElevated(): boolean | null {
-  const [isElevated, setIsElevated] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    void commands.isElevated().then(setIsElevated);
-  }, []);
-
-  return isElevated;
-}
 
 export function ElevationBanner() {
   const { t } = useTranslation();

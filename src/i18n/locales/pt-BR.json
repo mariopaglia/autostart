@@ -92,7 +92,9 @@
       "closing": "Fechando…",
       "closed": "Fechado",
       "error": "Erro"
-    }
+    },
+    "dragHint": "Dica: você também pode arrastar atalhos de apps, arquivos .exe ou atalhos de sites para esta janela.",
+    "dragUnavailableAsAdmin": "Arrastar arquivos para o AutoStart não funciona enquanto ele roda como administrador. Use \"Adicionar app\"."
   },
   "itemForm": {
     "addTitle": "Adicionar item",
@@ -126,7 +128,8 @@
     "processNameAuto": "Detectado automaticamente",
     "processNameAutoHint": "O AutoStart descobre sozinho o processo real, mesmo quando o executável é só um launcher.",
     "processNameManualHint": "Definido manualmente. O AutoStart não vai alterar este nome.",
-    "detectAutomatically": "Detectar automaticamente"
+    "detectAutomatically": "Detectar automaticamente",
+    "duplicate": "Este app já está neste perfil. Você ainda pode salvar (por exemplo, com outros argumentos)."
   },
   "validation": {
     "required": "Campo obrigatório",
@@ -228,7 +231,7 @@
     },
     "items": {
       "title": "Adicione seus apps",
-      "description": "Na tela principal, use \"Adicionar app\" para escolher um executável ou \"Adicionar URL\" para abrir um site. Arraste os cards para definir a ordem e use os botões de teste para conferir sem abrir o simulador."
+      "description": "Na tela principal, use \"Adicionar app\" para escolher entre os apps instalados ou abertos (ou arraste o atalho do app para a janela) ou \"Adicionar URL\" para abrir um site. Arraste os cards para definir a ordem e use os botões de teste para conferir sem abrir o simulador."
     },
     "startup": {
       "title": "Deixe tudo automático",
@@ -251,5 +254,33 @@
     "upToDate": "Você já está na versão mais recente",
     "checkFailed": "Não foi possível verificar atualizações",
     "installFailed": "A atualização falhou e foi cancelada"
+  },
+  "appPicker": {
+    "title": "Adicionar app",
+    "description": "Escolha um app instalado neste computador ou um que esteja aberto agora.",
+    "search": "Buscar apps…",
+    "installed": "Instalados",
+    "open": "Abertos agora",
+    "suggested": "Sugeridos para flight sim",
+    "apps": "Apps",
+    "alreadyAdded": "Já está no perfil",
+    "loading": "Procurando apps…",
+    "empty": "Nenhum app encontrado",
+    "emptyOpen": "Nenhum app aberto encontrado. Abra o app e tente de novo, ou use a aba Instalados.",
+    "browse": "Procurar arquivo…",
+    "browseHint": "Não encontrou? Escolha o .exe manualmente."
+  },
+  "fileDrop": {
+    "overlayTitle": "Solte para adicionar",
+    "overlayDescription": "Atalhos, arquivos .exe e atalhos de sites são adicionados a \"{{profile}}\".",
+    "added_one": "{{count}} item adicionado ao perfil",
+    "added_other": "{{count}} itens adicionados ao perfil",
+    "rejectedTitle": "Alguns arquivos não puderam ser adicionados",
+    "reasons": {
+      "unsupportedFile": "não é um app, atalho ou atalho de site",
+      "executableNotFound": "o app não foi encontrado",
+      "unsupportedUrl": "só endereços http e https são aceitos",
+      "unsupportedShortcut": "o atalho não aponta para um app"
+    }
   }
 }
