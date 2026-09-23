@@ -13,4 +13,4 @@
 - [ ] Bindings in `src/bindings/` regenerated, if Rust structs changed
 - [ ] New UI strings added to both `pt-BR.json` and `en.json`
 - [ ] Code in English and commits following Conventional Commits
-- [ ] `CHANGELOG.md` updated under `## [Unreleased]`, if the change affects users
+- [ ] `CHANGELOG.md` and `CHANGELOG.pt-BR.md` updated under `## [Unreleased]`, if the change affects users

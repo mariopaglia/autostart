@@ -186,13 +186,13 @@ Done only once. **Losing the private key permanently breaks automatic updates** 
 
 ### Releasing a version
 
-1. While developing, add user-facing entries under `## [Unreleased]` in `CHANGELOG.md`. The release fails if that section is empty.
+1. While developing, add user-facing entries under `## [Unreleased]` in `CHANGELOG.md` and the same entries, in Portuguese, in `CHANGELOG.pt-BR.md`. The release fails if either section is empty.
 2. When ready, open **Actions → Release → Run workflow** on `main` and choose `patch`, `minor` or `major` (or run `gh workflow run release.yml -f bump=patch`). The optional `dry_run` input builds and smoke-tests the installer without publishing anything, and works from any branch.
 3. The **Release** workflow (`.github/workflows/release.yml`):
    1. runs all CI checks;
-   2. bumps the version in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json`, and turns the Unreleased section into `## [X.Y.Z] - date`;
+   2. bumps the version in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json`, and turns the Unreleased section of both changelogs into `## [X.Y.Z] - date`;
    3. commits `chore: release X.Y.Z` (authored by `github-actions[bot]`) and creates the tag `vX.Y.Z`;
-   4. builds and uploads the installer `AutoStart-Setup.exe` (fixed name, so the direct download link never changes), its `.sig` signature and `latest.json` (the file installed apps check for updates) to a **draft** release, using the changelog section as release notes;
+   4. builds and uploads the installer `AutoStart-Setup.exe` (fixed name, so the direct download link never changes), its `.sig` signature and `latest.json` (the file installed apps check for updates) to a **draft** release, using both changelog sections as bilingual release notes (the app shows the ones in its language);
    5. smoke-tests the installer: silent install, launch, check that the app stays alive, uninstall;
    6. only then pushes the commit to `main` and publishes the release.
 
@@ -222,7 +222,7 @@ From then on, releases ship with a signed installer and executable.
 - **Bugs and ideas**: open an [issue](https://github.com/mariopaglia/autostart/issues/new/choose) using the provided templates.
 - **Security**: report vulnerabilities privately, as described in the [Security Policy](SECURITY.md).
 - **Conduct**: every project space follows the [Code of Conduct](CODE_OF_CONDUCT.md).
-- **What's new**: every version is described in the [CHANGELOG](CHANGELOG.md).
+- **What's new**: every version is described in the [CHANGELOG](CHANGELOG.md) (also [in Portuguese](CHANGELOG.pt-BR.md)).
 
 ## License
 

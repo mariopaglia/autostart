@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The update dialog now shows the release notes formatted (headings, lists, bold) instead of raw Markdown, and in the app's language.
 - Clicking a profile in the sidebar while on Logs or Settings now opens it on the Profiles screen, and the profile is only highlighted while that screen is open.
 
 ## [0.3.0] - 2026-09-23

@@ -1,7 +1,7 @@
 name: Release
 
 # Manual only: Actions → Release → Run workflow (or `gh workflow run release.yml -f bump=patch`).
-# The release notes come from the "## [Unreleased]" section of CHANGELOG.md, which must not be empty (except in a dry run).
+# The release notes come from the "## [Unreleased]" sections of CHANGELOG.md and CHANGELOG.pt-BR.md, which must not be empty (except in a dry run).
 on:
   workflow_dispatch:
     inputs:

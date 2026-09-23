@@ -37,7 +37,7 @@ Follow the [Development](README.md#development) section of the README. The app r
    ```
 
 4. If you changed Rust structs shared with the frontend, include the regenerated files in `src/bindings/` (CI fails if they are out of date).
-5. Add user-facing changes under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md).
+5. Add user-facing changes under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md) and, in Portuguese, in [`CHANGELOG.pt-BR.md`](CHANGELOG.pt-BR.md). If you do not speak Portuguese, add the English entry only and the maintainer will translate it.
 6. Open the pull request against `main` and fill in the template. CI runs on `windows-latest` and must pass.
 
 ### Conventions

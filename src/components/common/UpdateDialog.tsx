@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { useUpdatesStore } from "@/stores/updates-store";
+import { ReleaseNotes } from "./ReleaseNotes";
 
 export function UpdateDialog() {
   const { t } = useTranslation();
@@ -36,11 +37,7 @@ export function UpdateDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        {update?.body && (
-          <div className="max-h-60 overflow-y-auto rounded-xl border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
-            {update.body}
-          </div>
-        )}
+        {update?.body && <ReleaseNotes body={update.body} />}
 
         {installing && (
           <div className="flex flex-col gap-1.5" role="status">
