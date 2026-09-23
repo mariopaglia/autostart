@@ -53,4 +53,4 @@ The full rules are in [`CLAUDE.md`](CLAUDE.md). In short:
 
 ## License
 
-By contributing, you agree that your contribution will be licensed under the project's [MIT License](LICENSE).
+By contributing, you agree that your contribution will be licensed under the project's license, the [GNU General Public License v3.0 or later](LICENSE), including the additional terms described in the [README](README.md#additional-terms-and-trademarks), and you confirm that you have the right to submit it under that license.

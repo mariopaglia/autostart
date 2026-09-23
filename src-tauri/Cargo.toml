@@ -3,7 +3,7 @@ name = "autostart"
 version = "0.3.0"
 description = "Launches your flight sim helper apps when the simulator starts and closes them when it exits"
 authors = ["Mario Paglia"]
-license = "MIT"
+license = "GPL-3.0-or-later"
 repository = "https://github.com/mariopaglia/autostart"
 edition = "2021"
 

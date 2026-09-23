@@ -39,7 +39,8 @@
     ],
     "publisher": "Mario Paglia",
     "homepage": "https://github.com/mariopaglia/autostart",
-    "copyright": "© 2026 Mario Paglia. MIT License.",
+    "copyright": "© 2026 Mario Paglia. Licensed under the GNU GPL v3 or later.",
+    "licenseFile": "../LICENSE",
     "category": "Utility",
     "shortDescription": "Launches your flight sim helper apps with the simulator",
     "windows": {

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, FolderOpen, RefreshCw } from "lucide-react";
+import { FolderOpen, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Language } from "@/bindings/Language";
 import type { Settings } from "@/bindings/Settings";
 import type { Theme } from "@/bindings/Theme";
+import { AboutSection } from "@/components/settings/AboutSection";
 import { CloseDelayField } from "@/components/settings/CloseDelayField";
 import { GracefulTimeoutField } from "@/components/settings/GracefulTimeoutField";
 import { SettingRow } from "@/components/settings/SettingRow";
@@ -25,7 +26,6 @@ import { languageSchema, themeSchema } from "@/schemas/settings";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUpdatesStore } from "@/stores/updates-store";
 
-const REPOSITORY_URL = "https://github.com/mariopaglia/autostart";
 const THEMES: readonly Theme[] = themeSchema.options;
 const LANGUAGES: readonly Language[] = languageSchema.options;
 const LANGUAGE_NAMES: Record<Language, string> = { "pt-BR": "Português (Brasil)", en: "English" };
@@ -234,25 +234,7 @@ export function SettingsScreen() {
           </SettingRow>
         </SettingsSection>
 
-        <SettingsSection title={t("settings.sections.about")}>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 py-3 text-sm">
-            <dt className="text-muted-foreground">{t("settings.version")}</dt>
-            <dd className="font-mono tabular-nums">{version}</dd>
-            <dt className="text-muted-foreground">{t("settings.license")}</dt>
-            <dd>MIT</dd>
-            <dt className="text-muted-foreground">{t("settings.repository")}</dt>
-            <dd>
-              <Button
-                variant="link"
-                className="h-auto p-0"
-                onClick={() => void system.openUrl(REPOSITORY_URL).catch(notifyError)}
-              >
-                github.com/mariopaglia/autostart
-                <ExternalLink />
-              </Button>
-            </dd>
-          </dl>
-        </SettingsSection>
+        <AboutSection version={version} />
       </div>
     </div>
   );

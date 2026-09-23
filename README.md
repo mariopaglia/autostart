@@ -3,7 +3,7 @@
 [![CI](https://github.com/mariopaglia/autostart/actions/workflows/ci.yml/badge.svg)](https://github.com/mariopaglia/autostart/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/mariopaglia/autostart?label=release)](https://github.com/mariopaglia/autostart/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/mariopaglia/autostart/total)](https://github.com/mariopaglia/autostart/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
 ![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4)
 
 Automatically opens your flight simulator's helper apps when it starts and closes them all when it exits.
@@ -226,4 +226,18 @@ From then on, releases ship with a signed installer and executable.
 
 ## License
 
-[MIT](LICENSE) © Mario Paglia
+Copyright © 2026 Mario Paglia.
+
+AutoStart is free software: you can redistribute it and/or modify it under the terms of the [GNU General Public License](LICENSE) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It is distributed in the hope that it will be useful, but **without any warranty**; without even the implied warranty of merchantability or fitness for a particular purpose.
+
+In practice: you are free to use, study, fork and improve AutoStart. If you distribute it, modified or not, you must do so under the same license, keep the copyright notices and make the complete source code available to everyone who receives it.
+
+### Additional terms and trademarks
+
+Under section 7 of the GPL, the following additional terms apply to AutoStart:
+
+- **Attribution** (7b): the copyright notice and the author attribution shown in the app's _About_ section must be preserved in every copy and derived work.
+- **Modified versions** (7c): modified versions must be clearly marked as different from the original and must not be presented as the official AutoStart.
+- **Trademarks** (7e): the license does not grant any right to use the name "AutoStart" or its logo and icon to identify a modified version or a derived product. Forks must use a different name and icon.
+
+The only official downloads are the [releases of this repository](https://github.com/mariopaglia/autostart/releases).

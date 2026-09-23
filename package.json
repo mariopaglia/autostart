@@ -1,6 +1,7 @@
 {
   "name": "autostart",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "version": "0.3.0",
   "type": "module",
   "packageManager": "pnpm@10.34.5",

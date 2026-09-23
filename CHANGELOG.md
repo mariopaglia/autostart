@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- AutoStart is now licensed under the GNU GPL v3.0 or later (previously MIT). The installer and the About section in Settings show the license, and forks must use a different name and icon.
+
 ## [0.3.0] - 2026-09-23
 
 ### Added
