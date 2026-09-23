@@ -22,6 +22,10 @@ pub use windows_minimize::minimize_new_windows;
 
 struct OwnedHandle(HANDLE);
 
+// SAFETY: kernel object handles are process-wide and may be used and closed from any thread;
+// OwnedHandle is never shared (no Sync), so moving it between async tasks' threads is sound.
+unsafe impl Send for OwnedHandle {}
+
 impl Drop for OwnedHandle {
     fn drop(&mut self) {
         // SAFETY: every OwnedHandle wraps a live handle returned by the WinAPI and is closed exactly once.
