@@ -74,9 +74,6 @@ export function releaseChangelog(
   const nextSection = /\n## \[|\n\[Unreleased\]:/.exec(changelog.slice(bodyStart));
   const bodyEnd = nextSection ? bodyStart + nextSection.index : changelog.length;
   const notes = changelog.slice(bodyStart, bodyEnd).trim();
-  if (!notes) {
-    throw new Error(`The "${unreleasedHeading}" section of CHANGELOG.md is empty`);
-  }
 
   const released =
     changelog.slice(0, bodyStart) +

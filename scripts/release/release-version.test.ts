@@ -101,8 +101,8 @@ describe("releaseChangelog", () => {
     );
   });
 
-  it("fails when there is nothing to release", () => {
+  it("returns empty notes when there is nothing to release", () => {
     const empty = changelog.replace("### Added\n\n- New feature.\n\n", "");
-    expect(() => releaseChangelog(empty, "0.3.0", "2026-10-01")).toThrow(/empty/);
+    expect(releaseChangelog(empty, "0.3.0", "2026-10-01").notes).toBe("");
   });
 });

@@ -1,7 +1,7 @@
 name: Release
 
 # Manual only: Actions → Release → Run workflow (or `gh workflow run release.yml -f bump=patch`).
-# The release notes come from the "## [Unreleased]" section of CHANGELOG.md, which must not be empty.
+# The release notes come from the "## [Unreleased]" section of CHANGELOG.md, which must not be empty (except in a dry run).
 on:
   workflow_dispatch:
     inputs:
@@ -60,7 +60,7 @@ jobs:
       - name: Bump version and release the changelog
         id: prepare
         run: |
-          version=$(node scripts/release/prepare-release.ts "${{ inputs.bump }}" "$RUNNER_TEMP/release-notes.md")
+          version=$(node scripts/release/prepare-release.ts "${{ inputs.bump }}" "$RUNNER_TEMP/release-notes.md" ${{ inputs.dry_run && '--dry-run' || '' }})
           tag="v$version"
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
             echo "::error::Tag $tag already exists"
