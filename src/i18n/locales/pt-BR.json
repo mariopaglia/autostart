@@ -247,7 +247,8 @@
     "closeDelayHint": "Depois que o simulador fecha, o AutoStart espera esse tempo antes de fechar os apps. Se o simulador for reaberto nesse meio-tempo (por exemplo, após um crash), nada é fechado. 0 fecha na hora.",
     "showNotifications": "Mostrar notificações",
     "showNotificationsHint": "Notificações do Windows para falhas, apps que travaram e a contagem antes de fechar, mesmo com o AutoStart na bandeja.",
-    "advanced": "Avançado"
+    "advanced": "Avançado",
+    "viewChangelog": "Ver novidades"
   },
   "onboarding": {
     "trigger": {
@@ -323,5 +324,9 @@
     "relaunchedBody": "O app travou e o AutoStart o abriu de novo.",
     "gaveUpTitle": "{{name}} não foi reaberto",
     "gaveUpBody": "O app continuou travando nesta sessão."
+  },
+  "changelog": {
+    "title": "Novidades",
+    "description": "O que mudou em cada versão do AutoStart."
   }
 }

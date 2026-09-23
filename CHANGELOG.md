@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- "See what's new" next to the version in Settings → About shows the full version history, in the app's language and offline.
+
+### Fixed
+
+- The update dialog now shows the release notes formatted (headings, lists, bold) instead of raw Markdown, and in the app's language.
+
 ## [0.3.1] - 2026-09-23
 
 ### Changed
@@ -15,7 +23,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
-- The update dialog now shows the release notes formatted (headings, lists, bold) instead of raw Markdown, and in the app's language.
 - Clicking a profile in the sidebar while on Logs or Settings now opens it on the Profiles screen, and the profile is only highlighted while that screen is open.
 
 ## [0.3.0] - 2026-09-23

@@ -6,6 +6,16 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Unreleased]
 
+### Adicionado
+
+- "Ver novidades", ao lado da versão em Configurações → Sobre, mostra o histórico completo de versões, no idioma do app e sem precisar de internet.
+
+### Corrigido
+
+- A janela de atualização agora mostra as novidades formatadas (títulos, listas, negrito) em vez do Markdown cru, e no idioma do app.
+
+## [0.3.1] - 2026-09-23
+
 ### Alterado
 
 - Configurações de fechamento mais claras: "Esperar após o simulador fechar" é a opção principal, e o prazo para um app fechar sozinho agora é definido em segundos, explica que só vale para os apps em "Fechar normalmente" e fica em "Avançado".
@@ -13,7 +23,6 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ### Corrigido
 
-- A janela de atualização agora mostra as novidades formatadas (títulos, listas, negrito) em vez do Markdown cru, e no idioma do app.
 - Clicar em um perfil na barra lateral estando em Logs ou Configurações agora abre o perfil na tela Perfis, e ele só fica destacado enquanto essa tela está aberta.
 
 ## [0.3.0] - 2026-09-23
@@ -66,7 +75,8 @@ Primeira versão pública.
 - Assistente de primeira execução.
 - Instalador por usuário (sem precisar de administrador) e atualizações automáticas assinadas.
 
-[Unreleased]: https://github.com/mariopaglia/autostart/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/mariopaglia/autostart/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/mariopaglia/autostart/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/mariopaglia/autostart/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mariopaglia/autostart/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mariopaglia/autostart/releases/tag/v0.1.0

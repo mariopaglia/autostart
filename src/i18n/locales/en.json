@@ -247,7 +247,8 @@
     "closeDelayHint": "After the simulator exits, AutoStart waits this long before closing the apps. If the simulator is reopened meanwhile (e.g. after a crash), nothing is closed. 0 closes right away.",
     "showNotifications": "Show notifications",
     "showNotificationsHint": "Windows notifications for failures, crashed apps and the countdown before closing, even while AutoStart is in the tray.",
-    "advanced": "Advanced"
+    "advanced": "Advanced",
+    "viewChangelog": "See what's new"
   },
   "onboarding": {
     "trigger": {
@@ -323,5 +324,9 @@
     "relaunchedBody": "The app crashed and AutoStart opened it again.",
     "gaveUpTitle": "{{name}} was not reopened",
     "gaveUpBody": "The app kept crashing during this session."
+  },
+  "changelog": {
+    "title": "What's new",
+    "description": "What changed in each AutoStart version."
   }
 }
