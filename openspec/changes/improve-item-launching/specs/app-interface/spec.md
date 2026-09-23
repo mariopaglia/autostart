@@ -1,35 +1,35 @@
 ## MODIFIED Requirements
 
-### Requirement: Cards de itens
-Cada card SHALL exibir ícone (ou ícone genérico/globo para URL), nome, caminho ou URL resumido, badges (Admin, Minimizado, SimConnect, delay em segundos, comportamento ao fechar), status da sessão atual quando houver (incluindo "Aguardando SimConnect") e um toggle de habilitado. Os cards SHALL poder ser reordenados por arrastar e soltar (mouse e teclado). Clicar no card SHALL abrir a edição.
+### Requirement: Item cards
+Each card SHALL show the icon (or a generic/globe icon for URLs), name, shortened path or URL, badges (Admin, Minimized, SimConnect, delay in seconds, close behavior), the current session status when there is one (including "Waiting for SimConnect"), and an enabled toggle. Cards SHALL be reorderable by drag and drop (mouse and keyboard). Clicking a card SHALL open it for editing.
 
-#### Scenario: Toggle desabilita
-- **WHEN** o usuário desliga o toggle de um card
-- **THEN** o card fica visualmente esmaecido e o item é ignorado na próxima abertura
+#### Scenario: Toggle disables
+- **WHEN** the user turns off a card's toggle
+- **THEN** the card is visually dimmed and the item is ignored on the next launch
 
-#### Scenario: Reordenar via teclado
-- **WHEN** o usuário foca a alça de arraste, pressiona espaço e usa as setas
-- **THEN** o card muda de posição e a ordem é persistida
+#### Scenario: Reorder via keyboard
+- **WHEN** the user focuses the drag handle, presses space and uses the arrow keys
+- **THEN** the card changes position and the order is persisted
 
-#### Scenario: Badges das opções de abertura
-- **WHEN** um item tem `startMinimized = true` e `waitForSimConnect = true`
-- **THEN** o card exibe os badges "Minimizado" e "SimConnect"
+#### Scenario: Launch option badges
+- **WHEN** an item has `startMinimized = true` and `waitForSimConnect = true`
+- **THEN** the card shows the "Minimized" and "SimConnect" badges
 
-### Requirement: Formulário de item
-O formulário SHALL permitir adicionar/editar um item `app`, escolhendo o `.exe` pelo diálogo nativo (preenchendo nome, ícone e processo automaticamente), ou um item `url`. Campos principais de app: nome, caminho, argumentos, delay, executar como admin, abrir minimizado, aguardar o SimConnect e comportamento ao fechar. Uma seção "Avançado", recolhida por padrão, SHALL conter a pasta de trabalho e o nome do processo, indicando quando o nome é detectado automaticamente e oferecendo a ação de voltar ao modo automático quando estiver em modo manual. A opção "Aguardar o SimConnect" SHALL ficar desativada, com uma dica explicando o motivo, quando o gatilho do perfil não for o MSFS 2020 ou 2024. Campos de URL: nome, URL, delay. A validação SHALL usar os mesmos schemas da persistência e exibir erros por campo.
+### Requirement: Item form
+The form SHALL allow adding/editing an `app` item, choosing the `.exe` through the native dialog (filling in name, icon and process automatically), or a `url` item. Main app fields: name, path, arguments, delay, run as admin, start minimized, wait for SimConnect and close behavior. An "Advanced" section, collapsed by default, SHALL contain the working folder and the process name, indicating when the name is detected automatically and offering an action to return to automatic mode when in manual mode. The "Wait for SimConnect" option SHALL be disabled, with a hint explaining why, when the profile's trigger is not MSFS 2020 or 2024. URL fields: name, URL, delay. Validation SHALL use the same schemas as persistence and show per-field errors.
 
-#### Scenario: Adicionar app pelo diálogo
-- **WHEN** o usuário clica em "Adicionar app" e seleciona um `.exe`
-- **THEN** nome, ícone e processo são preenchidos, e o usuário pode salvar sem abrir a seção Avançado
+#### Scenario: Add an app through the dialog
+- **WHEN** the user clicks "Add app" and selects an `.exe`
+- **THEN** name, icon and process are filled in, and the user can save without opening the Advanced section
 
-#### Scenario: Nome detectado automaticamente
-- **WHEN** o usuário abre a seção Avançado de um item em modo automático
-- **THEN** o campo do nome do processo mostra o nome atual com a indicação "detectado automaticamente"
+#### Scenario: Automatically detected name
+- **WHEN** the user opens the Advanced section of an item in automatic mode
+- **THEN** the process name field shows the current name with the "Detected automatically" label
 
-#### Scenario: Voltar ao modo automático
-- **WHEN** o item está em modo manual e o usuário clica em "Detectar automaticamente"
-- **THEN** o item volta para `processNameMode = auto` e o nome passa a ser mantido pelo sistema
+#### Scenario: Return to automatic mode
+- **WHEN** the item is in manual mode and the user clicks "Detect automatically"
+- **THEN** the item returns to `processNameMode = auto` and the name is maintained by the system
 
-#### Scenario: SimConnect indisponível para o gatilho
-- **WHEN** o perfil tem gatilho `X-Plane.exe` e o usuário abre o formulário de um app
-- **THEN** a opção "Aguardar o SimConnect" aparece desativada com a dica de que ela só vale para o MSFS 2020/2024
+#### Scenario: SimConnect unavailable for the trigger
+- **WHEN** the profile has trigger `X-Plane.exe` and the user opens an app's form
+- **THEN** the "Wait for SimConnect" option appears disabled with the hint that it only applies to MSFS 2020/2024

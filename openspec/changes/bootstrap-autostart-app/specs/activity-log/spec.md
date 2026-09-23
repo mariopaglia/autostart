@@ -1,34 +1,34 @@
 ## Purpose
 
-Dá visibilidade ao que o AutoStart fez em cada sessão e mantém um histórico técnico em disco para diagnóstico de problemas relatados pela comunidade.
+Gives visibility into what AutoStart did in each session and keeps a technical history on disk to diagnose problems reported by the community.
 
 ## ADDED Requirements
 
-### Requirement: Timeline da última sessão
-O sistema SHALL registrar, para a sessão atual ou a mais recente (real ou de teste), uma timeline de eventos com horário, item, tipo (sessão iniciada, aberto, pulado, fechado graciosamente, encerrado à força, mantido, erro, sessão encerrada) e mensagem. A timeline da última sessão SHALL sobreviver a um reinício do app.
+### Requirement: Last-session timeline
+The system SHALL record, for the current or most recent session (real or test), a timeline of events with time, item, kind (session started, launched, skipped, closed gracefully, force closed, kept, error, session ended) and message. The last-session timeline SHALL survive an app restart.
 
-#### Scenario: Visualizar sessão
-- **WHEN** o usuário abre a tela de Logs depois de um voo
-- **THEN** vê em ordem cronológica o que abriu, o que foi pulado, o que fechou e os erros
+#### Scenario: View session
+- **WHEN** the user opens the Logs screen after a flight
+- **THEN** they see, in chronological order, what was launched, what was skipped, what was closed and the errors
 
-#### Scenario: Após reiniciar o app
-- **WHEN** o AutoStart é reiniciado depois de uma sessão
-- **THEN** a tela de Logs ainda exibe a timeline daquela sessão
+#### Scenario: After restarting the app
+- **WHEN** AutoStart is restarted after a session
+- **THEN** the Logs screen still shows that session's timeline
 
-#### Scenario: Atualização ao vivo
-- **WHEN** a tela de Logs está aberta durante uma sessão
-- **THEN** novos eventos aparecem sem recarregar
+#### Scenario: Live update
+- **WHEN** the Logs screen is open during a session
+- **THEN** new events appear without reloading
 
-### Requirement: Log em arquivo rotativo
-O sistema SHALL gravar logs técnicos em arquivo no diretório de logs do app, com rotação por tamanho (máx. 5 MB por arquivo, mantendo os 5 arquivos mais recentes). A tela de configurações SHALL oferecer a ação de abrir a pasta de logs.
+### Requirement: Rotating file log
+The system SHALL write technical logs to files in the app log directory, with size-based rotation (max 5 MB per file, keeping the 5 most recent files). The settings screen SHALL offer an action to open the log folder.
 
-#### Scenario: Abrir pasta de logs
-- **WHEN** o usuário clica em "Abrir pasta de logs"
-- **THEN** o Explorer abre a pasta que contém os arquivos `.log`
+#### Scenario: Open log folder
+- **WHEN** the user clicks "Open log folder"
+- **THEN** Explorer opens the folder containing the `.log` files
 
-### Requirement: Sem dados sensíveis
-Os logs SHALL NOT conter conteúdo de argumentos marcados como sensíveis; o sistema SHALL registrar caminhos e nomes de processos, mas SHALL omitir os `args` dos itens nos arquivos de log.
+### Requirement: No sensitive data
+Logs SHALL NOT contain the content of arguments marked as sensitive; the system SHALL log paths and process names, but SHALL omit item `args` from the log files.
 
-#### Scenario: Args com token
-- **WHEN** um item tem `args = "--token abc123"`
-- **THEN** o arquivo de log registra a abertura do item sem o valor dos argumentos
+#### Scenario: Args with a token
+- **WHEN** an item has `args = "--token abc123"`
+- **THEN** the log file records the item launch without the argument values

@@ -1,58 +1,58 @@
 ## Context
 
-Projeto greenfield (repositório `mariopaglia/autostart`, público). Motivação e escopo estão em `proposal.md`, e o comportamento está nas specs em `specs/`. Restrições que moldam o design:
+Greenfield project (repository `mariopaglia/autostart`, public). Motivation and scope are in `proposal.md`, and behavior is in the specs under `specs/`. Constraints that shape the design:
 
-- Alvo: Windows 10/11 x64. O desenvolvimento acontece em **macOS**, e o comportamento real é validado em uma máquina Windows e no CI (`windows-latest`).
-- O mantenedor é sênior em TypeScript e não tem experiência com Rust. Por isso o Rust fica pequeno, plano e com poucas abstrações.
-- Convenções: código 100% em inglês, Clean Code e comentários só quando necessários (ver `CLAUDE.md`).
-- Entrega em 4 fases, com parada para validação ao fim de cada uma (ver `tasks.md`).
+- Target: Windows 10/11 x64. Development happens on **macOS**, and real behavior is validated on a Windows machine and in CI (`windows-latest`).
+- The maintainer is senior in TypeScript and has no Rust experience. So the Rust side stays small, flat and with few abstractions.
+- Conventions: code 100% in English, Clean Code and comments only when necessary (see `CLAUDE.md`).
+- Delivery in 4 phases, with a validation stop at the end of each (see `tasks.md`).
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Rust com responsabilidades claras: monitor, orquestração de launch/close, persistência e WinAPI. Todo o restante fica no frontend.
-- Contrato de tipos Rust ↔ TS verificado em tempo de compilação.
-- Máquina de estados testável sem o SO.
-- App compilando e com a UI utilizável no macOS para iterar rápido.
+- Rust with clear responsibilities: monitor, launch/close orchestration, persistence and WinAPI. Everything else lives in the frontend.
+- Rust ↔ TS type contract checked at compile time.
+- State machine testable without the OS.
+- App compiling and with a usable UI on macOS for fast iteration.
 
 **Non-Goals:**
-- Suporte oficial a macOS/Linux (os stubs existem só para desenvolvimento).
-- Monitorar vários perfis ao mesmo tempo (só o perfil ativo é observado).
-- Reduzir a elevação de itens abertos por um AutoStart elevado (herdam a elevação, ver Riscos).
-- Integração com SimConnect/estado do voo, telemetria ou contas de usuário.
-- Assinatura de código ativa (fica apenas preparada).
+- Official macOS/Linux support (the stubs exist only for development).
+- Monitoring several profiles at once (only the active profile is watched).
+- Dropping the elevation of items launched by an elevated AutoStart (they inherit elevation, see Risks).
+- Integration with SimConnect/flight state, telemetry or user accounts.
+- Active code signing (only prepared).
 
 ## Decisions
 
-### D1. Versões principais (verificadas em 22/09/2026)
+### D1. Main versions (checked on 2026-09-22)
 
-| Pacote | Versão | Observação |
+| Package | Version | Note |
 |---|---|---|
 | Tauri (`tauri` / `@tauri-apps/cli` / `@tauri-apps/api`) | 2.11.x | |
-| React / React DOM | 19.3.x | Escolhido no lugar do 18: o shadcn v4 não usa `forwardRef` |
+| React / React DOM | 19.3.x | Chosen over 18: shadcn v4 does not use `forwardRef` |
 | Vite / `@vitejs/plugin-react` | 8.3.x / 6.1.x | |
-| TypeScript | 5.9.x | Mais maduro no ecossistema (typescript-eslint, ts-rs) que o 7.x nativo |
-| Tailwind CSS / `@tailwindcss/vite` | 4.3.x | Configuração CSS-first, sem `tailwind.config.js` |
-| shadcn (CLI) | 4.x | Preset `radix-nova` (Radix + Lucide + Geist), base color neutral; `cn` vem do pacote oficial `cn` |
+| TypeScript | 5.9.x | More mature in the ecosystem (typescript-eslint, ts-rs) than native 7.x |
+| Tailwind CSS / `@tailwindcss/vite` | 4.3.x | CSS-first configuration, no `tailwind.config.js` |
+| shadcn (CLI) | 4.x | `radix-nova` preset (Radix + Lucide + Geist), neutral base color; `cn` comes from the official `cn` package |
 | lucide-react | 1.x | |
 | Zustand | 5.0.x | |
 | `@dnd-kit/core` / `@dnd-kit/sortable` | 6.3.x / 10.0.x | |
 | Zod | 4.x | |
 | i18next / react-i18next | 26.x / 17.x | |
 | Vitest | 5.x | |
-| Plugins Tauri (JS + Rust) | autostart 2.5, updater 2.12, dialog 2.7, opener 2.5, process 2.3, single-instance 2.4, log 2.9 | |
+| Tauri plugins (JS + Rust) | autostart 2.5, updater 2.12, dialog 2.7, opener 2.5, process 2.3, single-instance 2.4, log 2.9 | |
 | `sysinfo` | 0.39.x | |
-| `windows` | 0.62.x | Com features WinAPI específicas (ver D8) |
-| `tokio` | 1.x | Via runtime do Tauri (`tauri::async_runtime`) |
+| `windows` | 0.62.x | With specific WinAPI features (see D8) |
+| `tokio` | 1.x | Through the Tauri runtime (`tauri::async_runtime`) |
 | `serde` / `serde_json` | 1.x | |
 | `thiserror` | 2.x | |
-| `ts-rs` | 12.x | Gera tipos TS a partir do Rust |
+| `ts-rs` | 12.x | Generates TS types from Rust |
 | `uuid` | 1.x (v4) | |
-| `image` | latest, só feature `png` | Codifica o ícone extraído |
+| `image` | latest, `png` feature only | Encodes the extracted icon |
 
-Node 24 LTS e pnpm 10 (via `corepack enable`). No `.tool-versions`/`packageManager` fica a versão exata do pnpm.
+Node 24 LTS and pnpm 10 (via `corepack enable`). The exact pnpm version is pinned in `.tool-versions`/`packageManager`.
 
-### D2. Árvore de pastas
+### D2. Folder tree
 
 ```
 autostart/
@@ -71,27 +71,27 @@ autostart/
 ├── eslint.config.js
 ├── src/
 │   ├── main.tsx
-│   ├── App.tsx                   # layout + roteamento simples por estado (sem router)
-│   ├── index.css                 # Tailwind 4 + tokens de tema do shadcn
-│   ├── bindings/                 # GERADO pelo ts-rs (não editar)
+│   ├── App.tsx                   # layout + simple state-based routing (no router)
+│   ├── index.css                 # Tailwind 4 + shadcn theme tokens
+│   ├── bindings/                 # GENERATED by ts-rs (do not edit)
 │   ├── schemas/
 │   │   ├── profile.ts            # Zod: Profile, LaunchItem (discriminated union), Trigger
 │   │   ├── settings.ts
 │   │   └── *.test.ts
 │   ├── lib/
-│   │   ├── tauri.ts              # wrappers tipados de invoke/listen
+│   │   ├── tauri.ts              # typed invoke/listen wrappers
 │   │   ├── trigger-presets.ts
-│   │   └── utils.ts              # cn() do shadcn
+│   │   └── utils.ts              # shadcn cn()
 │   ├── stores/
 │   │   ├── profiles-store.ts
 │   │   ├── settings-store.ts
-│   │   └── monitor-store.ts      # estado do monitor, status dos itens, timeline
+│   │   └── monitor-store.ts      # monitor state, item statuses, timeline
 │   ├── i18n/
 │   │   ├── index.ts
 │   │   └── locales/{pt-BR,en}.json
 │   ├── hooks/                    # use-monitor-events, use-theme
 │   ├── components/
-│   │   ├── ui/                   # gerado pelo shadcn
+│   │   ├── ui/                   # generated by shadcn
 │   │   ├── layout/               # AppShell, Sidebar, TopBar
 │   │   ├── profiles/             # ProfileList, ProfileMenu, TriggerSelector, ProcessPicker
 │   │   ├── items/                # ItemList (dnd), ItemCard, ItemFormDialog, EmptyState
@@ -106,122 +106,122 @@ autostart/
     ├── build.rs
     ├── tauri.conf.json
     ├── capabilities/default.json
-    ├── icons/                    # ícones do app + tray-idle / tray-running / tray-paused
+    ├── icons/                    # app icons + tray-idle / tray-running / tray-paused
     └── src/
-        ├── main.rs               # só chama lib::run()
-        ├── lib.rs                # builder: plugins, state, setup, comandos
+        ├── main.rs               # only calls lib::run()
+        ├── lib.rs                # builder: plugins, state, setup, commands
         ├── error.rs              # AppError (thiserror) + Serialize
         ├── models.rs             # Profile, LaunchItem, Settings, MonitorSnapshot... (serde + ts-rs)
-        ├── storage.rs            # leitura/escrita atômica de JSON, defaults, migração
-        ├── commands.rs           # todos os #[tauri::command], finos, delegam aos módulos
+        ├── storage.rs            # atomic JSON read/write, defaults, migration
+        ├── commands.rs           # all #[tauri::command], thin, delegating to modules
         ├── monitor/
-        │   ├── mod.rs            # loop de polling + emissão de eventos
-        │   ├── state_machine.rs  # função pura de transição + testes
-        │   └── session.rs        # snapshot do perfil, itens abertos/preexistentes, timeline
-        ├── launcher.rs           # abrir itens (app/url/runas), aguardar processo
-        ├── closer.rs             # fechar itens (graceful/force), em paralelo
-        ├── processes.rs          # sysinfo: listar, procurar por nome
-        ├── tray.rs               # ícone, menu, atualização por estado/idioma
+        │   ├── mod.rs            # polling loop + event emission
+        │   ├── state_machine.rs  # pure transition function + tests
+        │   └── session.rs        # profile snapshot, launched/pre-existing items, timeline
+        ├── launcher.rs           # launch items (app/url/runas), wait for process
+        ├── closer.rs             # close items (graceful/force), in parallel
+        ├── processes.rs          # sysinfo: list, find by name
+        ├── tray.rs               # icon, menu, refresh on state/language
         └── platform/
-            ├── mod.rs            # API única re-exportando windows/ ou fallback
+            ├── mod.rs            # single API re-exporting windows/ or fallback
             ├── windows/
             │   ├── mod.rs
             │   ├── windows_close.rs   # EnumWindows + WM_CLOSE, TerminateProcess
             │   ├── elevation.rs       # is_elevated, ShellExecuteExW runas
-            │   └── exe_info.rs        # ícone + VersionInfo
-            └── fallback.rs       # stubs para macOS (kill via sysinfo, sem ícone, is_elevated=false)
+            │   └── exe_info.rs        # icon + VersionInfo
+            └── fallback.rs       # macOS stubs (kill via sysinfo, no icon, is_elevated=false)
 ```
 
-### D3. Rust como dono dos dados; JSON próprio no lugar de `plugin-store`/`plugin-fs`
-O monitor roda no Rust e precisa ler o perfil ativo e as configurações sem depender do frontend (a janela pode nem ter sido aberta). Por isso o Rust é a fonte de verdade: `storage.rs` lê e grava `profiles.json` e `settings.json` em `app_data_dir`, com `schemaVersion`, escrita atômica (grava em `*.tmp` e depois faz `rename`) e `#[serde(default)]` para campos novos. O estado em memória fica em `tauri::State<AppState>` com `Mutex`.
-- *Alternativa descartada:* `tauri-plugin-store`. Ficaria com duas fontes de verdade (JS e Rust) e ainda exigiria sincronização.
-- *Consequência:* `plugin-fs` e `plugin-store` saem da lista de dependências. Importar e exportar são comandos Rust que recebem o caminho escolhido no `plugin-dialog`.
+### D3. Rust owns the data; own JSON instead of `plugin-store`/`plugin-fs`
+The monitor runs in Rust and must read the active profile and settings without depending on the frontend (the window may never have been opened). So Rust is the source of truth: `storage.rs` reads and writes `profiles.json` and `settings.json` in `app_data_dir`, with `schemaVersion`, atomic writes (write to `*.tmp`, then `rename`) and `#[serde(default)]` for new fields. In-memory state lives in `tauri::State<AppState>` behind a `Mutex`.
+- *Rejected alternative:* `tauri-plugin-store`. It would create two sources of truth (JS and Rust) and still require synchronization.
+- *Consequence:* `plugin-fs` and `plugin-store` are dropped from the dependency list. Import and export are Rust commands that receive the path chosen in `plugin-dialog`.
 
-### D4. Contrato de tipos: ts-rs + Zod `satisfies`
-Os structs em `models.rs` derivam `TS` (ts-rs), com `#[serde(rename_all = "camelCase")]` e `LaunchItem` como `#[serde(tag = "type", rename_all = "lowercase")]`. `cargo test` gera `src/bindings/*.ts`. Os schemas Zod em `src/schemas/` são declarados como `satisfies z.ZodType<Profile>`. Se Rust e TS divergirem, o `pnpm typecheck` falha.
-- *Alternativa descartada:* tauri-specta, que gera também os comandos, mas adiciona mais peças móveis e macros para quem está aprendendo Rust.
+### D4. Type contract: ts-rs + Zod `satisfies`
+The structs in `models.rs` derive `TS` (ts-rs), with `#[serde(rename_all = "camelCase")]` and `LaunchItem` as `#[serde(tag = "type", rename_all = "lowercase")]`. `cargo test` generates `src/bindings/*.ts`. The Zod schemas in `src/schemas/` are declared with `satisfies z.ZodType<Profile>`. If Rust and TS diverge, `pnpm typecheck` fails.
+- *Rejected alternative:* tauri-specta, which also generates the commands but adds more moving parts and macros for someone learning Rust.
 
-### D5. Import/export com dupla validação
-`import_profile(path)` lê o arquivo e devolve `serde_json::Value` bruto. O frontend valida com Zod (mensagens de erro por campo, traduzidas), gera UUIDs novos e chama `save_profile`, que desserializa com serde (segunda barreira). `export_profile(id, path)` serializa o perfil completo, incluindo `iconBase64`, para os cards aparecerem com ícone na máquina de quem importa, mesmo antes de o caminho ser corrigido.
+### D5. Import/export with double validation
+`import_profile(path)` reads the file and returns a raw `serde_json::Value`. The frontend validates it with Zod (translated per-field error messages), generates new UUIDs and calls `save_profile`, which deserializes with serde (second barrier). `export_profile(id, path)` serializes the full profile, including `iconBase64`, so cards show their icons on the importer's machine even before the paths are fixed.
 
-### D6. Monitor: loop simples + máquina de estados pura
-- Uma task `tauri::async_runtime::spawn` com `tokio::time::interval(2s)` e `MissedTickBehavior::Skip`.
-- A cada tick: `System::refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing())` (só nomes e PIDs), e verifica se o gatilho existe.
-- `state_machine::next(state, Input) -> (State, Option<Action>)` é pura. `Input` pode ser `TriggerSeen`, `TriggerMissing`, `ClosingFinished`, `Pause` ou `Resume`. `Action` pode ser `StartSession` ou `EndSession`. O contador de ausências (2 ticks) fica dentro do estado `SimRunning { missed_ticks }`. Testes unitários cobrem todos os cenários da spec `process-monitor`.
-- Abertura e fechamento rodam em tasks separadas, para não travar o loop. O loop recebe `ClosingFinished` por um `tokio::sync::mpsc`.
-- Comandos da UI e da bandeja (pause/resume, test_launch/test_close) conversam com o monitor pelo mesmo canal (`MonitorCommand`), evitando locks cruzados.
-- Eventos: `monitor://state` (`MonitorSnapshot`), `monitor://item-status` (`{ itemId, status, message? }`) e `monitor://log` (`TimelineEntry`). `get_monitor_state` devolve o snapshot atual.
+### D6. Monitor: simple loop + pure state machine
+- One `tauri::async_runtime::spawn` task with `tokio::time::interval(2s)` and `MissedTickBehavior::Skip`.
+- On each tick: `System::refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing())` (names and PIDs only), then check whether the trigger exists.
+- `state_machine::next(state, Input) -> (State, Option<Action>)` is pure. `Input` can be `TriggerSeen`, `TriggerMissing`, `ClosingFinished`, `Pause` or `Resume`. `Action` can be `StartSession` or `EndSession`. The missed-tick counter (2 ticks) lives inside the `SimRunning { missed_ticks }` state. Unit tests cover every scenario in the `process-monitor` spec.
+- Launch and close run in separate tasks so they do not block the loop. The loop receives `ClosingFinished` through a `tokio::sync::mpsc`.
+- UI and tray commands (pause/resume, test_launch/test_close) talk to the monitor through the same channel (`MonitorCommand`), avoiding cross locks.
+- Events: `monitor://state` (`MonitorSnapshot`), `monitor://item-status` (`{ itemId, status, message? }`) and `monitor://log` (`TimelineEntry`). `get_monitor_state` returns the current snapshot.
 
 ### D7. Launch
-- App normal: `std::process::Command` com `CommandExt::raw_arg(args)` (os args chegam como string única, sem parsing nosso), `current_dir(workingDir ou pasta do exe)` e `creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)`, para o filho não morrer junto com o AutoStart.
-- `runAsAdmin`: `ShellExecuteExW` com `lpVerb = "runas"`. Se o usuário negar o UAC, a chamada retorna `ERROR_CANCELLED`, que mapeamos para `AppError::ElevationDenied`.
+- Regular app: `std::process::Command` with `CommandExt::raw_arg(args)` (args arrive as a single string, with no parsing on our side), `current_dir(workingDir or the exe folder)` and `creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)`, so the child does not die with AutoStart.
+- `runAsAdmin`: `ShellExecuteExW` with `lpVerb = "runas"`. If the user denies UAC, the call returns `ERROR_CANCELLED`, which we map to `AppError::ElevationDenied`.
 - URL: `tauri_plugin_opener::OpenerExt::open_url`.
-- Confirmação: depois de iniciar, faz polling do `processName` a cada 500 ms por até 10 s → `running`, ou `error` ("processo não detectado").
-- Tudo sequencial, com `tokio::time::sleep(delayMs)` antes de cada item.
+- Confirmation: after starting, poll for `processName` every 500 ms for up to 10 s → `running`, or `error` ("The process was not detected after launch").
+- Everything sequential, with `tokio::time::sleep(delayMs)` before each item.
 
 ### D8. Close (WinAPI)
-- Encontra os PIDs pelo `processName` com `sysinfo`.
-- Graceful: `EnumWindows` → `GetWindowThreadProcessId` → `PostMessageW(hwnd, WM_CLOSE)` para **todas** as janelas top-level do PID, inclusive as ocultas. É o mesmo que o `taskkill` sem `/F` faz, e cobre apps de bandeja como o JoyToKey. Depois faz polling a cada 250 ms até `gracefulTimeoutMs`. Os PIDs que sobrarem vão para o force.
-- Force: `OpenProcess(PROCESS_TERMINATE)` → `TerminateProcess`. `ERROR_ACCESS_DENIED` vira `AppError::AccessDenied` (mensagem da spec `privilege-elevation`).
-- Os itens são fechados em paralelo (`join_all`), com um timeout global de `gracefulTimeoutMs + 5s`.
-- Features do crate `windows`: `Win32_Foundation`, `Win32_UI_WindowsAndMessaging`, `Win32_System_Threading`, `Win32_Security`, `Win32_UI_Shell`, `Win32_Storage_FileSystem`, `Win32_Graphics_Gdi`.
-- Todo `unsafe` fica isolado em `platform/windows/`, com funções seguras por fora e um comentário curto de invariante em cada bloco.
+- Find the PIDs by `processName` with `sysinfo`.
+- Graceful: `EnumWindows` → `GetWindowThreadProcessId` → `PostMessageW(hwnd, WM_CLOSE)` for **all** top-level windows of the PID, including hidden ones. This is what `taskkill` without `/F` does, and it covers tray apps such as JoyToKey. Then poll every 250 ms until `gracefulTimeoutMs`. Remaining PIDs go to force.
+- Force: `OpenProcess(PROCESS_TERMINATE)` → `TerminateProcess`. `ERROR_ACCESS_DENIED` becomes `AppError::AccessDenied` (message from the `privilege-elevation` spec).
+- Items are closed in parallel (`join_all`), with a global timeout of `gracefulTimeoutMs + 5s`.
+- `windows` crate features: `Win32_Foundation`, `Win32_UI_WindowsAndMessaging`, `Win32_System_Threading`, `Win32_Security`, `Win32_UI_Shell`, `Win32_Storage_FileSystem`, `Win32_Graphics_Gdi`.
+- All `unsafe` code is isolated in `platform/windows/`, exposing safe functions, with a short invariant comment on each block.
 
-### D9. Inspeção de exe
-- Ícone: `SHGetFileInfoW(SHGFI_ICON | SHGFI_LARGEICON)` (ou `PrivateExtractIconsW` a 48px) → `GetIconInfo` + `GetDIBits` → buffer BGRA → RGBA → `image` PNG → base64. `DestroyIcon` e `DeleteObject` ficam em guards com `Drop`.
-- Metadados: `GetFileVersionInfoSizeW`/`GetFileVersionInfoW`/`VerQueryValueW` lendo a tradução em `\VarFileInfo\Translation`, depois `ProductName` → `FileDescription` → stem do arquivo.
-- No macOS, o stub devolve só o nome do arquivo.
+### D9. Exe inspection
+- Icon: `SHGetFileInfoW(SHGFI_ICON | SHGFI_LARGEICON)` (or `PrivateExtractIconsW` at 48px) → `GetIconInfo` + `GetDIBits` → BGRA buffer → RGBA → `image` PNG → base64. `DestroyIcon` and `DeleteObject` live in `Drop` guards.
+- Metadata: `GetFileVersionInfoSizeW`/`GetFileVersionInfoW`/`VerQueryValueW` reading the translation in `\VarFileInfo\Translation`, then `ProductName` → `FileDescription` → file stem.
+- On macOS, the stub returns only the file name.
 
-### D10. Elevação e reinício elevado × instância única
+### D10. Elevation and elevated restart × single instance
 - `is_elevated`: `OpenProcessToken` + `GetTokenInformation(TokenElevation)`.
-- Problema: a nova instância elevada esbarraria no `single-instance` e só focaria a antiga. Solução: `relaunch_as_admin` chama `ShellExecuteExW("runas", current_exe, "--wait-for-pid <pid>")`. Se der certo, a antiga chama `app.exit(0)`. A nova, no `main` e **antes** de construir o Tauri, detecta `--wait-for-pid` e espera o PID antigo morrer (timeout de 10 s). Só então registra o single-instance. Se o UAC for negado, a antiga continua viva e mostra o erro.
+- Problem: the new elevated instance would hit `single-instance` and just focus the old one. Solution: `relaunch_as_admin` calls `ShellExecuteExW("runas", current_exe, "--wait-for-pid <pid>")`. On success, the old instance calls `app.exit(0)`. The new one, in `main` and **before** building Tauri, detects `--wait-for-pid` and waits for the old PID to exit (10 s timeout). Only then does it register single-instance. If UAC is denied, the old instance stays alive and shows the error.
 
-### D11. Bandeja e janela
-- `TrayIconBuilder` (core do Tauri 2, feature `tray-icon`) com três ícones embutidos (`include_bytes!`). O `tray.rs` expõe `refresh(app)`, chamado quando mudam estado, perfis ou idioma, e reconstrói o menu (é pequeno, então reconstruir sai mais simples que atualizar item a item).
-- Os textos do menu da bandeja vêm de uma tabela pequena em Rust (`tray_labels(language)`), porque o menu existe antes de a webview carregar. São as únicas strings de UI fora do i18n do frontend, e ficam num único lugar.
+### D11. Tray and window
+- `TrayIconBuilder` (Tauri 2 core, `tray-icon` feature) with three embedded icons (`include_bytes!`). `tray.rs` exposes `refresh(app)`, called when the state, profiles or language change, and rebuilds the menu (it is small, so rebuilding is simpler than updating item by item).
+- Tray menu labels come from a small Rust table (`tray_labels(language)`), because the menu exists before the webview loads. They are the only UI strings outside the frontend i18n, and they live in a single place.
 - `on_window_event(CloseRequested)` → `api.prevent_close()` + `window.hide()`.
-- A janela nasce com `visible: false`. No `setup`, ela é exibida se `!startMinimized || !onboardingCompleted`. O autostart registra o argumento `--minimized` (tratado da mesma forma).
+- The window starts with `visible: false`. In `setup`, it is shown if `!startMinimized || !onboardingCompleted`. Autostart registers the `--minimized` argument (handled the same way).
 
 ### D12. Frontend
-- Sem router: `App.tsx` alterna entre as telas `main | logs | settings` com um estado do Zustand. O onboarding é um `Dialog` sobre a tela principal.
-- Stores: `profiles-store` (CRUD otimista + `invoke`), `settings-store` e `monitor-store` (alimentado pelo hook `useMonitorEvents`, que faz `get_monitor_state` na montagem e depois `listen`).
-- Formulários com `react-hook-form` + `@hookform/resolvers/zod` e os componentes `Field` do shadcn v4 (substituto do antigo `Form`) via `Controller`, reaproveitando os schemas.
-- dnd-kit: `DndContext` + `SortableContext` + `KeyboardSensor` com `sortableKeyboardCoordinates`, para atender o requisito de acessibilidade.
-- Tema: classe `dark` no `<html>`, com `matchMedia('(prefers-color-scheme: dark)')` quando o tema é `system`.
-- i18n: `i18next` com `fallbackLng: 'pt-BR'`. A troca de idioma chama `save_settings`, que dispara `tray::refresh`.
+- No router: `App.tsx` switches between the `main | logs | settings` screens with a Zustand state. Onboarding is a `Dialog` over the main screen.
+- Stores: `profiles-store` (optimistic CRUD + `invoke`), `settings-store` and `monitor-store` (fed by the `useMonitorEvents` hook, which calls `get_monitor_state` on mount and then `listen`).
+- Forms with `react-hook-form` + `@hookform/resolvers/zod` and shadcn v4 `Field` components (replacing the old `Form`) via `Controller`, reusing the schemas.
+- dnd-kit: `DndContext` + `SortableContext` + `KeyboardSensor` with `sortableKeyboardCoordinates`, to meet the accessibility requirement.
+- Theme: `dark` class on `<html>`, with `matchMedia('(prefers-color-scheme: dark)')` when the theme is `system`.
+- i18n: `i18next` with `fallbackLng: 'pt-BR'`. Changing the language calls `save_settings`, which triggers `tray::refresh`.
 
 ### D13. Logs
-- `tauri-plugin-log` com targets `LogDir` + `Stdout`, `RotationStrategy::KeepSome(5)` e `max_file_size(5 MB)`. Os `args` nunca são logados.
-- A timeline da sessão (`Vec<TimelineEntry>`) vive em `session.rs`, é emitida ao vivo e gravada em `last-session.json` ao fim de cada sessão ou teste.
+- `tauri-plugin-log` with `LogDir` + `Stdout` targets, `RotationStrategy::KeepSome(5)` and `max_file_size(5 MB)`. `args` are never logged.
+- The session timeline (`Vec<TimelineEntry>`) lives in `session.rs`, is emitted live and saved to `last-session.json` at the end of each session or test.
 
-### D14. Distribuição
-- `tauri.conf.json`: `bundle.targets = ["nsis"]`, `windows.nsis.installMode = "currentUser"`, `languages = ["PortugueseBR", "English"]`, `createUpdaterArtifacts = true`, e updater com `endpoints = ["https://github.com/mariopaglia/autostart/releases/latest/download/latest.json"]` e `pubkey` gerada por `pnpm tauri signer generate`.
-- `release.yml`: `on: push: tags: ['v*']`, `windows-latest`, pnpm + Rust cache, passo que compara a tag com a `version` do `tauri.conf.json` e `tauri-apps/tauri-action` com `tagName`/`releaseName`, publicando o `latest.json`. Secrets: `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
-- Azure Trusted Signing: `bundle.windows.signCommand` com `trusted-signing-cli` documentado no README e passo `azure/login` + variáveis (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_CLIENT_SECRET`, endpoint, account, certificate profile) comentados no workflow.
-- Identifier: `com.mariopaglia.autostart`. Licença: MIT.
+### D14. Distribution
+- `tauri.conf.json`: `bundle.targets = ["nsis"]`, `windows.nsis.installMode = "currentUser"`, `languages = ["PortugueseBR", "English"]`, `createUpdaterArtifacts = true`, and updater with `endpoints = ["https://github.com/mariopaglia/autostart/releases/latest/download/latest.json"]` and a `pubkey` generated by `pnpm tauri signer generate`.
+- `release.yml`: `on: push: tags: ['v*']`, `windows-latest`, pnpm + Rust cache, a step that compares the tag with the `version` in `tauri.conf.json`, and `tauri-apps/tauri-action` with `tagName`/`releaseName`, publishing `latest.json`. Secrets: `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+- Azure Trusted Signing: `bundle.windows.signCommand` with `trusted-signing-cli` documented in the README, and an `azure/login` step + variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_CLIENT_SECRET`, endpoint, account, certificate profile) commented out in the workflow.
+- Identifier: `com.mariopaglia.autostart`. License: MIT.
 
-### D16. Builds de preview para validação no Windows
-O mantenedor valida no Windows como usuário final, sem toolchain instalada. O workflow `preview-build.yml` roda só por disparo manual (botão "Run workflow" ou `gh workflow run`), acionado a cada checkpoint, e gera um artifact do GitHub Actions (retido por 14 dias) com o instalador NSIS e o `.exe` portátil, sem assinatura e sem artefatos do updater. Os checkpoints de cada fase são validados com esse artifact. Ele é independente do `release.yml` (D14), que continua sendo o único caminho para publicar versões.
+### D16. Preview builds for Windows validation
+The maintainer validates on Windows as an end user, with no toolchain installed. The `preview-build.yml` workflow runs only on manual dispatch (the "Run workflow" button or `gh workflow run`), triggered at each checkpoint, and produces a GitHub Actions artifact (kept for 14 days) with the NSIS installer and the portable `.exe`, unsigned and without updater artifacts. Each phase's checkpoints are validated with this artifact. It is independent of `release.yml` (D14), which remains the only path for publishing versions.
 
-### D15. Desenvolvimento no macOS
-`platform/fallback.rs` implementa a mesma API: close via `sysinfo::Process::kill_with(Signal::Term)` e depois `kill()`, ícone `None`, `is_elevated = false`, `runas` retorna erro "não suportado". O `sysinfo` funciona no macOS, então dá para testar o monitor de ponta a ponta usando um processo qualquer como gatilho (ex.: `TextEdit`). O `CommandExt::raw_arg` e as `creation_flags` ficam atrás de `#[cfg(windows)]`.
+### D15. Development on macOS
+`platform/fallback.rs` implements the same API: close via `sysinfo::Process::kill_with(Signal::Term)` and then `kill()`, icon `None`, `is_elevated = false`, `runas` returns a "not supported" error. `sysinfo` works on macOS, so the monitor can be tested end to end using any process as the trigger (e.g. `TextEdit`). `CommandExt::raw_arg` and `creation_flags` sit behind `#[cfg(windows)]`.
 
 ## Risks / Trade-offs
 
-- [O AutoStart elevado abre todos os itens elevados (herança de token)] → Documentar no README e no tooltip do banner. Reduzir a elevação via `explorer.exe`/token do shell fica como melhoria futura.
-- [O autostart do Windows não inicia apps elevados] → Quem precisa de elevação precisa reiniciar como admin manualmente ou usar o Agendador de Tarefas (documentado, não automatizado).
-- [Launchers com nome de processo imprevisível] → `processName` editável e seletor a partir dos processos em execução. O README ensina a descobrir o nome.
-- [Processos com o mesmo nome que não foram abertos pelo AutoStart (ex.: um segundo `chrome.exe`)] → O fechamento é por nome, por decisão explícita. Com `closeOnlyIfLaunchedByApp`, só age se o item não era preexistente. Itens URL nunca são fechados.
-- [Polling de 2 s + 2 ticks = até ~4-6 s para detectar o fechamento] → Aceitável para o caso de uso e evita falsos positivos quando o simulador se reinicia.
-- [SmartScreen alerta em instaladores não assinados] → Documentar ("Mais informações → Executar assim mesmo"). Assinatura Azure preparada.
-- [Não dá para testar WinAPI no Mac] → CI em `windows-latest` roda clippy e testes. Cada fase termina com um checklist de validação manual no Windows.
-- [ts-rs gera arquivos só ao rodar `cargo test`] → Script `pnpm bindings` e verificação no CI (`git diff --exit-code src/bindings`).
+- [An elevated AutoStart launches every item elevated (token inheritance)] → Document in the README and in the banner tooltip. Dropping elevation via `explorer.exe`/the shell token is left as a future improvement.
+- [Windows autostart does not start elevated apps] → Users who need elevation must restart as admin manually or use Task Scheduler (documented, not automated).
+- [Launchers with unpredictable process names] → Editable `processName` and a picker based on running processes. The README explains how to find the name.
+- [Processes with the same name that AutoStart did not launch (e.g. a second `chrome.exe`)] → Closing is by name, as an explicit decision. With `closeOnlyIfLaunchedByApp`, it only acts if the item was not pre-existing. URL items are never closed.
+- [2 s polling + 2 ticks = up to ~4-6 s to detect the exit] → Acceptable for the use case, and it avoids false positives when the simulator restarts itself.
+- [SmartScreen warns about unsigned installers] → Document it ("More info → Run anyway"). Azure signing is prepared.
+- [WinAPI cannot be tested on the Mac] → CI on `windows-latest` runs clippy and tests. Each phase ends with a manual validation checklist on Windows.
+- [ts-rs only generates files when `cargo test` runs] → `pnpm bindings` script and a CI check (`git diff --exit-code src/bindings`).
 
 ## Migration Plan
 
-Não se aplica (primeira versão). O rollback de releases é feito despublicando o release no GitHub: o `latest.json` volta a apontar para o release anterior.
+Not applicable (first version). Releases are rolled back by unpublishing the release on GitHub: `latest.json` then points back to the previous release.
 
 ## Open Questions
 
-- Artes finais do ícone do app e dos ícones de bandeja: começam com placeholders gerados por `pnpm tauri icon` e o mantenedor troca depois.
-- Texto de licença/créditos na seção "Sobre" (MIT assumido).
+- Final artwork for the app icon and tray icons: they start as placeholders generated by `pnpm tauri icon`, and the maintainer replaces them later.
+- License/credits text in the "About" section (MIT assumed).

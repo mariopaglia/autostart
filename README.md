@@ -6,184 +6,186 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4)
 
-Abre automaticamente os apps auxiliares do seu simulador de voo quando ele inicia e fecha tudo quando ele encerra.
+Automatically opens your flight simulator's helper apps when it starts and closes them all when it exits.
 
-> **English summary** — AutoStart is a free Windows tray app for virtual pilots. Pick a trigger process (e.g. `FlightSimulator2024.exe`), add your helper apps and websites (Volanta, Navigraph, SimBrief, SPAD.neXt…) and AutoStart launches them in order when the simulator starts and closes them when it exits. Download [AutoStart-Setup.exe](https://github.com/mariopaglia/autostart/releases/latest/download/AutoStart-Setup.exe) (always the latest version; per-user install, no admin rights). The app is available in Portuguese and English. Development instructions below work on Windows and macOS (macOS uses stubs for the Windows-only APIs).
+AutoStart is a free Windows tray app for virtual pilots. Pick a trigger process (e.g. `FlightSimulator2024.exe`), add your helper apps and websites (Volanta, Navigraph, SimBrief, SPAD.neXt…) and AutoStart launches them in order when the simulator starts and closes them when it exits. The app is available in Portuguese (Brazil) and English.
 
-## O que ele faz
+## What it does
 
-- **Perfis**: cada perfil tem um gatilho (o processo do simulador) e uma lista de itens (apps ou URLs).
-- **Abertura em ordem**: quando o gatilho aparece, os itens habilitados abrem na ordem da lista, com uma espera configurável antes de cada um. Apps que já estavam abertos são pulados.
-- **Fechamento inteligente**: quando o simulador fecha, cada app é fechado normalmente (como clicar no X), à força, ou mantido aberto, conforme você escolher. Por padrão, só é fechado o que o próprio AutoStart abriu.
-- **Discreto**: fica na bandeja do sistema, pode iniciar com o Windows e mostra um log de cada sessão.
+- **Profiles**: each profile has a trigger (the simulator process) and a list of items (apps or URLs).
+- **Ordered launch**: when the trigger appears, the enabled items open in list order, with a configurable delay before each one. Apps that are already running are skipped.
+- **Smart shutdown**: when the simulator exits, each app is closed normally (like clicking the X), force-closed, or kept open, as you choose. By default, only what AutoStart itself opened gets closed.
+- **Unobtrusive**: lives in the system tray, can start with Windows and keeps a log of every session.
 
-## Instalação
+## Installation
 
-1. Baixe o instalador **[AutoStart-Setup.exe](https://github.com/mariopaglia/autostart/releases/latest/download/AutoStart-Setup.exe)**. Esse link sempre entrega a versão mais recente; as notas de cada versão ficam na [página de releases](https://github.com/mariopaglia/autostart/releases/latest). Baixe **somente** por esses links oficiais.
-2. Execute o instalador. Ele instala só para o seu usuário, em `%LOCALAPPDATA%`, **sem pedir administrador**, e cria o atalho no menu Iniciar.
-3. **Aviso do SmartScreen**: como o instalador ainda não tem assinatura de código, o Windows pode mostrar "O Windows protegeu o computador". Clique em **Mais informações → Executar assim mesmo**.
+1. Download the **[AutoStart-Setup.exe](https://github.com/mariopaglia/autostart/releases/latest/download/AutoStart-Setup.exe)** installer. This link always serves the latest version; release notes for each version are on the [releases page](https://github.com/mariopaglia/autostart/releases/latest). Download **only** from these official links.
+2. Run the installer. It installs for your user only, under `%LOCALAPPDATA%`, **without asking for administrator rights**, and adds a Start menu shortcut.
+3. **SmartScreen warning**: since the installer is not code-signed yet, Windows may show "Windows protected your PC". Click **More info → Run anyway**.
 
-Para desinstalar, use **Configurações do Windows → Aplicativos → AutoStart → Desinstalar**.
+To uninstall, go to **Windows Settings → Apps → AutoStart → Uninstall**.
 
-### Atualizações
+### Updates
 
-O AutoStart verifica novas versões ao iniciar (dá para desligar em Configurações) e pelo botão **Verificar atualizações agora**. Toda atualização é assinada e só é instalada se a assinatura conferir com a chave pública embutida no app.
+AutoStart checks for new versions on startup (you can turn this off in Settings) and via the **Check for updates now** button. Every update is signed and is only installed if its signature matches the public key embedded in the app.
 
-## Como usar
+## How to use
 
-1. Na primeira execução, um assistente cria o perfil de exemplo e pergunta qual simulador você usa (MSFS 2024, MSFS 2020, X-Plane 12 ou personalizado).
-2. Na tela principal, use **Adicionar app** para escolher um `.exe` (nome, ícone e processo são preenchidos sozinhos) ou **Adicionar URL** para abrir um site.
-3. Arraste os cards para definir a ordem. O teclado também funciona: foque a alça, aperte Espaço e use as setas.
-4. Use **Testar abertura** e **Testar fechamento** para conferir tudo sem abrir o simulador.
-5. O perfil **ativo** (marcado na lista, também trocável pela bandeja) é o que o AutoStart observa.
+1. On first run, a wizard creates the sample profile and asks which simulator you use (MSFS 2024, MSFS 2020, X-Plane 12 or custom).
+2. On the main screen, use **Add app** to pick an `.exe` (name, icon and process are filled in automatically) or **Add URL** to open a website.
+3. Drag the cards to set the order. The keyboard works too: focus the handle, press Space and use the arrow keys.
+4. Use **Test launch** and **Test close** to check everything without opening the simulator.
+5. The **active** profile (marked in the list, also switchable from the tray) is the one AutoStart watches.
 
-### Nome do processo (detectado automaticamente)
+### Process name (detected automatically)
 
-O AutoStart identifica os apps pelo **nome do processo** (ex.: `Volanta.exe`), usado para saber se o app já estava aberto e para fechá-lo depois. Você não precisa configurar isso: basta escolher o executável.
+AutoStart identifies apps by their **process name** (e.g. `Volanta.exe`), which it uses to tell whether the app was already running and to close it later. You don't need to configure this: just pick the executable.
 
-Muitos apps usam um _launcher_: você abre `Launcher.exe`, ele inicia o app de verdade e encerra. Na primeira vez que o AutoStart abre o item (numa sessão ou em **Testar abertura**), ele acompanha os processos iniciados e salva sozinho o nome do processo que continua rodando. O resultado aparece em **Avançado → Nome do processo**, com a indicação "Detectado automaticamente", e na tela de Logs.
+Many apps use a _launcher_: you open `Launcher.exe`, it starts the real app and exits. The first time AutoStart opens the item (in a session or with **Test launch**), it follows the processes that get started and saves the name of the one that keeps running. The result shows up under **Advanced → Process name**, marked "Detected automatically", and on the Logs screen.
 
-Se a detecção errar, edite o campo em **Avançado**: o item passa para o modo manual e o AutoStart não altera mais o nome. O botão **Detectar automaticamente** volta ao modo automático. Para descobrir o nome certo:
+If detection gets it wrong, edit the field under **Advanced**: the item switches to manual mode and AutoStart no longer changes the name. The **Detect automatically** button switches back to automatic mode. To find the right name:
 
-- **Pelo AutoStart**: no seletor de gatilho, a lista "Processos em execução" mostra tudo o que está aberto agora.
-- **Pelo Gerenciador de Tarefas**: `Ctrl + Shift + Esc` → aba **Detalhes** → a coluna **Nome** mostra o executável.
+- **In AutoStart**: in the trigger picker, the "Running processes" list shows everything that is open right now.
+- **In Task Manager**: `Ctrl + Shift + Esc` → **Details** tab → the **Name** column shows the executable.
 
-### Abrir minimizado
+### Start minimized
 
-Ative **Abrir minimizado** no item para o app abrir direto na barra de tarefas, sem tirar o foco do simulador. O AutoStart pede ao Windows a janela minimizada e, nos primeiros 10 segundos, minimiza as janelas que o app abrir.
+Turn on **Start minimized** on an item to open the app straight to the taskbar without stealing focus from the simulator. AutoStart asks Windows for a minimized window and, for the first 10 seconds, minimizes any windows the app opens.
 
-Limitações: apps que abrem só na bandeja não têm o que minimizar (e funcionam normalmente); apps que restauram a própria janela depois desse período podem voltar a aparecer. Nesses casos, verifique se o próprio app tem uma opção de iniciar minimizado.
+Limitations: apps that open only in the tray have nothing to minimize (and work normally); apps that restore their own window after that period may pop back up. In those cases, check whether the app itself has a start-minimized option.
 
-### Aguardar o SimConnect (MSFS)
+### Wait for SimConnect (MSFS)
 
-Alguns addons precisam que o **SimConnect** do Microsoft Flight Simulator esteja pronto para funcionar. Ative **Aguardar o SimConnect** nesses itens:
+Some add-ons need Microsoft Flight Simulator's **SimConnect** to be ready before they work. Turn on **Wait for SimConnect** on those items:
 
-1. Quando o simulador abre, os itens **sem** essa opção abrem primeiro, na ordem da lista.
-2. Os itens **com** a opção ficam como "Aguardando SimConnect" e abrem, também na ordem, assim que o SimConnect aceita conexões (normalmente perto do menu principal).
-3. Se o SimConnect não ficar disponível em 10 minutos, esses itens ficam com erro.
+1. When the simulator starts, items **without** this option open first, in list order.
+2. Items **with** the option show as "Waiting for SimConnect" and open, also in order, as soon as SimConnect accepts connections (usually around the main menu).
+3. If SimConnect doesn't become available within 10 minutes, those items are marked as failed.
 
-A opção só funciona com os gatilhos do **MSFS 2020** (`FlightSimulator.exe`) e do **MSFS 2024** (`FlightSimulator2024.exe`). Em **Testar abertura**, a espera é ignorada para você conferir tudo sem o simulador. "SimConnect disponível" significa que o simulador aceita conexões de addons, não que o voo já foi carregado. Se você alterou o `SimConnect.xml` do simulador (nome do pipe ou só TCP), a detecção pode não funcionar.
+The option only works with the **MSFS 2020** (`FlightSimulator.exe`) and **MSFS 2024** (`FlightSimulator2024.exe`) triggers. **Test launch** skips the wait so you can check everything without the simulator. "SimConnect available" means the simulator accepts add-on connections, not that the flight has loaded. If you changed the simulator's `SimConnect.xml` (pipe name or TCP only), detection may not work.
 
-### Importar e exportar perfis
+### Importing and exporting profiles
 
-No menu `…` de um perfil, **Exportar** salva um arquivo `.json` que pode ser compartilhado. **Importar perfil** (na barra lateral) valida o arquivo e cria uma cópia com identificadores novos. Se os caminhos dos apps forem diferentes no seu PC, edite os itens depois de importar (os cards mostram um aviso quando o executável não existe).
+In a profile's `…` menu, **Export** saves a `.json` file you can share. **Import profile** (in the sidebar) validates the file and creates a copy with new identifiers. If app paths differ on your PC, edit the items after importing (cards show a warning when the executable doesn't exist).
 
-### Apps que precisam de administrador
+### Apps that need administrator rights
 
-- Marque **Executar como administrador** no item. O Windows vai pedir confirmação (UAC) na hora de abrir.
-- Para **fechar** um app que roda como administrador, o AutoStart também precisa estar elevado. Nesse caso a tela principal mostra um aviso com o botão **Reiniciar como administrador**.
-- Com o AutoStart elevado, todos os apps abertos por ele também herdam a elevação.
-- O "Iniciar com o Windows" não inicia o AutoStart elevado. Se você precisa disso sempre, crie uma tarefa no **Agendador de Tarefas** com "Executar com privilégios mais altos" apontando para o `autostart.exe` com o argumento `--minimized`.
+- Check **Run as administrator** on the item. Windows will ask for confirmation (UAC) when it opens.
+- To **close** an app running as administrator, AutoStart must be elevated too. In that case the main screen shows a warning with a **Restart as administrator** button.
+- While AutoStart is elevated, every app it opens inherits the elevation.
+- "Start with Windows" does not start AutoStart elevated. If you always need that, create a **Task Scheduler** task with "Run with highest privileges" pointing to `autostart.exe` with the `--minimized` argument.
 
-### Onde ficam os dados
+### Where data is stored
 
-| O quê                                  | Onde                                             |
-| -------------------------------------- | ------------------------------------------------ |
-| Perfis, configurações e última sessão  | `%APPDATA%\com.mariopaglia.autostart\`           |
-| Logs técnicos (5 arquivos de até 5 MB) | `%LOCALAPPDATA%\com.mariopaglia.autostart\logs\` |
+| What                                        | Where                                            |
+| ------------------------------------------- | ------------------------------------------------ |
+| Profiles, settings and last session         | `%APPDATA%\com.mariopaglia.autostart\`           |
+| Technical logs (5 files of up to 5 MB each) | `%LOCALAPPDATA%\com.mariopaglia.autostart\logs\` |
 
-A tela de Configurações tem o botão **Abrir pasta de logs**. Os logs registram nomes e caminhos, mas nunca os argumentos dos apps. Ao relatar um problema, anexe o arquivo de log mais recente.
+The Settings screen has an **Open log folder** button. Logs record app names and paths, but never their arguments. When reporting a problem, attach the most recent log file.
 
-## Desenvolvimento
+## Development
 
-Stack: Tauri 2, React 19, TypeScript, Vite, Tailwind CSS 4 + shadcn/ui, Zustand, Zod e i18next no frontend; Rust com `sysinfo`, `windows`, `tokio` e `ts-rs` no backend. O planejamento fica em [`openspec/`](openspec/) e as convenções de código em [`CLAUDE.md`](CLAUDE.md).
+Stack: Tauri 2, React 19, TypeScript, Vite, Tailwind CSS 4 + shadcn/ui, Zustand, Zod and i18next on the frontend; Rust with `sysinfo`, `windows`, `tokio` and `ts-rs` on the backend. Planning lives in [`openspec/`](openspec/) and code conventions in [`CLAUDE.md`](CLAUDE.md).
 
-### Pré-requisitos
+### Prerequisites
 
-- [Node.js 24 LTS](https://nodejs.org/) e pnpm (fixado em `package.json`): `corepack enable`
-- [Rust estável](https://rustup.rs/)
-- **Windows**: [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (carga "Desenvolvimento para desktop com C++") e o WebView2 (já vem no Windows 10/11 atualizado)
+- [Node.js 24 LTS](https://nodejs.org/) and pnpm (pinned in `package.json`): `corepack enable`
+- [Stable Rust](https://rustup.rs/)
+- **Windows**: [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) ("Desktop development with C++" workload) and WebView2 (included in up-to-date Windows 10/11)
 - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
 
-Detalhes em [Tauri — Prerequisites](https://v2.tauri.app/start/prerequisites/).
+Details in [Tauri — Prerequisites](https://v2.tauri.app/start/prerequisites/).
 
-### Rodando
+### Running
 
 ```bash
 pnpm install
 pnpm tauri dev
 ```
 
-A janela nasce oculta quando **Iniciar minimizado** está ligado (padrão). Nesse caso, clique no ícone da bandeja (ou da barra de menus, no macOS).
+The window starts hidden when **Start minimized** is on (the default). In that case, click the tray icon (or the menu bar icon on macOS).
 
-**No macOS**, as APIs exclusivas do Windows (ícone do executável, elevação, fechamento por janela) usam os stubs de `src-tauri/src/platform/fallback.rs`. O monitor funciona de ponta a ponta: use qualquer processo do Mac como gatilho (ex.: `TextEdit.exe`, já que o nome do gatilho precisa terminar em `.exe`; no Mac o AutoStart compara o nome sem a extensão).
+**On macOS**, the Windows-only APIs (executable icon, elevation, window-based closing) use the stubs in `src-tauri/src/platform/fallback.rs`. The monitor works end to end: use any Mac process as the trigger (e.g. `TextEdit.exe`, since the trigger name must end in `.exe`; on the Mac, AutoStart compares the name without the extension).
 
-### Verificações
+### Checks
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm test          # frontend
 cd src-tauri && cargo clippy --all-targets -- -D warnings && cargo test   # Rust
 ```
 
-`cargo test` também regenera os tipos TypeScript em `src/bindings/` a partir dos structs Rust (`pnpm bindings` faz só isso). O CI (`.github/workflows/ci.yml`, em `windows-latest`) roda tudo isso em cada push e falha se os bindings estiverem desatualizados.
+`cargo test` also regenerates the TypeScript types in `src/bindings/` from the Rust structs (`pnpm bindings` does only that). CI (`.github/workflows/ci.yml`, on `windows-latest`) runs all of this on every push and fails if the bindings are out of date. It also runs Windows-only integration tests that drive real processes and windows through the Win32 APIs (`src-tauri/src/platform/windows/tests.rs`, compiled only on Windows).
 
 ### Build
 
 ```bash
-pnpm tauri build --bundles nsis --config src-tauri/tauri.preview.conf.json
+pnpm tauri build --config '{"bundle":{"createUpdaterArtifacts":false}}'
 ```
 
-O instalador fica em `src-tauri/target/release/bundle/nsis/`. O `tauri.preview.conf.json` desliga os artefatos do updater, que exigem a chave privada. Sem precisar de toolchain local, o workflow **Preview build** (aba Actions → Run workflow, ou `gh workflow run preview-build.yml --ref <branch>`) gera o instalador e o `.exe` portátil como artifact.
+The inline config turns off the updater artifacts, which need the private signing key. The installer lands in `src-tauri/target/release/bundle/nsis/`.
 
-## Publicação (mantenedor)
+## Publishing (maintainer)
 
-### Chaves do updater
+### Updater keys
 
-Feito uma única vez. **Perder a chave privada impede para sempre as atualizações automáticas** das instalações existentes; guarde a chave e a senha num gerenciador de senhas.
+Done only once. **Losing the private key permanently breaks automatic updates** for existing installs; keep the key and its password in a password manager.
 
-1. Gere o par de chaves num terminal interativo (a senha é pedida duas vezes):
+1. Generate the key pair in an interactive terminal (the password is asked twice):
 
    ```bash
    pnpm tauri signer generate -w ~/.tauri/autostart.key
    chmod 600 ~/.tauri/autostart.key
    ```
 
-2. Coloque o conteúdo de `~/.tauri/autostart.key.pub` em `plugins.updater.pubkey` no `src-tauri/tauri.conf.json`. A chave pública pode ficar no repositório.
-3. Cadastre os secrets do repositório (a chave privada **nunca** entra no repositório):
+2. Put the contents of `~/.tauri/autostart.key.pub` in `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`. The public key can live in the repository.
+3. Add the repository secrets (the private key **never** goes into the repository):
 
    ```bash
    gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/autostart.key
-   gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD   # cole a senha quando pedir
+   gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD   # paste the password when prompted
    ```
 
-### Lançando uma versão
+### Releasing a version
 
-1. Atualize a mesma versão em `package.json`, `src-tauri/Cargo.toml` e `src-tauri/tauri.conf.json` e faça o commit no `main`.
-2. Crie e envie a tag:
+1. While developing, add user-facing entries under `## [Unreleased]` in `CHANGELOG.md`. The release fails if that section is empty.
+2. When ready, open **Actions → Release → Run workflow** on `main` and choose `patch`, `minor` or `major` (or run `gh workflow run release.yml -f bump=patch`). The optional `dry_run` input builds and smoke-tests the installer without publishing anything, and works from any branch.
+3. The **Release** workflow (`.github/workflows/release.yml`):
+   1. runs all CI checks;
+   2. bumps the version in `package.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and `src-tauri/tauri.conf.json`, and turns the Unreleased section into `## [X.Y.Z] - date`;
+   3. commits `chore: release X.Y.Z` (authored by `github-actions[bot]`) and creates the tag `vX.Y.Z`;
+   4. builds and uploads the installer `AutoStart-Setup.exe` (fixed name, so the direct download link never changes), its `.sig` signature and `latest.json` (the file installed apps check for updates) to a **draft** release, using the changelog section as release notes;
+   5. smoke-tests the installer: silent install, launch, check that the app stays alive, uninstall;
+   6. only then pushes the commit to `main` and publishes the release.
 
-   ```bash
-   git tag v0.2.0
-   git push origin v0.2.0
-   ```
+If any step fails, the draft release and the tag are deleted and `main` is left untouched. Installed apps only see published releases, so a broken build never reaches users.
 
-3. O workflow **Release** (`.github/workflows/release.yml`) confere se a tag bate com a versão dos três arquivos (senão falha antes de publicar), builda no `windows-latest` e publica o release com o instalador `AutoStart-Setup.exe` (nome fixo, para o link de download direto nunca mudar), a assinatura `.sig` e o `latest.json`, que é o arquivo que os apps instalados consultam.
+To pull a version, delete its release on GitHub: `latest.json` falls back to the previous release's.
 
-Para tirar uma versão do ar, apague o release no GitHub: o `latest.json` volta a ser o do release anterior.
+### Code signing (Azure Trusted Signing)
 
-### Assinatura de código (Azure Trusted Signing)
+Prepared but disabled. With it, SmartScreen stops warning and Windows shows the installer's publisher.
 
-Preparada, mas desativada. Com ela, o SmartScreen para de alertar e o Windows mostra o editor do instalador.
-
-1. Crie uma conta do [Azure Trusted Signing](https://learn.microsoft.com/azure/trusted-signing/) com um perfil de certificado e um App Registration com a função _Trusted Signing Certificate Profile Signer_.
-2. Cadastre no repositório:
+1. Create an [Azure Trusted Signing](https://learn.microsoft.com/azure/trusted-signing/) account with a certificate profile, and an App Registration with the _Trusted Signing Certificate Profile Signer_ role.
+2. Add to the repository:
    - Secrets: `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`
-   - Variables: `AZURE_SIGNING_ENDPOINT` (ex.: `https://eus.codesigning.azure.net`), `AZURE_SIGNING_ACCOUNT`, `AZURE_CERTIFICATE_PROFILE`
-3. No `release.yml`, descomente o passo **Install Azure Trusted Signing CLI** e as variáveis `AZURE_*` e `TAURI_CONFIG` do passo **Build and publish release**. O `TAURI_CONFIG` define o `bundle.windows.signCommand` usando o [`trusted-signing-cli`](https://github.com/Levminer/trusted-signing-cli):
+   - Variables: `AZURE_SIGNING_ENDPOINT` (e.g. `https://eus.codesigning.azure.net`), `AZURE_SIGNING_ACCOUNT`, `AZURE_CERTIFICATE_PROFILE`
+3. In `release.yml`, uncomment the **Install Azure Trusted Signing CLI** step and the `AZURE_*` and `TAURI_CONFIG` variables of the **Build and upload to a draft release** step. `TAURI_CONFIG` sets `bundle.windows.signCommand` using [`trusted-signing-cli`](https://github.com/Levminer/trusted-signing-cli):
 
    ```
-   trusted-signing-cli -e <endpoint> -a <conta> -c <perfil> -d AutoStart %1
+   trusted-signing-cli -e <endpoint> -a <account> -c <profile> -d AutoStart %1
    ```
 
-Os próximos releases saem com o instalador e o executável assinados.
+From then on, releases ship with a signed installer and executable.
 
-## Comunidade
+## Community
 
-- **Contribuindo**: leia o [guia de contribuição](CONTRIBUTING.md) antes de abrir um pull request.
-- **Bugs e ideias**: use as [issues](https://github.com/mariopaglia/autostart/issues/new/choose), com os modelos prontos.
-- **Segurança**: relate vulnerabilidades de forma privada, conforme a [Política de Segurança](SECURITY.md).
-- **Conduta**: todos os espaços do projeto seguem o [Código de Conduta](CODE_OF_CONDUCT.md).
-- **Novidades**: cada versão está descrita no [CHANGELOG](CHANGELOG.md).
+- **Contributing**: read the [contributing guide](CONTRIBUTING.md) before opening a pull request.
+- **Bugs and ideas**: open an [issue](https://github.com/mariopaglia/autostart/issues/new/choose) using the provided templates.
+- **Security**: report vulnerabilities privately, as described in the [Security Policy](SECURITY.md).
+- **Conduct**: every project space follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+- **What's new**: every version is described in the [CHANGELOG](CHANGELOG.md).
 
-## Licença
+## License
 
 [MIT](LICENSE) © Mario Paglia

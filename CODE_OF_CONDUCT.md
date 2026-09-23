@@ -1,19 +1,17 @@
-# Código de Conduta
+# Code of Conduct
 
-> **English** — This project adopts the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). Report unacceptable behavior privately to the maintainer as described below.
+This project adopts the [Contributor Covenant, version 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/) as the code of conduct for all project spaces: issues, pull requests, discussions and any channel where someone represents the project.
 
-Este projeto adota o [Contributor Covenant, versão 2.1](https://www.contributor-covenant.org/pt-br/version/2/1/code_of_conduct/) como código de conduta para todos os espaços do projeto: issues, pull requests, discussões e qualquer canal em que alguém represente o projeto.
+## In short
 
-## Em resumo
+We want a welcoming community for virtual pilots and developers of every experience level. We expect:
 
-Queremos uma comunidade acolhedora para pilotos virtuais e desenvolvedores de qualquer nível de experiência. Esperamos:
+- respect and empathy, including in technical disagreements;
+- constructive criticism, focused on the work and not on people;
+- taking responsibility for our own mistakes and being willing to learn from them.
 
-- respeito e empatia, inclusive em discordâncias técnicas;
-- críticas construtivas, focadas no trabalho e não nas pessoas;
-- responsabilidade pelos próprios erros e disposição para aprender com eles.
+Not accepted: harassment, offensive language or imagery, personal attacks, publishing others' private information without permission, or any other conduct inappropriate in a professional setting.
 
-Não são aceitos: assédio, linguagem ou imagens ofensivas, ataques pessoais, exposição de dados privados de terceiros sem permissão, nem qualquer conduta inadequada em um ambiente profissional.
+## Reporting
 
-## Como relatar
-
-Relate comportamentos inadequados de forma privada ao mantenedor, pelo contato do perfil [@mariopaglia](https://github.com/mariopaglia) no GitHub. Todas as denúncias serão analisadas com confidencialidade, e as medidas seguem as diretrizes de aplicação do Contributor Covenant: correção, advertência, suspensão temporária ou banimento permanente.
+Report unacceptable behavior privately to the maintainer through the contact on the [@mariopaglia](https://github.com/mariopaglia) GitHub profile. All reports will be reviewed confidentially, and actions follow the Contributor Covenant enforcement guidelines: correction, warning, temporary ban or permanent ban.

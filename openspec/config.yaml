@@ -6,14 +6,16 @@ context: |
   Distributed for free to the maintainer's YouTube community (public repo mariopaglia/autostart).
   Stack: Tauri 2, React 19 + TypeScript + Vite, Tailwind CSS 4 + shadcn/ui, lucide-react, Zustand,
   dnd-kit, Zod, i18next. Rust: sysinfo, windows, serde, tokio, thiserror, ts-rs. pnpm.
-  Development happens on macOS (non-Windows stubs); real behavior is validated on Windows / CI.
+  Development happens on macOS (non-Windows stubs); real behavior is validated by Windows CI tests and on the published release.
   Maintainer is a senior TS fullstack dev with no Rust experience: keep the Rust layer small and idiomatic.
 
 rules:
   proposal:
-    - Planning docs are written in Portuguese (pt-BR)
+    - Planning docs are written in English
   design:
     - Code identifiers, file names and examples in English
   tasks:
     - Code is always in English, following Clean Code; comments only when necessary (why, unsafe, WinAPI quirks)
-    - Group tasks into phases ending with a validation checkpoint for the maintainer
+    - Every task that changes behavior includes its automated tests; Windows-only behavior gets integration tests in src-tauri/src/platform/windows/tests.rs
+    - End with a task adding the user-facing changes under "## [Unreleased]" in CHANGELOG.md
+    - No preview-build checkpoints: the maintainer validates on the published release (manual Release workflow)

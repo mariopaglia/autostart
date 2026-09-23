@@ -1,42 +1,42 @@
 ## Why
 
-Antes de voar ou fazer live, pilotos virtuais abrem manualmente vários programas auxiliares (Navigraph Charts, Volanta, JoyToKey, SPAD.neXt, PilotUI, sites etc.) e, ao fechar o simulador, esses programas continuam abertos consumindo recursos. O AutoStart elimina esse ritual: fica na bandeja, detecta quando o simulador abre ou fecha e sobe/derruba o "kit" do piloto automaticamente, sem mudar a forma como ele abre o simulador. O app é gratuito e será distribuído para a comunidade do canal do YouTube do mantenedor.
+Before flying or streaming, virtual pilots manually open several helper programs (Navigraph Charts, Volanta, JoyToKey, SPAD.neXt, PilotUI, websites, etc.), and after the simulator closes those programs stay open, consuming resources. AutoStart removes this ritual: it sits in the tray, detects when the simulator starts or exits, and brings the pilot's "kit" up or down automatically, without changing how the simulator is launched. The app is free and will be distributed to the community of the maintainer's YouTube channel.
 
 ## What Changes
 
-Projeto greenfield. Esta change cria o aplicativo completo, versão 0.1.0:
+Greenfield project. This change creates the complete application, version 0.1.0:
 
-- App desktop Windows em Tauri 2 (React 19 + TypeScript + Vite, Tailwind 4 + shadcn/ui, Zustand, dnd-kit, Zod, i18next) com núcleo em Rust enxuto.
-- **Perfis** com um processo gatilho e uma lista ordenada de itens (apps `.exe` ou URLs), com persistência em JSON no app data dir, além de importação e exportação validadas por schema.
-- **Monitor de processos** em segundo plano (polling a cada 2s) com máquina de estados `Idle → SimRunning → Closing → Idle`, pausável.
-- **Abertura orquestrada** dos itens (ordem, delay, detecção de app já aberto, execução como administrador) e **fechamento** gracioso (WM_CLOSE → timeout → TerminateProcess) ou forçado, identificando processos por nome.
-- **Inspeção de executáveis**: ícone, nome do produto e nome do processo extraídos do `.exe`; lista de processos em execução para escolher o gatilho.
-- **Integração com o sistema**: bandeja com ícone por estado e menu, fechar janela = minimizar para a bandeja, instância única, iniciar com o Windows, iniciar minimizado, detecção de elevação com opção de reiniciar como administrador.
-- **UI**: tela principal estilo stream deck (sidebar de perfis, cards arrastáveis, barra de status do monitor, testar abertura/fechamento), formulário de item, timeline de logs da última sessão, configurações, onboarding na primeira execução, i18n pt-BR/en e tema claro/escuro/sistema.
-- **Distribuição**: instalador NSIS per-user, auto update via GitHub Releases (repo público `mariopaglia/autostart`), workflow do GitHub Actions disparado por tag `v*`, passo de assinatura Azure Trusted Signing preparado e comentado, README.
-- Convenções de código (inglês, Clean Code, poucos comentários) registradas em `CLAUDE.md`.
+- Windows desktop app on Tauri 2 (React 19 + TypeScript + Vite, Tailwind 4 + shadcn/ui, Zustand, dnd-kit, Zod, i18next) with a lean Rust core.
+- **Profiles** with a trigger process and an ordered list of items (`.exe` apps or URLs), persisted as JSON in the app data dir, plus schema-validated import and export.
+- Background **process monitor** (polling every 2s) with an `Idle → SimRunning → Closing → Idle` state machine that can be paused.
+- **Orchestrated launch** of items (order, delay, detection of already-running apps, run as administrator) and graceful (WM_CLOSE → timeout → TerminateProcess) or forced **closing**, identifying processes by name.
+- **Executable inspection**: icon, product name and process name extracted from the `.exe`; list of running processes to pick the trigger from.
+- **System integration**: tray with per-state icon and menu, closing the window minimizes to the tray, single instance, start with Windows, start minimized, elevation detection with an option to restart as administrator.
+- **UI**: stream deck-style main screen (profile sidebar, draggable cards, monitor status bar, test launch/close), item form, last-session log timeline, settings, first-run onboarding, pt-BR/en i18n and light/dark/system theme.
+- **Distribution**: per-user NSIS installer, auto update via GitHub Releases (public repo `mariopaglia/autostart`), GitHub Actions workflow triggered by `v*` tags, Azure Trusted Signing step prepared and commented out, README.
+- Code conventions (English, Clean Code, few comments) recorded in `CLAUDE.md`.
 
 ## Capabilities
 
 ### New Capabilities
-- `profile-management`: perfis, itens de abertura (app/URL), perfil ativo, persistência, importação/exportação com validação.
-- `app-settings`: configurações globais persistidas e seus valores padrão.
-- `process-monitor`: detecção do processo gatilho, máquina de estados, pausa e eventos de estado.
-- `launch-orchestration`: abertura ordenada dos itens, detecção de preexistentes, registro do que foi aberto, fechamento gracioso/forçado, testes manuais de abertura/fechamento.
-- `executable-inspection`: extração de ícone/metadados de `.exe` e listagem de processos em execução.
-- `privilege-elevation`: execução de itens como administrador, detecção de elevação e reinício elevado.
-- `desktop-integration`: bandeja, instância única, fechar para a bandeja, iniciar com o Windows, iniciar minimizado.
-- `app-interface`: telas (principal, formulário de item, logs, configurações), onboarding, i18n e tema.
-- `activity-log`: timeline da última sessão e log em arquivo rotativo.
-- `app-distribution`: instalador, auto update, pipeline de release e documentação.
+- `profile-management`: profiles, launch items (app/URL), active profile, persistence, validated import/export.
+- `app-settings`: persisted global settings and their default values.
+- `process-monitor`: trigger process detection, state machine, pause and state events.
+- `launch-orchestration`: ordered item launch, detection of pre-existing apps, tracking of what was launched, graceful/forced closing, manual launch/close tests.
+- `executable-inspection`: icon/metadata extraction from `.exe` files and listing of running processes.
+- `privilege-elevation`: running items as administrator, elevation detection and elevated restart.
+- `desktop-integration`: tray, single instance, close to tray, start with Windows, start minimized.
+- `app-interface`: screens (main, item form, logs, settings), onboarding, i18n and theme.
+- `activity-log`: last-session timeline and rotating file log.
+- `app-distribution`: installer, auto update, release pipeline and documentation.
 
 ### Modified Capabilities
-<!-- Nenhuma: não há specs existentes. -->
+<!-- None: there are no existing specs. -->
 
 ## Impact
 
-- **Código novo**: `src/` (frontend), `src-tauri/` (Rust), `.github/workflows/`, `README.md`, `CLAUDE.md`.
-- **Dependências**: Tauri 2 e plugins (tray via core, autostart, updater, dialog, opener, single-instance, log, process); crates `sysinfo`, `windows`, `serde`, `tokio`, `thiserror`, `ts-rs`, `uuid`, `image`.
-- **Sistemas externos**: GitHub Releases (endpoint do updater, precisa ser público), GitHub Actions (secrets `TAURI_SIGNING_PRIVATE_KEY` e `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`), opcionalmente Azure Trusted Signing.
-- **Plataforma**: alvo exclusivo Windows 10/11 x64. O desenvolvimento acontece no macOS com stubs e a validação real é feita no Windows.
-- **Desvios do pedido original** (detalhados no design.md): React 19 no lugar do 18, persistência em JSON via Rust no lugar de `plugin-store`/`plugin-fs`, e comentários mínimos no código.
+- **New code**: `src/` (frontend), `src-tauri/` (Rust), `.github/workflows/`, `README.md`, `CLAUDE.md`.
+- **Dependencies**: Tauri 2 and plugins (tray via core, autostart, updater, dialog, opener, single-instance, log, process); crates `sysinfo`, `windows`, `serde`, `tokio`, `thiserror`, `ts-rs`, `uuid`, `image`.
+- **External systems**: GitHub Releases (updater endpoint, must be public), GitHub Actions (secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`), optionally Azure Trusted Signing.
+- **Platform**: Windows 10/11 x64 only. Development happens on macOS with stubs, and real validation is done on Windows.
+- **Deviations from the original request** (detailed in design.md): React 19 instead of 18, JSON persistence through Rust instead of `plugin-store`/`plugin-fs`, and minimal code comments.

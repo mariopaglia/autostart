@@ -1,12 +1,12 @@
 ## MODIFIED Requirements
 
-### Requirement: Eventos para a interface
-O monitor SHALL emitir eventos para o frontend a cada mudança de estado do monitor, a cada mudança de status de item (`pending`, `waitingSimConnect`, `launching`, `running`, `skipped`, `closing`, `closed`, `error`) e a cada entrada de log. O estado atual SHALL também estar disponível sob demanda.
+### Requirement: Events for the interface
+The monitor SHALL emit events to the frontend on every monitor state change, on every item status change (`pending`, `waitingSimConnect`, `launching`, `running`, `skipped`, `closing`, `closed`, `error`) and on every log entry. The current state SHALL also be available on demand.
 
-#### Scenario: Janela aberta depois do início
-- **WHEN** a janela é aberta a partir da bandeja no meio de uma sessão
-- **THEN** a UI consulta o estado atual e exibe o status do monitor e de cada item corretamente
+#### Scenario: Window opened after the start
+- **WHEN** the window is opened from the tray in the middle of a session
+- **THEN** the UI queries the current state and correctly shows the status of the monitor and of each item
 
-#### Scenario: Item aguardando o SimConnect
-- **WHEN** um item passa a aguardar o SimConnect durante a sessão
-- **THEN** a UI recebe o status `waitingSimConnect` do item sem precisar recarregar
+#### Scenario: Item waiting for SimConnect
+- **WHEN** an item starts waiting for SimConnect during the session
+- **THEN** the UI receives the item's `waitingSimConnect` status without needing to reload

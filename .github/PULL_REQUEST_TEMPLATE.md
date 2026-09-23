@@ -1,16 +1,16 @@
-## O que muda / What changes
+## What changes
 
-<!-- Descreva a mudança e o motivo. Referencie a issue: "Closes #123". -->
+<!-- Describe the change and why. Reference the issue: "Closes #123". -->
 
-## Como foi testado / How it was tested
+## How it was tested
 
-<!-- Testes automatizados, e o que foi validado manualmente no Windows (e/ou macOS). -->
+<!-- Automated tests, and what was validated manually on Windows (and/or macOS). -->
 
 ## Checklist
 
-- [ ] `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test` passam
-- [ ] `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test` passam
-- [ ] Bindings em `src/bindings/` regenerados, se structs Rust mudaram
-- [ ] Textos novos da interface em `pt-BR.json` e `en.json`
-- [ ] Código em inglês e commits no padrão Conventional Commits
-- [ ] `CHANGELOG.md` atualizado, se a mudança afeta o usuário
+- [ ] `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test` pass
+- [ ] `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test` pass
+- [ ] Bindings in `src/bindings/` regenerated, if Rust structs changed
+- [ ] New UI strings added to both `pt-BR.json` and `en.json`
+- [ ] Code in English and commits following Conventional Commits
+- [ ] `CHANGELOG.md` updated under `## [Unreleased]`, if the change affects users

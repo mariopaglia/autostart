@@ -1,78 +1,78 @@
 ## Purpose
 
-Permite ao piloto organizar seus programas auxiliares em perfis, cada um associado a um processo gatilho (simulador), com uma lista ordenada de apps e URLs a abrir e fechar.
+Lets the pilot organize their helper programs into profiles, each tied to a trigger process (simulator), with an ordered list of apps and URLs to open and close.
 
 ## ADDED Requirements
 
-### Requirement: Estrutura de perfil
-O sistema SHALL armazenar perfis com `id` (UUID), `name` (não vazio), `trigger` (`processName` terminando em `.exe` e `label`), `items` (lista ordenada de itens) e `enabled` (boolean).
+### Requirement: Profile structure
+The system SHALL store profiles with `id` (UUID), `name` (non-empty), `trigger` (`processName` ending in `.exe` and `label`), `items` (ordered list of items) and `enabled` (boolean).
 
-#### Scenario: Criar perfil
-- **WHEN** o usuário cria um perfil chamado "Live MSFS 2024" com gatilho `FlightSimulator2024.exe`
-- **THEN** o perfil é persistido com um UUID novo, `enabled = true` e lista de itens vazia
+#### Scenario: Create profile
+- **WHEN** the user creates a profile named "Live MSFS 2024" with trigger `FlightSimulator2024.exe`
+- **THEN** the profile is persisted with a new UUID, `enabled = true` and an empty item list
 
-#### Scenario: Nome inválido
-- **WHEN** o usuário tenta salvar um perfil com nome vazio ou só com espaços
-- **THEN** o sistema rejeita o salvamento e exibe erro de validação no campo
+#### Scenario: Invalid name
+- **WHEN** the user tries to save a profile with an empty or whitespace-only name
+- **THEN** the system rejects the save and shows a validation error on the field
 
-### Requirement: Itens do tipo app
-Um item `app` SHALL conter `id`, `name`, `exePath`, `args` opcional, `workingDir` opcional, `processName`, `iconBase64` opcional, `delayMs` (padrão 800, entre 0 e 60000), `runAsAdmin` (padrão false), `onClose` (`graceful` | `force` | `keep`, padrão `graceful`) e `enabled` (padrão true). O `processName` SHALL ser editável pelo usuário para cobrir apps cujo launcher dispara um processo com outro nome.
+### Requirement: App items
+An `app` item SHALL contain `id`, `name`, `exePath`, optional `args`, optional `workingDir`, `processName`, optional `iconBase64`, `delayMs` (default 800, between 0 and 60000), `runAsAdmin` (default false), `onClose` (`graceful` | `force` | `keep`, default `graceful`) and `enabled` (default true). The `processName` SHALL be editable by the user to cover apps whose launcher spawns a process with a different name.
 
-#### Scenario: processName divergente do exe
-- **WHEN** o usuário adiciona `C:\Apps\Volanta\Launcher.exe` e altera o `processName` para `Volanta.exe`
-- **THEN** a detecção de preexistência e o fechamento usam `Volanta.exe`
+#### Scenario: processName different from the exe
+- **WHEN** the user adds `C:\Apps\Volanta\Launcher.exe` and changes the `processName` to `Volanta.exe`
+- **THEN** pre-existence detection and closing use `Volanta.exe`
 
-### Requirement: Itens do tipo URL
-Um item `url` SHALL conter `id`, `name`, `url` (apenas `http` ou `https`), `delayMs` e `enabled`. Itens URL SHALL NOT ser fechados pelo sistema.
+### Requirement: URL items
+A `url` item SHALL contain `id`, `name`, `url` (`http` or `https` only), `delayMs` and `enabled`. URL items SHALL NOT be closed by the system.
 
-#### Scenario: URL inválida
-- **WHEN** o usuário informa `ftp://exemplo.com` ou texto que não é URL
-- **THEN** o formulário rejeita o valor com mensagem de validação
+#### Scenario: Invalid URL
+- **WHEN** the user enters `ftp://example.com` or text that is not a URL
+- **THEN** the form rejects the value with a validation message
 
-### Requirement: Operações sobre perfis
-O sistema SHALL permitir criar, renomear, duplicar e excluir perfis, além de reordenar, habilitar/desabilitar, editar e remover itens. Duplicar SHALL gerar novos UUIDs para o perfil e todos os itens e adicionar o sufixo " (cópia)"/" (copy)" conforme o idioma.
+### Requirement: Profile operations
+The system SHALL allow creating, renaming, duplicating and deleting profiles, as well as reordering, enabling/disabling, editing and removing items. Duplicating SHALL generate new UUIDs for the profile and all its items and add the suffix " (cópia)"/" (copy)" according to the language.
 
-#### Scenario: Reordenar itens
-- **WHEN** o usuário arrasta o terceiro item para a primeira posição
-- **THEN** a nova ordem é persistida e passa a ser usada na próxima abertura
+#### Scenario: Reorder items
+- **WHEN** the user drags the third item to the first position
+- **THEN** the new order is persisted and used on the next launch
 
-#### Scenario: Excluir o perfil ativo
-- **WHEN** o usuário exclui o perfil ativo e existem outros perfis
-- **THEN** o primeiro perfil restante vira o ativo
+#### Scenario: Delete the active profile
+- **WHEN** the user deletes the active profile and other profiles exist
+- **THEN** the first remaining profile becomes the active one
 
-#### Scenario: Excluir o último perfil
-- **WHEN** o usuário tenta excluir o único perfil existente
-- **THEN** o sistema impede a exclusão e informa que deve existir ao menos um perfil
+#### Scenario: Delete the last profile
+- **WHEN** the user tries to delete the only existing profile
+- **THEN** the system prevents the deletion and explains that at least one profile must exist
 
-### Requirement: Perfil ativo
-Exatamente um perfil SHALL estar ativo por vez, e apenas o perfil ativo é considerado pelo monitor. Um perfil ativo com `enabled = false` SHALL fazer o monitor ignorar o gatilho.
+### Requirement: Active profile
+Exactly one profile SHALL be active at a time, and only the active profile is considered by the monitor. An active profile with `enabled = false` SHALL make the monitor ignore the trigger.
 
-#### Scenario: Trocar perfil ativo
-- **WHEN** o usuário seleciona outro perfil como ativo (pela UI ou pela bandeja)
-- **THEN** `activeProfileId` é persistido e o monitor passa a observar o gatilho do novo perfil
+#### Scenario: Switch active profile
+- **WHEN** the user selects another profile as active (from the UI or the tray)
+- **THEN** `activeProfileId` is persisted and the monitor starts watching the new profile's trigger
 
-### Requirement: Persistência durável
-Perfis e configurações SHALL ser persistidos em arquivos JSON no diretório de dados do app, com campo de versão de schema e escrita atômica, de modo que uma queda durante a gravação não corrompa o arquivo anterior.
+### Requirement: Durable persistence
+Profiles and settings SHALL be persisted as JSON files in the app data directory, with a schema version field and atomic writes, so that a crash during a write does not corrupt the previous file.
 
-#### Scenario: Reinício do app
-- **WHEN** o app é encerrado e aberto novamente
-- **THEN** perfis, ordem dos itens, perfil ativo e configurações são restaurados sem alterações
+#### Scenario: App restart
+- **WHEN** the app is closed and opened again
+- **THEN** profiles, item order, active profile and settings are restored unchanged
 
-#### Scenario: Arquivo corrompido
-- **WHEN** o arquivo de perfis existe mas não é um JSON válido
-- **THEN** o sistema renomeia o arquivo para `.corrupt-<timestamp>`, inicia com o perfil de exemplo e registra um erro no log
+#### Scenario: Corrupted file
+- **WHEN** the profiles file exists but is not valid JSON
+- **THEN** the system renames the file to `.corrupt-<timestamp>`, starts with the example profile and logs an error
 
-### Requirement: Exportar e importar perfil
-O sistema SHALL exportar um perfil para um arquivo `.json` escolhido pelo usuário e importar perfis de arquivos `.json` validados pelo mesmo schema. A importação SHALL gerar novos UUIDs e SHALL NOT sobrescrever perfis existentes.
+### Requirement: Export and import profile
+The system SHALL export a profile to a `.json` file chosen by the user and import profiles from `.json` files validated by the same schema. Import SHALL generate new UUIDs and SHALL NOT overwrite existing profiles.
 
-#### Scenario: Importação válida
-- **WHEN** o usuário importa um arquivo exportado por outro piloto
-- **THEN** um novo perfil aparece na sidebar com os itens do arquivo
+#### Scenario: Valid import
+- **WHEN** the user imports a file exported by another pilot
+- **THEN** a new profile appears in the sidebar with the file's items
 
-#### Scenario: Importação inválida
-- **WHEN** o arquivo não segue o schema (campo obrigatório ausente, tipo errado)
-- **THEN** nada é salvo e o usuário vê uma mensagem indicando o campo inválido
+#### Scenario: Invalid import
+- **WHEN** the file does not follow the schema (missing required field, wrong type)
+- **THEN** nothing is saved and the user sees a message pointing to the invalid field
 
-#### Scenario: Caminhos inexistentes após importar
-- **WHEN** um item importado aponta para um `exePath` que não existe nesta máquina
-- **THEN** o card do item exibe um aviso de "executável não encontrado"
+#### Scenario: Missing paths after import
+- **WHEN** an imported item points to an `exePath` that does not exist on this machine
+- **THEN** the item's card shows an "Executable not found" warning

@@ -1,55 +1,55 @@
 ## Purpose
 
-Observa continuamente os processos do sistema para detectar quando o simulador (processo gatilho do perfil ativo) inicia ou encerra, disparando a abertura e o fechamento dos itens.
+Continuously watches system processes to detect when the simulator (the active profile's trigger process) starts or exits, triggering the launch and closing of items.
 
 ## ADDED Requirements
 
-### Requirement: Detecção do gatilho por nome
-O monitor SHALL verificar a cada 2 segundos se existe algum processo cujo nome de executável corresponda ao `trigger.processName` do perfil ativo, com comparação sem diferenciar maiúsculas de minúsculas.
+### Requirement: Trigger detection by name
+The monitor SHALL check every 2 seconds whether any process exists whose executable name matches the active profile's `trigger.processName`, using a case-insensitive comparison.
 
-#### Scenario: Simulador inicia
-- **WHEN** o estado é `idle` e surge um processo `flightsimulator2024.exe`, com gatilho configurado como `FlightSimulator2024.exe`
-- **THEN** em até 2 segundos o estado muda para `simRunning` e a abertura dos itens começa
+#### Scenario: Simulator starts
+- **WHEN** the state is `idle` and a `flightsimulator2024.exe` process appears, with the trigger configured as `FlightSimulator2024.exe`
+- **THEN** within 2 seconds the state changes to `simRunning` and item launch begins
 
-### Requirement: Máquina de estados
-O monitor SHALL operar com os estados `idle`, `simRunning`, `closing` e `paused`, com as transições: `idle → simRunning` (gatilho detectado), `simRunning → closing` (gatilho ausente em 2 verificações consecutivas), `closing → idle` (fechamento concluído), qualquer estado → `paused` (usuário pausa) e `paused → idle` (usuário retoma). Enquanto estiver em `closing`, o monitor SHALL NOT iniciar nova abertura.
+### Requirement: State machine
+The monitor SHALL operate with the states `idle`, `simRunning`, `closing` and `paused`, with the transitions: `idle → simRunning` (trigger detected), `simRunning → closing` (trigger missing in 2 consecutive checks), `closing → idle` (closing finished), any state → `paused` (user pauses) and `paused → idle` (user resumes). While in `closing`, the monitor SHALL NOT start a new launch.
 
-#### Scenario: Simulador encerra
-- **WHEN** o estado é `simRunning` e o gatilho está ausente em duas verificações seguidas
-- **THEN** o estado muda para `closing`, os itens são fechados conforme as regras e o estado volta para `idle`
+#### Scenario: Simulator exits
+- **WHEN** the state is `simRunning` and the trigger is missing in two consecutive checks
+- **THEN** the state changes to `closing`, the items are closed according to the rules and the state returns to `idle`
 
-#### Scenario: Oscilação momentânea
-- **WHEN** o gatilho some em uma verificação e reaparece na seguinte
-- **THEN** o estado permanece `simRunning` e nada é fechado
+#### Scenario: Momentary flapping
+- **WHEN** the trigger disappears in one check and reappears in the next
+- **THEN** the state stays `simRunning` and nothing is closed
 
-#### Scenario: Simulador reaberto durante o fechamento
-- **WHEN** o gatilho reaparece enquanto o estado é `closing`
-- **THEN** o fechamento termina, o estado vai para `idle` e, na verificação seguinte, entra em `simRunning` e abre os itens novamente
+#### Scenario: Simulator reopened during closing
+- **WHEN** the trigger reappears while the state is `closing`
+- **THEN** closing finishes, the state goes to `idle` and, on the next check, it enters `simRunning` and launches the items again
 
-### Requirement: Pausa do monitoramento
-O usuário SHALL poder pausar e retomar o monitoramento pela bandeja e pela UI. Pausar durante `simRunning` SHALL NOT fechar os itens abertos, e a sessão em andamento SHALL ser descartada.
+### Requirement: Monitoring pause
+The user SHALL be able to pause and resume monitoring from the tray and from the UI. Pausing during `simRunning` SHALL NOT close the launched items, and the ongoing session SHALL be discarded.
 
-#### Scenario: Pausar com simulador aberto
-- **WHEN** o usuário pausa com o simulador aberto e depois fecha o simulador
-- **THEN** nenhum item é fechado
+#### Scenario: Pause with the simulator running
+- **WHEN** the user pauses with the simulator running and then closes the simulator
+- **THEN** no item is closed
 
-### Requirement: App iniciado com o simulador já aberto
-Se o gatilho já estiver em execução quando o AutoStart iniciar (ou quando o monitoramento for retomado), o monitor SHALL entrar em `simRunning` e executar a abertura normalmente, com itens já em execução marcados como preexistentes.
+### Requirement: App started with the simulator already running
+If the trigger is already running when AutoStart starts (or when monitoring is resumed), the monitor SHALL enter `simRunning` and launch normally, with already-running items marked as pre-existing.
 
-#### Scenario: AutoStart aberto depois do simulador
-- **WHEN** o AutoStart inicia com o MSFS já rodando e o Volanta já aberto
-- **THEN** o Volanta é marcado como `skipped` (preexistente) e os demais itens habilitados são abertos
+#### Scenario: AutoStart opened after the simulator
+- **WHEN** AutoStart starts with MSFS already running and Volanta already open
+- **THEN** Volanta is marked `skipped` (pre-existing) and the other enabled items are launched
 
-### Requirement: Snapshot do perfil na sessão
-A sessão SHALL usar uma cópia do perfil ativo tirada no momento da transição para `simRunning`. Edições no perfil ou a troca de perfil ativo durante a sessão SHALL NOT afetar o fechamento dessa sessão.
+### Requirement: Profile snapshot for the session
+The session SHALL use a copy of the active profile taken at the moment of the transition to `simRunning`. Edits to the profile or switching the active profile during the session SHALL NOT affect that session's closing.
 
-#### Scenario: Troca de perfil durante o voo
-- **WHEN** o usuário troca o perfil ativo com o simulador aberto
-- **THEN** ao fechar o simulador, são fechados os itens do perfil que abriu a sessão
+#### Scenario: Profile switch during a flight
+- **WHEN** the user switches the active profile with the simulator running
+- **THEN** when the simulator exits, the items of the profile that opened the session are closed
 
-### Requirement: Eventos para a interface
-O monitor SHALL emitir eventos para o frontend a cada mudança de estado do monitor, a cada mudança de status de item (`pending`, `launching`, `running`, `skipped`, `closing`, `closed`, `error`) e a cada entrada de log. O estado atual SHALL também estar disponível sob demanda.
+### Requirement: Events for the interface
+The monitor SHALL emit events to the frontend on every monitor state change, on every item status change (`pending`, `launching`, `running`, `skipped`, `closing`, `closed`, `error`) and on every log entry. The current state SHALL also be available on demand.
 
-#### Scenario: Janela aberta depois do início
-- **WHEN** a janela é aberta a partir da bandeja no meio de uma sessão
-- **THEN** a UI consulta o estado atual e exibe o status do monitor e de cada item corretamente
+#### Scenario: Window opened after the start
+- **WHEN** the window is opened from the tray in the middle of a session
+- **THEN** the UI queries the current state and correctly shows the status of the monitor and of each item

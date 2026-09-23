@@ -1,36 +1,35 @@
-name: Relatar um bug / Report a bug
-description: Algo não funcionou como esperado. / Something did not work as expected.
+name: Report a bug
+description: Something did not work as expected.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Obrigado por relatar! Falhas de segurança **não** devem ser relatadas aqui: veja a [Política de Segurança](https://github.com/mariopaglia/autostart/blob/main/SECURITY.md).
         Thanks for reporting! Security issues must **not** be reported here: see the [Security Policy](https://github.com/mariopaglia/autostart/blob/main/SECURITY.md).
   - type: input
     id: version
     attributes:
-      label: Versão do AutoStart / AutoStart version
-      description: Configurações → Sobre / Settings → About
-      placeholder: "0.1.0"
+      label: AutoStart version
+      description: Settings → About
+      placeholder: "0.2.0"
     validations:
       required: true
   - type: input
     id: windows
     attributes:
-      label: Versão do Windows / Windows version
+      label: Windows version
       placeholder: "Windows 11 23H2"
     validations:
       required: true
   - type: input
     id: simulator
     attributes:
-      label: Simulador e apps envolvidos / Simulator and apps involved
+      label: Simulator and apps involved
       placeholder: "MSFS 2024, Volanta, SPAD.neXt"
   - type: textarea
     id: steps
     attributes:
-      label: Passos para reproduzir / Steps to reproduce
+      label: Steps to reproduce
       placeholder: |
         1. ...
         2. ...
@@ -39,19 +38,17 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: O que você esperava / Expected behavior
+      label: Expected behavior
     validations:
       required: true
   - type: textarea
     id: actual
     attributes:
-      label: O que aconteceu / Actual behavior
+      label: Actual behavior
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
       label: Logs
-      description: |
-        Configurações → Abrir pasta de logs. Anexe o arquivo `.log` mais recente (revise antes de enviar).
-        Settings → Open log folder. Attach the most recent `.log` file (review it before sending).
+      description: Settings → Open log folder. Attach the most recent `.log` file (review it before sending).

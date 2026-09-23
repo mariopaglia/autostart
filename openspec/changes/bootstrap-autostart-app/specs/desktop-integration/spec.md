@@ -1,58 +1,58 @@
 ## Purpose
 
-Faz o AutoStart se comportar como um utilitário de bandeja discreto: sempre disponível, com uma única instância, iniciando junto com o Windows se o usuário quiser.
+Makes AutoStart behave like an unobtrusive tray utility: always available, with a single instance, starting with Windows if the user wants.
 
 ## ADDED Requirements
 
-### Requirement: Ícone na bandeja por estado
-O app SHALL exibir um ícone na bandeja do sistema com variantes visuais distintas para `idle`, `simRunning`/`closing` e `paused`, e um tooltip com o nome do app, o perfil ativo e o estado atual.
+### Requirement: Per-state tray icon
+The app SHALL show a system tray icon with distinct visual variants for `idle`, `simRunning`/`closing` and `paused`, and a tooltip with the app name, the active profile and the current state.
 
-#### Scenario: Simulador abre
-- **WHEN** o monitor entra em `simRunning`
-- **THEN** o ícone da bandeja muda para a variante "rodando" e o tooltip indica "Simulador em execução"
+#### Scenario: Simulator starts
+- **WHEN** the monitor enters `simRunning`
+- **THEN** the tray icon switches to the "running" variant and the tooltip shows "Simulator running"
 
-### Requirement: Menu da bandeja
-O menu da bandeja SHALL conter: um submenu com os perfis (o ativo marcado) que permite trocar o perfil ativo, "Pausar monitoramento"/"Retomar monitoramento", "Abrir AutoStart" e "Sair". Os textos SHALL seguir o idioma configurado, e o menu SHALL refletir mudanças de perfis sem reiniciar o app.
+### Requirement: Tray menu
+The tray menu SHALL contain: a submenu with the profiles (the active one checked) that allows switching the active profile, "Pause monitoring"/"Resume monitoring", "Open AutoStart" and "Quit". The labels SHALL follow the configured language, and the menu SHALL reflect profile changes without restarting the app.
 
-#### Scenario: Trocar perfil pela bandeja
-- **WHEN** o usuário escolhe outro perfil no submenu
-- **THEN** ele vira o ativo, e a UI (se aberta) reflete a troca
+#### Scenario: Switch profile from the tray
+- **WHEN** the user picks another profile in the submenu
+- **THEN** it becomes the active one, and the UI (if open) reflects the change
 
-#### Scenario: Clique no ícone
-- **WHEN** o usuário clica com o botão esquerdo no ícone da bandeja
-- **THEN** a janela principal é exibida e focada
+#### Scenario: Icon click
+- **WHEN** the user left-clicks the tray icon
+- **THEN** the main window is shown and focused
 
-### Requirement: Fechar janela minimiza para a bandeja
-Fechar a janela principal SHALL escondê-la sem encerrar o app. Apenas "Sair" no menu da bandeja SHALL encerrar o processo. Sair durante `simRunning` SHALL NOT fechar os itens abertos.
+### Requirement: Closing the window minimizes to the tray
+Closing the main window SHALL hide it without quitting the app. Only "Quit" in the tray menu SHALL terminate the process. Quitting during `simRunning` SHALL NOT close the launched items.
 
-#### Scenario: Fechar no X
-- **WHEN** o usuário clica no X da janela
-- **THEN** a janela some, o ícone continua na bandeja e o monitor segue ativo
+#### Scenario: Close with the X
+- **WHEN** the user clicks the window's X
+- **THEN** the window disappears, the icon stays in the tray and the monitor keeps running
 
-### Requirement: Instância única
-Iniciar o AutoStart quando ele já está em execução SHALL apenas exibir e focar a janela da instância existente.
+### Requirement: Single instance
+Starting AutoStart when it is already running SHALL only show and focus the existing instance's window.
 
-#### Scenario: Duplo clique no atalho
-- **WHEN** o usuário abre o AutoStart pelo menu Iniciar com o app já rodando na bandeja
-- **THEN** nenhuma nova instância fica rodando e a janela existente é exibida em primeiro plano
+#### Scenario: Double click on the shortcut
+- **WHEN** the user opens AutoStart from the Start menu while the app is already running in the tray
+- **THEN** no new instance keeps running and the existing window is brought to the foreground
 
-### Requirement: Iniciar com o Windows
-Quando `startWithWindows` estiver ativo, o app SHALL ser registrado para iniciar no login do usuário (sem elevação); quando desativado, o registro SHALL ser removido. O estado exibido SHALL refletir o registro real do sistema.
+### Requirement: Start with Windows
+When `startWithWindows` is enabled, the app SHALL be registered to start at user login (without elevation); when disabled, the registration SHALL be removed. The displayed state SHALL reflect the actual system registration.
 
-#### Scenario: Ativar autostart
-- **WHEN** o usuário ativa "Iniciar com o Windows" e reinicia o computador
-- **THEN** o AutoStart inicia no login, conforme a configuração `startMinimized`
+#### Scenario: Enable autostart
+- **WHEN** the user enables "Start with Windows" and restarts the computer
+- **THEN** AutoStart starts at login, according to the `startMinimized` setting
 
-### Requirement: Iniciar minimizado
-Quando `startMinimized` estiver ativo, o app SHALL iniciar apenas na bandeja, sem exibir a janela. Na primeira execução (onboarding pendente), a janela SHALL ser exibida independentemente dessa configuração.
+### Requirement: Start minimized
+When `startMinimized` is enabled, the app SHALL start in the tray only, without showing the window. On first run (onboarding pending), the window SHALL be shown regardless of this setting.
 
-#### Scenario: Início minimizado
-- **WHEN** o app inicia com `startMinimized = true` e o onboarding concluído
-- **THEN** somente o ícone da bandeja aparece
+#### Scenario: Minimized start
+- **WHEN** the app starts with `startMinimized = true` and onboarding completed
+- **THEN** only the tray icon appears
 
-### Requirement: Janela principal
-A janela SHALL ser redimensionável, com tamanho inicial de 1000x680, tamanho mínimo de 800x560 e título "AutoStart".
+### Requirement: Main window
+The window SHALL be resizable, with an initial size of 1000x680, a minimum size of 800x560 and the title "AutoStart".
 
-#### Scenario: Redimensionar
-- **WHEN** o usuário tenta reduzir a janela abaixo de 800x560
-- **THEN** a janela para no tamanho mínimo
+#### Scenario: Resize
+- **WHEN** the user tries to shrink the window below 800x560
+- **THEN** the window stops at the minimum size

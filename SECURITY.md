@@ -1,33 +1,31 @@
-# Política de Segurança
+# Security Policy
 
-> **English** — Please do not report security issues in public issues. Use GitHub's [private vulnerability reporting](https://github.com/mariopaglia/autostart/security/advisories/new). Only the latest release receives fixes.
+## Supported versions
 
-## Versões suportadas
+Only the latest version published on [Releases](https://github.com/mariopaglia/autostart/releases/latest) receives security fixes. AutoStart itself notifies you when a new version is available.
 
-Apenas a versão mais recente publicada em [Releases](https://github.com/mariopaglia/autostart/releases/latest) recebe correções de segurança. O próprio AutoStart avisa quando há uma versão nova.
+## Reporting a vulnerability
 
-## Como relatar uma vulnerabilidade
+**Do not open a public issue.** Use GitHub's [private vulnerability reporting](https://github.com/mariopaglia/autostart/security/advisories/new) (**Security → Report a vulnerability** tab) and include:
 
-**Não abra uma issue pública.** Use o [relato privado de vulnerabilidades](https://github.com/mariopaglia/autostart/security/advisories/new) do GitHub (aba **Security → Report a vulnerability**) e inclua:
+- the affected version and your Windows version;
+- a description of the problem and its impact;
+- steps to reproduce or a proof of concept.
 
-- a versão afetada e o Windows usado;
-- a descrição do problema e o impacto;
-- os passos para reproduzir ou uma prova de conceito.
+You will get an initial response within 7 days. Once confirmed, the fix is shipped in a new release and the report is disclosed with due credit, unless you prefer to stay anonymous.
 
-Você recebe uma resposta inicial em até 7 dias. Depois de confirmada, a correção é publicada num novo release, e o relato é divulgado com os devidos créditos, a menos que você prefira anonimato.
+## What counts as a vulnerability
 
-## O que conta como vulnerabilidade
+Examples of what we care about:
 
-Exemplos do que nos interessa:
+- bypassing the update signature verification;
+- making AutoStart run a program the user did not configure;
+- escalating privileges through AutoStart;
+- leaking profile data or app arguments.
 
-- contornar a verificação de assinatura das atualizações;
-- fazer o AutoStart executar um programa que o usuário não configurou;
-- escalar privilégios através do AutoStart;
-- vazar dados dos perfis ou argumentos dos apps.
+## How the project protects itself
 
-## Como o projeto se protege
-
-- **Atualizações assinadas**: todo pacote de atualização é assinado com uma chave privada que fica fora do repositório (nos secrets do GitHub e com o mantenedor). O app só instala pacotes cuja assinatura confere com a chave pública embutida nele.
-- **Releases só pelo pipeline**: os instaladores oficiais são gerados pelo workflow [`release.yml`](.github/workflows/release.yml) a partir de uma tag no repositório oficial.
-- **Sem elevação por padrão**: o app instala e roda sem privilégios de administrador. A elevação só acontece quando o usuário pede.
-- **Download oficial**: baixe o AutoStart somente em [github.com/mariopaglia/autostart/releases](https://github.com/mariopaglia/autostart/releases).
+- **Signed updates**: every update package is signed with a private key kept outside the repository (in GitHub secrets and with the maintainer). The app only installs packages whose signature matches the public key embedded in it.
+- **Releases only through the pipeline**: official installers are built by the [`release.yml`](.github/workflows/release.yml) workflow in the official repository.
+- **No elevation by default**: the app installs and runs without administrator privileges. Elevation only happens when the user asks for it.
+- **Official download**: download AutoStart only from [github.com/mariopaglia/autostart/releases](https://github.com/mariopaglia/autostart/releases).

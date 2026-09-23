@@ -1,80 +1,80 @@
 ## Purpose
 
-Define as telas e interações da interface do AutoStart: visual moderno estilo stream deck, gerenciamento visual de perfis e itens, onboarding, idiomas e temas.
+Defines the screens and interactions of the AutoStart interface: a modern stream deck-style look, visual management of profiles and items, onboarding, languages and themes.
 
 ## ADDED Requirements
 
-### Requirement: Tela principal
-A tela principal SHALL conter: uma sidebar com a lista de perfis (criar, renomear, duplicar, excluir, exportar, importar, marcar como ativo); uma barra superior com o status do monitor (Aguardando simulador / Simulador rodando / Fechando / Pausado), o seletor de gatilho do perfil exibido e os botões "Testar abertura" e "Testar fechamento"; e uma área central com os itens do perfil em cards.
+### Requirement: Main screen
+The main screen SHALL contain: a sidebar with the profile list (create, rename, duplicate, delete, export, import, mark as active); a top bar with the monitor status (Waiting for simulator / Simulator running / Closing apps / Paused), the trigger selector of the displayed profile and the "Test launch" and "Test close" buttons; and a central area with the profile's items as cards.
 
-#### Scenario: Status ao vivo
-- **WHEN** o monitor muda de estado
-- **THEN** a barra superior é atualizada sem recarregar a tela
+#### Scenario: Live status
+- **WHEN** the monitor changes state
+- **THEN** the top bar updates without reloading the screen
 
-### Requirement: Cards de itens
-Cada card SHALL exibir ícone (ou ícone genérico/globo para URL), nome, caminho ou URL resumido, badges (Admin, delay em segundos, comportamento ao fechar), status da sessão atual quando houver e um toggle de habilitado. Os cards SHALL poder ser reordenados por arrastar e soltar (mouse e teclado). Clicar no card SHALL abrir a edição.
+### Requirement: Item cards
+Each card SHALL show the icon (or a generic/globe icon for URLs), name, shortened path or URL, badges (Admin, delay in seconds, close behavior), the current session status when there is one, and an enabled toggle. Cards SHALL be reorderable by drag and drop (mouse and keyboard). Clicking a card SHALL open it for editing.
 
-#### Scenario: Toggle desabilita
-- **WHEN** o usuário desliga o toggle de um card
-- **THEN** o card fica visualmente esmaecido e o item é ignorado na próxima abertura
+#### Scenario: Toggle disables
+- **WHEN** the user turns off a card's toggle
+- **THEN** the card is visually dimmed and the item is ignored on the next launch
 
-#### Scenario: Reordenar via teclado
-- **WHEN** o usuário foca a alça de arraste, pressiona espaço e usa as setas
-- **THEN** o card muda de posição e a ordem é persistida
+#### Scenario: Reorder via keyboard
+- **WHEN** the user focuses the drag handle, presses space and uses the arrow keys
+- **THEN** the card changes position and the order is persisted
 
-### Requirement: Estado vazio
-Um perfil sem itens SHALL exibir um estado vazio com as ações "Adicionar app" e "Adicionar URL".
+### Requirement: Empty state
+A profile without items SHALL show an empty state with the "Add app" and "Add URL" actions.
 
-#### Scenario: Perfil novo
-- **WHEN** o usuário cria um perfil
-- **THEN** a área central mostra o estado vazio com as duas ações
+#### Scenario: New profile
+- **WHEN** the user creates a profile
+- **THEN** the central area shows the empty state with both actions
 
-### Requirement: Formulário de item
-O formulário SHALL permitir adicionar/editar um item `app`, escolhendo o `.exe` pelo diálogo nativo (preenchendo nome, ícone e processo automaticamente), ou um item `url`. Campos de app: nome, caminho, argumentos, pasta de trabalho, nome do processo, delay, executar como admin, comportamento ao fechar. Campos de URL: nome, URL, delay. A validação SHALL usar os mesmos schemas da persistência e exibir erros por campo.
+### Requirement: Item form
+The form SHALL allow adding/editing an `app` item, choosing the `.exe` through the native dialog (filling in name, icon and process automatically), or a `url` item. App fields: name, path, arguments, working folder, process name, delay, run as admin, close behavior. URL fields: name, URL, delay. Validation SHALL use the same schemas as persistence and show per-field errors.
 
-#### Scenario: Adicionar app pelo diálogo
-- **WHEN** o usuário clica em "Adicionar app" e seleciona um `.exe`
-- **THEN** nome, ícone e processo são preenchidos e podem ser ajustados antes de salvar
+#### Scenario: Add an app through the dialog
+- **WHEN** the user clicks "Add app" and selects an `.exe`
+- **THEN** name, icon and process are filled in and can be adjusted before saving
 
-### Requirement: Tela de configurações
-A tela de configurações SHALL expor: iniciar com o Windows, iniciar minimizado, timeout do fechamento gracioso, fechar apenas o que o AutoStart abriu, tema, idioma, verificar atualizações (automática ao iniciar e botão manual), abrir pasta de logs e seção "Sobre" (versão, link do repositório, licença).
+### Requirement: Settings screen
+The settings screen SHALL expose: start with Windows, start minimized, graceful close timeout, only close what AutoStart opened, theme, language, check for updates (automatic on startup and manual button), open log folder and an "About" section (version, repository link, license).
 
-#### Scenario: Alterar tema
-- **WHEN** o usuário escolhe o tema `light`
-- **THEN** a interface muda para o tema claro imediatamente
+#### Scenario: Change theme
+- **WHEN** the user picks the `light` theme
+- **THEN** the interface switches to the light theme immediately
 
-### Requirement: Internacionalização
-Todos os textos visíveis ao usuário (UI, bandeja, notificações, mensagens de erro exibidas) SHALL vir de arquivos de tradução, com pt-BR como padrão e en como alternativa. Chaves sem tradução em en SHALL cair para pt-BR.
+### Requirement: Internationalization
+All user-visible text (UI, tray, notifications, displayed error messages) SHALL come from translation files, with pt-BR as the default and en as the alternative. Keys missing an en translation SHALL fall back to pt-BR.
 
-#### Scenario: Idioma inglês
-- **WHEN** o idioma é `en`
-- **THEN** nenhum texto em português aparece na UI
+#### Scenario: English language
+- **WHEN** the language is `en`
+- **THEN** no Portuguese text appears in the UI
 
-### Requirement: Temas
-O app SHALL suportar os temas `dark` (padrão), `light` e `system`, este último seguindo o tema do Windows em tempo real.
+### Requirement: Themes
+The app SHALL support the `dark` (default), `light` and `system` themes, the last one following the Windows theme in real time.
 
-#### Scenario: Tema do sistema
-- **WHEN** o tema é `system` e o Windows muda para o modo claro
-- **THEN** o app muda para o tema claro sem reiniciar
+#### Scenario: System theme
+- **WHEN** the theme is `system` and Windows switches to light mode
+- **THEN** the app switches to the light theme without restarting
 
 ### Requirement: Onboarding
-Na primeira execução, o sistema SHALL criar um perfil de exemplo "MSFS 2024" com gatilho `FlightSimulator2024.exe` e exibir um wizard curto (3 a 4 passos) explicando: como funciona o gatilho, a escolha do preset do simulador (MSFS 2024, MSFS 2020, X-Plane 12, personalizado), como adicionar apps e as opções de iniciar com o Windows. Concluir ou pular o wizard SHALL marcar `onboardingCompleted = true`.
+On first run, the system SHALL create an example profile "MSFS 2024" with trigger `FlightSimulator2024.exe` and show a short wizard (3 to 4 steps) explaining: how the trigger works, the choice of simulator preset (MSFS 2024, MSFS 2020, X-Plane 12, custom), how to add apps and the start with Windows options. Finishing or skipping the wizard SHALL set `onboardingCompleted = true`.
 
-#### Scenario: Primeira execução
-- **WHEN** o app é aberto pela primeira vez
-- **THEN** o wizard aparece sobre a tela principal e o perfil de exemplo existe
+#### Scenario: First run
+- **WHEN** the app is opened for the first time
+- **THEN** the wizard appears over the main screen and the example profile exists
 
-#### Scenario: Escolha de preset no wizard
-- **WHEN** o usuário escolhe "X-Plane 12" no wizard
-- **THEN** o gatilho do perfil de exemplo passa a ser `X-Plane.exe` e o nome vira "X-Plane 12"
+#### Scenario: Preset choice in the wizard
+- **WHEN** the user picks "X-Plane 12" in the wizard
+- **THEN** the example profile's trigger becomes `X-Plane.exe` and its name becomes "X-Plane 12"
 
-#### Scenario: Execuções seguintes
-- **WHEN** o app é aberto depois do onboarding concluído
-- **THEN** o wizard não aparece
+#### Scenario: Subsequent runs
+- **WHEN** the app is opened after onboarding was completed
+- **THEN** the wizard does not appear
 
-### Requirement: Visual e acessibilidade
-A interface SHALL usar cantos arredondados, cards com ícone, animações sutis que respeitam `prefers-reduced-motion`, foco visível em todos os controles interativos e contraste AA nos dois temas.
+### Requirement: Visuals and accessibility
+The interface SHALL use rounded corners, cards with icons, subtle animations that respect `prefers-reduced-motion`, visible focus on every interactive control and AA contrast in both themes.
 
-#### Scenario: Movimento reduzido
-- **WHEN** o Windows está com animações desativadas
-- **THEN** as transições da UI são desativadas
+#### Scenario: Reduced motion
+- **WHEN** Windows has animations turned off
+- **THEN** UI transitions are disabled

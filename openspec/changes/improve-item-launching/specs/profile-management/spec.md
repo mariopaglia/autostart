@@ -1,28 +1,28 @@
 ## MODIFIED Requirements
 
-### Requirement: Itens do tipo app
-Um item `app` SHALL conter `id`, `name`, `exePath`, `args` opcional, `workingDir` opcional, `processName`, `processNameMode` (`auto` | `manual`, padrão `auto`), `iconBase64` opcional, `delayMs` (padrão 800, entre 0 e 60000), `runAsAdmin` (padrão false), `startMinimized` (padrão false), `waitForSimConnect` (padrão false), `onClose` (`graceful` | `force` | `keep`, padrão `graceful`) e `enabled` (padrão true). O `processName` SHALL ser preenchido inicialmente com o nome do executável e, no modo `auto`, SHALL ser mantido pelo sistema. O usuário SHALL poder editá-lo, o que muda o modo para `manual`, e SHALL poder voltar ao modo `auto`. Itens salvos por versões anteriores, sem os campos novos, SHALL ser carregados com os valores padrão, exceto o `processNameMode` de itens salvos localmente, que SHALL ser `manual` quando o `processName` diferir do nome do executável (sem diferenciar maiúsculas), pois nesse caso o nome foi definido pelo usuário.
+### Requirement: App items
+An `app` item SHALL contain `id`, `name`, `exePath`, optional `args`, optional `workingDir`, `processName`, `processNameMode` (`auto` | `manual`, default `auto`), optional `iconBase64`, `delayMs` (default 800, between 0 and 60000), `runAsAdmin` (default false), `startMinimized` (default false), `waitForSimConnect` (default false), `onClose` (`graceful` | `force` | `keep`, default `graceful`) and `enabled` (default true). The `processName` SHALL initially be filled with the executable name and, in `auto` mode, SHALL be maintained by the system. The user SHALL be able to edit it, which switches the mode to `manual`, and SHALL be able to return to `auto` mode. Items saved by earlier versions, without the new fields, SHALL be loaded with the default values, except for the `processNameMode` of locally saved items, which SHALL be `manual` when the `processName` differs from the executable name (case-insensitive), since in that case the name was set by the user.
 
-#### Scenario: processName divergente do exe
-- **WHEN** o usuário adiciona `C:\Apps\Volanta\Launcher.exe` e altera o `processName` para `Volanta.exe`
-- **THEN** o item passa para `processNameMode = manual`, e a detecção de preexistência e o fechamento usam `Volanta.exe`
+#### Scenario: processName different from the exe
+- **WHEN** the user adds `C:\Apps\Volanta\Launcher.exe` and changes the `processName` to `Volanta.exe`
+- **THEN** the item switches to `processNameMode = manual`, and pre-existence detection and closing use `Volanta.exe`
 
-#### Scenario: Novo item em modo automático
-- **WHEN** o usuário adiciona `C:\Apps\SPAD\Spad.exe` sem abrir a seção Avançado
-- **THEN** o item é salvo com `processName = Spad.exe` e `processNameMode = auto`
+#### Scenario: New item in automatic mode
+- **WHEN** the user adds `C:\Apps\SPAD\Spad.exe` without opening the Advanced section
+- **THEN** the item is saved with `processName = Spad.exe` and `processNameMode = auto`
 
-#### Scenario: Perfil da versão anterior
-- **WHEN** o app carrega um perfil salvo pela v0.1.0, cujos itens não têm `processNameMode`, `startMinimized` nem `waitForSimConnect`
-- **THEN** os itens são carregados com `startMinimized = false` e `waitForSimConnect = false`, sem perda dos demais campos
+#### Scenario: Profile from the previous version
+- **WHEN** the app loads a profile saved by v0.1.0 whose items have neither `processNameMode`, `startMinimized` nor `waitForSimConnect`
+- **THEN** the items are loaded with `startMinimized = false` and `waitForSimConnect = false`, without losing the other fields
 
-#### Scenario: Nome definido pelo usuário na versão anterior
-- **WHEN** um item salvo pela v0.1.0 aponta para `Launcher.exe` com `processName = Volanta.exe`
-- **THEN** o item é carregado com `processNameMode = manual`, e o AutoStart não altera esse nome
+#### Scenario: Name set by the user in the previous version
+- **WHEN** an item saved by v0.1.0 points to `Launcher.exe` with `processName = Volanta.exe`
+- **THEN** the item is loaded with `processNameMode = manual`, and AutoStart does not change that name
 
-#### Scenario: Nome igual ao executável na versão anterior
-- **WHEN** um item salvo pela v0.1.0 aponta para `Spad.exe` com `processName = Spad.exe`
-- **THEN** o item é carregado com `processNameMode = auto`
+#### Scenario: Name equal to the executable in the previous version
+- **WHEN** an item saved by v0.1.0 points to `Spad.exe` with `processName = Spad.exe`
+- **THEN** the item is loaded with `processNameMode = auto`
 
-#### Scenario: Importar perfil antigo
-- **WHEN** o usuário importa um arquivo exportado pela v0.1.0
-- **THEN** a importação é aceita e os campos novos assumem os valores padrão
+#### Scenario: Import an old profile
+- **WHEN** the user imports a file exported by v0.1.0
+- **THEN** the import is accepted and the new fields take their default values

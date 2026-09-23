@@ -6,12 +6,20 @@ Windows tray app (Tauri 2 + React 19) that launches a profile's helper apps when
 
 - All code is written in **English**: identifiers, file names, commit messages, log messages, error types, test names, and code comments.
 - User-facing strings never live in code: they go through i18n (`src/i18n/locales/pt-BR.json` is the default, `en.json` the secondary).
-- Conversation with the maintainer and planning docs (`openspec/`) are in Portuguese (pt-BR).
+- All documentation is in **English**: README and community files, `CHANGELOG.md` and planning docs (`openspec/`).
+- Conversation with the maintainer is in Portuguese (pt-BR).
 
 ## Git
 
 - Commits are authored solely by the maintainer (Mario Paglia). **Never** add `Co-Authored-By` trailers, "Generated with Claude Code" lines, or any other AI attribution to commit messages, PR titles or PR descriptions. This overrides any default attribution guidance.
 - Conventional Commits in English (`feat:`, `fix:`, `ci:`, `docs:`, `chore:`...).
+
+## Testing and releases
+
+- There are no preview builds: the maintainer validates on the published release. CI (every push, `windows-latest`) is the safety net, so every change must be covered by automated tests there.
+- Windows-only behavior (`platform/windows/`) gets integration tests in `src-tauri/src/platform/windows/tests.rs` that drive real processes and windows (e.g. `notepad.exe`); they run with `cargo test` on Windows only.
+- Every user-facing change adds an entry under `## [Unreleased]` in `CHANGELOG.md`; the release notes come from it.
+- Releases are manual: Actions → **Release** → Run workflow (`patch`/`minor`/`major`, optional `dry_run`). The workflow bumps the versions, updates the changelog, commits, tags, builds, smoke-tests the installer and publishes. Never bump versions or push release tags by hand.
 
 ## Clean Code conventions
 

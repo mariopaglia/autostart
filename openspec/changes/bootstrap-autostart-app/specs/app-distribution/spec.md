@@ -1,59 +1,59 @@
 ## Purpose
 
-Permite que qualquer piloto da comunidade instale o AutoStart sem privilégios de administrador e receba atualizações automaticamente, com um processo de release reproduzível.
+Lets any pilot in the community install AutoStart without administrator rights and receive updates automatically, with a reproducible release process.
 
 ## ADDED Requirements
 
-### Requirement: Instalador per-user
-O projeto SHALL gerar um instalador NSIS para Windows x64 que instala o app por usuário (sem exigir administrador), cria atalho no menu Iniciar e oferece desinstalação pelo Windows. O instalador SHALL estar disponível em pt-BR e en.
+### Requirement: Per-user installer
+The project SHALL produce an NSIS installer for Windows x64 that installs the app per user (without requiring administrator), creates a Start menu shortcut and supports uninstalling through Windows. The installer SHALL be available in pt-BR and en.
 
-#### Scenario: Instalação sem admin
-- **WHEN** um usuário comum executa o instalador
-- **THEN** o app é instalado em `%LOCALAPPDATA%` sem prompt do UAC e aparece no menu Iniciar
+#### Scenario: Install without admin
+- **WHEN** a standard user runs the installer
+- **THEN** the app is installed under `%LOCALAPPDATA%` without a UAC prompt and appears in the Start menu
 
-### Requirement: Auto update assinado
-O app SHALL verificar atualizações no GitHub Releases do repositório público (automaticamente ao iniciar, se habilitado, e pelo botão manual). Com atualização disponível, SHALL exibir versão e notas e instalar somente após o aceite do usuário, reiniciando o app em seguida. Pacotes de atualização SHALL ser verificados com a chave pública do updater.
+### Requirement: Signed auto update
+The app SHALL check for updates on the public repository's GitHub Releases (automatically on startup, if enabled, and through the manual button). When an update is available, it SHALL show the version and notes and install only after the user accepts, then restart the app. Update packages SHALL be verified with the updater public key.
 
-#### Scenario: Nova versão disponível
-- **WHEN** existe um release mais recente e o usuário clica em "Atualizar"
-- **THEN** o pacote é baixado, verificado, instalado, e o app reinicia na nova versão
+#### Scenario: New version available
+- **WHEN** a newer release exists and the user clicks "Update"
+- **THEN** the package is downloaded, verified and installed, and the app restarts on the new version
 
-#### Scenario: Sem conexão
-- **WHEN** a verificação falha por falta de rede
-- **THEN** a verificação automática falha em silêncio (apenas log) e a manual exibe mensagem de erro
+#### Scenario: No connection
+- **WHEN** the check fails due to no network
+- **THEN** the automatic check fails silently (log only) and the manual check shows an error message
 
-#### Scenario: Assinatura inválida
-- **WHEN** o pacote baixado não confere com a chave pública
-- **THEN** a atualização é abortada e o erro é exibido e registrado
+#### Scenario: Invalid signature
+- **WHEN** the downloaded package does not match the public key
+- **THEN** the update is aborted and the error is shown and logged
 
-### Requirement: Pipeline de release
-Criar uma tag `v*` no repositório SHALL disparar um workflow em `windows-latest` que builda o app, gera o instalador assinado para o updater e publica um GitHub Release com o instalador e o `latest.json`. A versão da tag SHALL corresponder à versão do app.
+### Requirement: Release pipeline
+Creating a `v*` tag in the repository SHALL trigger a workflow on `windows-latest` that builds the app, produces the updater-signed installer and publishes a GitHub Release with the installer and `latest.json`. The tag version SHALL match the app version.
 
-#### Scenario: Publicar versão
-- **WHEN** o mantenedor faz push da tag `v0.1.0`
-- **THEN** um release `v0.1.0` é publicado com o instalador `.exe`, a assinatura `.sig` e o `latest.json`
+#### Scenario: Publish a version
+- **WHEN** the maintainer pushes the `v0.1.0` tag
+- **THEN** a `v0.1.0` release is published with the `.exe` installer, the `.sig` signature and `latest.json`
 
-#### Scenario: Versão divergente
-- **WHEN** a tag é `v0.2.0` mas a versão do app é `0.1.0`
-- **THEN** o workflow falha antes de publicar
+#### Scenario: Version mismatch
+- **WHEN** the tag is `v0.2.0` but the app version is `0.1.0`
+- **THEN** the workflow fails before publishing
 
-### Requirement: Verificação contínua
-Pushes e pull requests SHALL disparar um workflow que roda typecheck, lint e testes do frontend, além de clippy e testes do Rust, em `windows-latest`.
+### Requirement: Continuous verification
+Pushes and pull requests SHALL trigger a workflow that runs the frontend typecheck, lint and tests, plus Rust clippy and tests, on `windows-latest`.
 
-#### Scenario: PR com erro de tipo
-- **WHEN** um PR introduz um erro de TypeScript
-- **THEN** o workflow falha
+#### Scenario: PR with a type error
+- **WHEN** a PR introduces a TypeScript error
+- **THEN** the workflow fails
 
-### Requirement: Assinatura de código preparada
-O workflow e a configuração SHALL conter o passo de assinatura com Azure Trusted Signing, desativado e documentado, ativável apenas configurando secrets e descomentando o passo.
+### Requirement: Prepared code signing
+The workflow and configuration SHALL contain the Azure Trusted Signing step, disabled and documented, which can be enabled just by configuring secrets and uncommenting the step.
 
-#### Scenario: Ativar assinatura
-- **WHEN** o mantenedor segue a documentação e configura os secrets do Azure
-- **THEN** os próximos releases saem com o instalador assinado
+#### Scenario: Enable signing
+- **WHEN** the maintainer follows the documentation and configures the Azure secrets
+- **THEN** subsequent releases ship with a signed installer
 
-### Requirement: Documentação
-O README SHALL cobrir: o que o app faz, instalação, como descobrir o nome de um processo (Gerenciador de Tarefas → Detalhes, e o seletor de processos do app), desenvolvimento (pré-requisitos, `pnpm tauri dev` no Windows e no macOS com stubs), build, geração das chaves do updater, secrets do GitHub, processo de release e ativação da assinatura.
+### Requirement: Documentation
+The README SHALL cover: what the app does, installation, how to find a process name (Task Manager → Details, and the app's process picker), development (prerequisites, `pnpm tauri dev` on Windows and on macOS with stubs), build, updater key generation, GitHub secrets, the release process and enabling signing.
 
-#### Scenario: Novo contribuidor
-- **WHEN** alguém clona o repositório e segue o README
-- **THEN** consegue rodar o app em modo de desenvolvimento sem outras instruções
+#### Scenario: New contributor
+- **WHEN** someone clones the repository and follows the README
+- **THEN** they can run the app in development mode without further instructions

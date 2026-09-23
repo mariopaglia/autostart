@@ -1,93 +1,93 @@
 ## MODIFIED Requirements
 
-### Requirement: Abertura ordenada com delay
-Ao iniciar uma sessão, o sistema SHALL abrir os itens habilitados em duas etapas. Na primeira, SHALL processar, na ordem da lista, os itens que não aguardam o SimConnect. Na segunda, SHALL processar, na ordem da lista, os itens `app` com `waitForSimConnect = true`, somente depois que o SimConnect estiver disponível. Em ambas as etapas, o sistema SHALL aguardar o `delayMs` de cada item antes de abri-lo. Itens desabilitados SHALL ser ignorados sem gerar status.
+### Requirement: Ordered launch with delay
+When a session starts, the system SHALL launch the enabled items in two phases. In the first, it SHALL process, in list order, the items that do not wait for SimConnect. In the second, it SHALL process, in list order, the `app` items with `waitForSimConnect = true`, only after SimConnect is available. In both phases, the system SHALL wait each item's `delayMs` before launching it. Disabled items SHALL be ignored without producing a status.
 
-#### Scenario: Três apps em sequência
-- **WHEN** a sessão inicia com os itens A (delay 0), B (delay 800) e C (delay 2000), nenhum aguardando o SimConnect
-- **THEN** A abre imediatamente, B cerca de 800 ms depois de A, e C cerca de 2000 ms depois de B
+#### Scenario: Three apps in sequence
+- **WHEN** the session starts with items A (delay 0), B (delay 800) and C (delay 2000), none waiting for SimConnect
+- **THEN** A launches immediately, B about 800 ms after A, and C about 2000 ms after B
 
-#### Scenario: Itens que aguardam o SimConnect vão para o fim
-- **WHEN** a lista é A, B (aguarda o SimConnect), C e D (aguarda o SimConnect)
-- **THEN** A e C abrem primeiro, nessa ordem, e B e D abrem depois, nessa ordem, quando o SimConnect estiver disponível
+#### Scenario: Items that wait for SimConnect go last
+- **WHEN** the list is A, B (waits for SimConnect), C and D (waits for SimConnect)
+- **THEN** A and C launch first, in that order, and B and D launch afterwards, in that order, once SimConnect is available
 
-### Requirement: Execução do item
-Um item `app` SHALL ser iniciado com seus `args` e `workingDir` (padrão: pasta do exe). Um item `url` SHALL ser aberto no navegador padrão. Falha ao iniciar SHALL marcar o item com status `error` e a mensagem da causa, sem interromper os itens seguintes.
+### Requirement: Item execution
+An `app` item SHALL be started with its `args` and `workingDir` (default: the exe folder). A `url` item SHALL be opened in the default browser. A launch failure SHALL mark the item with the `error` status and the cause's message, without interrupting the following items.
 
-#### Scenario: Executável removido
-- **WHEN** o `exePath` de um item não existe mais
-- **THEN** o item fica com status `error` ("executável não encontrado") e os próximos itens continuam sendo abertos
+#### Scenario: Removed executable
+- **WHEN** an item's `exePath` no longer exists
+- **THEN** the item gets the `error` status ("Executable not found") and the next items keep being launched
 
-#### Scenario: Confirmação de execução
-- **WHEN** um app é iniciado e, em até 10 segundos, o processo iniciado, um descendente dele ou um processo com o `processName` do item está em execução
-- **THEN** o item passa para `running`; se nenhum desses processos existir no prazo, o item fica `error` com a mensagem "processo não detectado"
+#### Scenario: Launch confirmation
+- **WHEN** an app is started and, within 10 seconds, the started process, one of its descendants or a process with the item's `processName` is running
+- **THEN** the item moves to `running`; if none of these processes exists in time, the item gets `error` with the message "The process was not detected after launch"
 
-#### Scenario: Launcher que encerra logo após abrir o app
-- **WHEN** o AutoStart inicia `Launcher.exe`, que abre `Volanta.exe` e encerra em 3 segundos
-- **THEN** o item passa para `running`, pois um processo iniciado pelo launcher continua em execução
+#### Scenario: Launcher that exits right after opening the app
+- **WHEN** AutoStart starts `Launcher.exe`, which opens `Volanta.exe` and exits within 3 seconds
+- **THEN** the item moves to `running`, because a process started by the launcher keeps running
 
-### Requirement: Testes manuais
-O usuário SHALL poder executar "Testar abertura" e "Testar fechamento" para um perfil sem o simulador aberto, usando as mesmas regras da sessão real, com uma exceção: em "Testar abertura", os itens que aguardam o SimConnect SHALL abrir na segunda etapa sem aguardar o SimConnect, e a timeline SHALL registrar que a espera foi ignorada no teste. "Testar fechamento" SHALL fechar os itens abertos pelo último "Testar abertura" (ou, se não houver teste anterior, SHALL tratar todos os itens em execução como abertos pelo AutoStart, após confirmação do usuário). Os testes SHALL ficar indisponíveis enquanto o monitor estiver em `simRunning` ou `closing`.
+### Requirement: Manual tests
+The user SHALL be able to run "Test launch" and "Test close" for a profile without the simulator running, using the same rules as the real session, with one exception: in "Test launch", items that wait for SimConnect SHALL launch in the second phase without waiting for SimConnect, and the timeline SHALL record that the wait was skipped in the test. "Test close" SHALL close the items launched by the last "Test launch" (or, if there was no previous test, SHALL treat every running item as launched by AutoStart, after user confirmation). The tests SHALL be unavailable while the monitor is in `simRunning` or `closing`.
 
-#### Scenario: Testar abertura
-- **WHEN** o usuário clica em "Testar abertura" com o monitor em `idle`
-- **THEN** os itens habilitados abrem na ordem das duas etapas, com os status sendo atualizados nos cards
+#### Scenario: Test launch
+- **WHEN** the user clicks "Test launch" with the monitor in `idle`
+- **THEN** the enabled items launch in the order of the two phases, with their statuses updating on the cards
 
-#### Scenario: Teste com item que aguarda o SimConnect
-- **WHEN** o usuário testa a abertura de um perfil com um item que aguarda o SimConnect e o simulador está fechado
-- **THEN** o item abre na segunda etapa sem esperar, e a timeline indica que a espera pelo SimConnect foi ignorada no teste
+#### Scenario: Test with an item that waits for SimConnect
+- **WHEN** the user tests the launch of a profile with an item that waits for SimConnect and the simulator is not running
+- **THEN** the item launches in the second phase without waiting, and the timeline shows that the SimConnect wait was skipped in the test
 
-#### Scenario: Teste bloqueado durante voo
-- **WHEN** o monitor está em `simRunning`
-- **THEN** os botões de teste ficam desabilitados, com uma dica explicando o motivo
+#### Scenario: Test blocked during a flight
+- **WHEN** the monitor is in `simRunning`
+- **THEN** the test buttons are disabled, with a hint explaining why
 
 ## ADDED Requirements
 
-### Requirement: Aprendizado do nome do processo
-Para itens `app` com `processNameMode = auto`, o sistema SHALL identificar qual processo representa o app depois de iniciá-lo e SHALL salvar esse nome no `processName` do item. Se o processo iniciado continuar em execução até o fim da janela de observação (30 segundos), o nome aprendido SHALL ser o dele. Se ele encerrar antes, o nome aprendido SHALL ser o de um processo que ele iniciou (direta ou indiretamente) e que continua rodando; na ausência de descendentes, SHALL ser o de um processo que surgiu após a abertura com executável dentro da pasta de instalação do item. Não havendo candidato, o `processName` SHALL permanecer inalterado. O nome aprendido SHALL valer imediatamente para o fechamento da sessão em andamento e SHALL ser persistido no perfil, refletindo na interface sem reiniciar. Itens com `processNameMode = manual` SHALL NOT ter o `processName` alterado.
+### Requirement: Process name learning
+For `app` items with `processNameMode = auto`, the system SHALL identify which process represents the app after starting it and SHALL save that name to the item's `processName`. If the started process keeps running until the end of the observation window (30 seconds), the learned name SHALL be its own. If it exits earlier, the learned name SHALL be that of a process it started (directly or indirectly) that is still running; with no descendants, it SHALL be that of a process that appeared after the launch with an executable inside the item's install folder. If there is no candidate, the `processName` SHALL remain unchanged. The learned name SHALL apply immediately to closing the ongoing session and SHALL be persisted in the profile, reflected in the interface without restarting. Items with `processNameMode = manual` SHALL NOT have their `processName` changed.
 
-#### Scenario: App sem launcher
-- **WHEN** o AutoStart abre `C:\Apps\SPAD\Spad.exe` e ele continua rodando
-- **THEN** o `processName` do item permanece `Spad.exe`
+#### Scenario: App without a launcher
+- **WHEN** AutoStart launches `C:\Apps\SPAD\Spad.exe` and it keeps running
+- **THEN** the item's `processName` stays `Spad.exe`
 
-#### Scenario: Launcher que troca de processo
-- **WHEN** o item aponta para `C:\Apps\Volanta\Launcher.exe` em modo automático, e o launcher abre `Volanta.exe` e encerra
-- **THEN** o `processName` do item passa a ser `Volanta.exe`, o fechamento da sessão fecha o `Volanta.exe`, e o formulário do item mostra `Volanta.exe` como detectado automaticamente
+#### Scenario: Launcher that switches process
+- **WHEN** the item points to `C:\Apps\Volanta\Launcher.exe` in automatic mode, and the launcher opens `Volanta.exe` and exits
+- **THEN** the item's `processName` becomes `Volanta.exe`, the session's closing closes `Volanta.exe`, and the item's form shows `Volanta.exe` as detected automatically
 
-#### Scenario: App aberto fora da árvore de processos
-- **WHEN** o launcher em `C:\Apps\Foo\` encerra e o app real `C:\Apps\Foo\bin\Foo.exe` surge sem ser descendente dele
-- **THEN** o `processName` do item passa a ser `Foo.exe`
+#### Scenario: App opened outside the process tree
+- **WHEN** the launcher in `C:\Apps\Foo\` exits and the real app `C:\Apps\Foo\bin\Foo.exe` appears without being its descendant
+- **THEN** the item's `processName` becomes `Foo.exe`
 
-#### Scenario: Modo manual preservado
-- **WHEN** o item tem `processNameMode = manual` com `processName = Volanta.exe`
-- **THEN** o sistema nunca altera o `processName` desse item
+#### Scenario: Manual mode preserved
+- **WHEN** the item has `processNameMode = manual` with `processName = Volanta.exe`
+- **THEN** the system never changes that item's `processName`
 
-### Requirement: Abertura minimizada
-Um item `app` com `startMinimized = true` SHALL ser iniciado com pedido ao Windows de janela minimizada, sem roubar o foco. Além disso, durante os primeiros 10 segundos após o item ficar `running`, o sistema SHALL minimizar as janelas visíveis de nível superior que surgirem nos processos do item. Apps que ignoram o pedido ou restauram a própria janela depois desse período SHALL NOT gerar erro.
+### Requirement: Minimized launch
+An `app` item with `startMinimized = true` SHALL be started with a request to Windows for a minimized window, without stealing focus. In addition, during the first 10 seconds after the item becomes `running`, the system SHALL minimize the visible top-level windows that appear in the item's processes. Apps that ignore the request or restore their own window after that period SHALL NOT produce an error.
 
-#### Scenario: App minimizado
-- **WHEN** a sessão abre um item com `startMinimized = true`
-- **THEN** a janela do app fica minimizada na barra de tarefas e o foco permanece onde estava
+#### Scenario: Minimized app
+- **WHEN** the session launches an item with `startMinimized = true`
+- **THEN** the app window stays minimized in the taskbar and focus stays where it was
 
-#### Scenario: App que abre só na bandeja
-- **WHEN** um item com `startMinimized = true` não cria janela visível
-- **THEN** o item fica `running` normalmente, sem erro
+#### Scenario: App that opens only in the tray
+- **WHEN** an item with `startMinimized = true` creates no visible window
+- **THEN** the item becomes `running` normally, without an error
 
-### Requirement: Espera pelo SimConnect
-Um item `app` com `waitForSimConnect = true` SHALL ser aberto somente quando o SimConnect do simulador estiver disponível para conexões. Enquanto espera, o item SHALL ter o status `waitingSimConnect`. O sistema SHALL verificar a disponibilidade a cada 2 segundos por até 10 minutos a partir do início da segunda etapa; esgotado o prazo, os itens ainda em espera SHALL receber o status `error` com a mensagem "SimConnect não ficou disponível". Se a sessão terminar durante a espera, os itens em espera SHALL NOT ser abertos. A opção SHALL ser respeitada apenas quando o gatilho do perfil for o MSFS 2020 (`FlightSimulator.exe`) ou o MSFS 2024 (`FlightSimulator2024.exe`); para outros gatilhos, o item SHALL abrir na segunda etapa sem aguardar.
+### Requirement: Waiting for SimConnect
+An `app` item with `waitForSimConnect = true` SHALL be launched only when the simulator's SimConnect is available for connections. While waiting, the item SHALL have the `waitingSimConnect` status. The system SHALL check availability every 2 seconds for up to 10 minutes from the start of the second phase; once the limit expires, items still waiting SHALL get the `error` status with the message "SimConnect did not become available". If the session ends during the wait, the waiting items SHALL NOT be launched. The option SHALL be honored only when the profile's trigger is MSFS 2020 (`FlightSimulator.exe`) or MSFS 2024 (`FlightSimulator2024.exe`); for other triggers, the item SHALL launch in the second phase without waiting.
 
-#### Scenario: SimConnect fica disponível
-- **WHEN** o MSFS 2024 inicia e o item Volanta tem `waitForSimConnect = true`
-- **THEN** o card mostra "Aguardando SimConnect" e o Volanta abre assim que o SimConnect fica disponível
+#### Scenario: SimConnect becomes available
+- **WHEN** MSFS 2024 starts and the Volanta item has `waitForSimConnect = true`
+- **THEN** the card shows "Waiting for SimConnect" and Volanta launches as soon as SimConnect becomes available
 
-#### Scenario: SimConnect não fica disponível
-- **WHEN** o SimConnect não fica disponível em 10 minutos
-- **THEN** os itens em espera ficam `error` com "SimConnect não ficou disponível" e a timeline registra o erro
+#### Scenario: SimConnect does not become available
+- **WHEN** SimConnect does not become available within 10 minutes
+- **THEN** the waiting items become `error` with "SimConnect did not become available" and the timeline records the error
 
-#### Scenario: Simulador fechado durante a espera
-- **WHEN** o simulador é fechado enquanto um item aguarda o SimConnect
-- **THEN** o item não é aberto e a sessão segue para o fechamento normalmente
+#### Scenario: Simulator closed during the wait
+- **WHEN** the simulator is closed while an item waits for SimConnect
+- **THEN** the item is not launched and the session proceeds to closing normally
 
-#### Scenario: Gatilho que não é o MSFS
-- **WHEN** o perfil tem gatilho `X-Plane.exe` e um item com `waitForSimConnect = true`
-- **THEN** o item abre na segunda etapa sem aguardar o SimConnect
+#### Scenario: Trigger that is not MSFS
+- **WHEN** the profile has trigger `X-Plane.exe` and an item with `waitForSimConnect = true`
+- **THEN** the item launches in the second phase without waiting for SimConnect
