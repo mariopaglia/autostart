@@ -17,6 +17,7 @@ import { createProfile, duplicateProfile } from "@/lib/profile-factory";
 import { cn } from "@/lib/utils";
 import { useHasSession, useMonitorStore } from "@/stores/monitor-store";
 import { useProfilesStore } from "@/stores/profiles-store";
+import { useUiStore } from "@/stores/ui-store";
 import { exportProfileToFile, readProfileFromFile } from "./profile-files";
 import { ProfileNameDialog } from "./ProfileNameDialog";
 
@@ -31,9 +32,16 @@ export function ProfileList() {
   );
   const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
   const [pendingDelete, setPendingDelete] = useState<Profile | null>(null);
+  const isProfilesScreen = useUiStore((state) => state.screen === "main");
+  const setScreen = useUiStore((state) => state.setScreen);
+
+  function openProfile(profileId: string) {
+    select(profileId);
+    setScreen("main");
+  }
 
   async function addProfile(profile: Profile) {
-    if (await save(profile)) select(profile.id);
+    if (await save(profile)) openProfile(profile.id);
   }
 
   async function importProfile() {
@@ -70,79 +78,83 @@ export function ProfileList() {
       </div>
 
       <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-        {profiles.map((profile) => (
-          <li key={profile.id} className="group relative">
-            <button
-              type="button"
-              onClick={() => {
-                select(profile.id);
-              }}
-              className={cn(
-                "flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 pr-9 text-left text-sm transition-colors outline-none",
-                "hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
-                profile.id === selectedId && "bg-muted",
-              )}
-            >
-              <span className="flex w-full items-center gap-2">
-                <span className="truncate font-medium">{profile.name}</span>
-                {hasSession && profile.id === sessionProfileId && (
-                  <Badge className="h-4 px-1.5 text-[10px]">{t("profiles.inSession")}</Badge>
+        {profiles.map((profile) => {
+          const isOpen = isProfilesScreen && profile.id === selectedId;
+          return (
+            <li key={profile.id} className="group relative">
+              <button
+                type="button"
+                aria-current={isOpen ? "page" : undefined}
+                onClick={() => {
+                  openProfile(profile.id);
+                }}
+                className={cn(
+                  "flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 pr-9 text-left text-sm transition-colors outline-none",
+                  "hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+                  isOpen && "bg-muted",
                 )}
-              </span>
-              <span className="w-full truncate text-xs text-muted-foreground">
-                {profile.enabled
-                  ? profile.triggers.map((trigger) => trigger.label).join(" · ")
-                  : t("profiles.disabled")}
-              </span>
-            </button>
+              >
+                <span className="flex w-full items-center gap-2">
+                  <span className="truncate font-medium">{profile.name}</span>
+                  {hasSession && profile.id === sessionProfileId && (
+                    <Badge className="h-4 px-1.5 text-[10px]">{t("profiles.inSession")}</Badge>
+                  )}
+                </span>
+                <span className="w-full truncate text-xs text-muted-foreground">
+                  {profile.enabled
+                    ? profile.triggers.map((trigger) => trigger.label).join(" · ")
+                    : t("profiles.disabled")}
+                </span>
+              </button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className="absolute top-2 right-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 aria-expanded:opacity-100"
-                  aria-label={t("profiles.actions")}
-                >
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setNameDialog({ mode: "rename", profile });
-                  }}
-                >
-                  <Pencil />
-                  {t("profiles.rename")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() =>
-                    void addProfile(duplicateProfile(profile, t("profiles.copySuffix")))
-                  }
-                >
-                  <Copy />
-                  {t("profiles.duplicate")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void exportProfileToFile(profile)}>
-                  <Download />
-                  {t("profiles.export")}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={profiles.length === 1}
-                  onSelect={() => {
-                    setPendingDelete(profile);
-                  }}
-                >
-                  <Trash2 />
-                  {t("profiles.delete")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </li>
-        ))}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="absolute top-2 right-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 aria-expanded:opacity-100"
+                    aria-label={t("profiles.actions")}
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setNameDialog({ mode: "rename", profile });
+                    }}
+                  >
+                    <Pencil />
+                    {t("profiles.rename")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      void addProfile(duplicateProfile(profile, t("profiles.copySuffix")))
+                    }
+                  >
+                    <Copy />
+                    {t("profiles.duplicate")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void exportProfileToFile(profile)}>
+                    <Download />
+                    {t("profiles.export")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={profiles.length === 1}
+                    onSelect={() => {
+                      setPendingDelete(profile);
+                    }}
+                  >
+                    <Trash2 />
+                    {t("profiles.delete")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </li>
+          );
+        })}
       </ul>
 
       <Button variant="outline" size="sm" onClick={() => void importProfile()}>

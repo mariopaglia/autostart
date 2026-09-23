@@ -6,7 +6,7 @@ Defines the screens and interactions of the AutoStart interface: a modern stream
 ## Requirements
 
 ### Requirement: Main screen
-The main screen SHALL contain: a sidebar with the profile list (create, rename, duplicate, delete, export, import), showing for each profile whether it is enabled and which one is in the current session; a top bar with the monitor status (Waiting for simulator / Simulator running / Closing soon / Closing apps / Paused), the enabled toggle and the triggers of the displayed profile, and the "Test launch" and "Test close" buttons; and a central area with the profile's items as cards. While the monitor is in `closePending`, the window SHALL show, above whichever screen is open, the countdown with the "Close now" and "Keep apps open" actions.
+The main screen SHALL contain: a sidebar with the profile list (create, rename, duplicate, delete, export, import), showing for each profile whether it is enabled and which one is in the current session, always visible so that clicking a profile from any screen opens it on the Profiles screen; a top bar with the monitor status (Waiting for simulator / Simulator running / Closing soon / Closing apps / Paused), the enabled toggle and the triggers of the displayed profile, and the "Test launch" and "Test close" buttons; and a central area with the profile's items as cards. While the monitor is in `closePending`, the window SHALL show, above whichever screen is open, the countdown with the "Close now" and "Keep apps open" actions.
 
 #### Scenario: Live status
 - **WHEN** the monitor changes state
