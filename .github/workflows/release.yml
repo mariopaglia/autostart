@@ -1,35 +1,45 @@
 name: Release
 
+# Manual only: Actions → Release → Run workflow (or `gh workflow run release.yml -f bump=patch`).
+# The release notes come from the "## [Unreleased]" section of CHANGELOG.md, which must not be empty.
 on:
-  push:
-    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      dry_run:
+        description: Build and smoke-test the installer without publishing anything
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
-  release:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
+  checks:
+    uses: ./.github/workflows/ci.yml
 
-      - name: Tag matches app version
-        shell: pwsh
+  release:
+    needs: checks
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Publishing runs from main only
+        if: ${{ !inputs.dry_run && github.ref != 'refs/heads/main' }}
         run: |
-          $tag = "${{ github.ref_name }}"
-          $tauriVersion = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
-          $packageVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          $cargoVersion = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
-          foreach ($version in @($tauriVersion, $packageVersion, $cargoVersion)) {
-            if ("v$version" -ne $tag) {
-              Write-Error "Tag $tag does not match the app version (tauri.conf.json $tauriVersion, package.json $packageVersion, Cargo.toml $cargoVersion)"
-              exit 1
-            }
-          }
+          echo "::error::Publish from main, or enable dry_run to test another branch"
+          exit 1
+
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
 
@@ -47,6 +57,37 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Bump version and release the changelog
+        id: prepare
+        run: |
+          version=$(node scripts/release/prepare-release.ts "${{ inputs.bump }}" "$RUNNER_TEMP/release-notes.md")
+          tag="v$version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "::error::Tag $tag already exists"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          {
+            echo "notes<<RELEASE_NOTES_EOF"
+            cat "$RUNNER_TEMP/release-notes.md"
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Commit and tag the release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git commit --all --message "chore: release ${{ steps.prepare.outputs.version }}"
+          git tag "${{ steps.prepare.outputs.tag }}"
+          git show --stat HEAD
+
+      # Only the tag is pushed here: `main` moves after the smoke test, so a failed release leaves it untouched.
+      - name: Push the tag
+        id: push_tag
+        if: ${{ !inputs.dry_run }}
+        run: git push origin "${{ steps.prepare.outputs.tag }}"
+
       # Code signing with Azure Trusted Signing is disabled until the Azure account exists.
       # To enable it (see README, "Code signing"):
       #   1. Create the repository secrets AZURE_CLIENT_ID, AZURE_CLIENT_SECRET and AZURE_TENANT_ID,
@@ -56,7 +97,9 @@ jobs:
       # - name: Install Azure Trusted Signing CLI
       #   run: cargo install trusted-signing-cli --locked
 
-      - name: Build and publish release
+      # A draft is invisible to the updater (releases/latest ignores drafts) until the smoke test passes.
+      # Without a tag name (dry run) the action only builds.
+      - name: Build and upload to a draft release
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -67,10 +110,44 @@ jobs:
           # AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           # TAURI_CONFIG: '{"bundle":{"windows":{"signCommand":"trusted-signing-cli -e ${{ vars.AZURE_SIGNING_ENDPOINT }} -a ${{ vars.AZURE_SIGNING_ACCOUNT }} -c ${{ vars.AZURE_CERTIFICATE_PROFILE }} -d AutoStart %1"}}}'
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: AutoStart ${{ github.ref_name }}
-          generateReleaseNotes: true
-          releaseDraft: false
+          tagName: ${{ !inputs.dry_run && steps.prepare.outputs.tag || '' }}
+          releaseName: AutoStart ${{ steps.prepare.outputs.tag }}
+          releaseBody: ${{ steps.prepare.outputs.notes }}
+          releaseDraft: true
           prerelease: false
           # A version-free name keeps releases/latest/download/AutoStart-Setup.exe a permanent link.
           releaseAssetNamePattern: "[name]-Setup[ext]"
+
+      - name: Smoke test the installer
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          ./scripts/release/smoke-test.ps1 -Installer $installer.FullName
+
+      - name: Upload the installer (dry run)
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: autostart-${{ steps.prepare.outputs.version }}-dry-run
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Push the release commit to main
+        id: push_main
+        if: ${{ !inputs.dry_run }}
+        run: git push origin "HEAD:refs/heads/main"
+
+      - name: Publish the release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ steps.prepare.outputs.tag }}" --draft=false --latest
+
+      - name: Discard the failed release
+        if: ${{ failure() && steps.push_tag.outcome == 'success' && steps.push_main.outcome != 'success' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete "${{ steps.prepare.outputs.tag }}" --yes || true
+          git push origin --delete "${{ steps.prepare.outputs.tag }}"
