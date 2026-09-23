@@ -6,6 +6,8 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-23
+
 ### Adicionado
 
 - "Ver novidades", ao lado da versão em Configurações → Sobre, mostra o histórico completo de versões, no idioma do app e sem precisar de internet.
@@ -75,7 +77,8 @@ Primeira versão pública.
 - Assistente de primeira execução.
 - Instalador por usuário (sem precisar de administrador) e atualizações automáticas assinadas.
 
-[Unreleased]: https://github.com/mariopaglia/autostart/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/mariopaglia/autostart/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mariopaglia/autostart/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/mariopaglia/autostart/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/mariopaglia/autostart/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mariopaglia/autostart/compare/v0.1.0...v0.2.0
