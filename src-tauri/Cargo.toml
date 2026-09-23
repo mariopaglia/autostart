@@ -1,6 +1,6 @@
 [package]
 name = "autostart"
-version = "0.3.0"
+version = "0.3.1"
 description = "Launches your flight sim helper apps when the simulator starts and closes them when it exits"
 authors = ["Mario Paglia"]
 license = "GPL-3.0-or-later"

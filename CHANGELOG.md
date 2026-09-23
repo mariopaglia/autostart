@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-23
+
 ### Changed
 
 - Clearer closing settings: "Wait after the simulator exits" is the main option, and the time an app gets to close on its own is now set in seconds, explains that it only applies to apps set to "Close normally" and lives under "Advanced".
@@ -65,7 +67,8 @@ First public release.
 - First-run wizard.
 - Per-user installer (no administrator rights) and signed automatic updates.
 
-[Unreleased]: https://github.com/mariopaglia/autostart/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/mariopaglia/autostart/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/mariopaglia/autostart/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/mariopaglia/autostart/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mariopaglia/autostart/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mariopaglia/autostart/releases/tag/v0.1.0
