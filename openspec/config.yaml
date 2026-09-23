@@ -18,4 +18,4 @@ rules:
     - Code is always in English, following Clean Code; comments only when necessary (why, unsafe, WinAPI quirks)
     - Every task that changes behavior includes its automated tests; Windows-only behavior gets integration tests in src-tauri/src/platform/windows/tests.rs
     - End with a task adding the user-facing changes under "## [Unreleased]" in CHANGELOG.md
-    - No preview-build checkpoints: the maintainer validates on the published release (manual Release workflow)
+    - "No preview-build checkpoints: the maintainer validates on the published release (manual Release workflow)"
