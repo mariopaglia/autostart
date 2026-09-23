@@ -82,7 +82,7 @@ The form SHALL allow adding/editing an `app` item, choosing the `.exe` through t
 - **THEN** the item is saved with `restartOnCrash = true` and the option's hint explains that apps closed normally are not reopened
 
 ### Requirement: Settings screen
-The settings screen SHALL expose: start with Windows, start minimized, graceful close timeout, close delay after the simulator exits (in seconds), only close what AutoStart opened, show notifications, theme, language, check for updates (automatic on startup and manual button), open log folder and an "About" section (version, repository link, license).
+The settings screen SHALL expose: start with Windows, start minimized, close delay after the simulator exits (in seconds), only close what AutoStart opened, the graceful close timeout (in seconds, inside a collapsed "Advanced" area of the closing section, explaining that it only applies to items set to close normally), show notifications, theme, language, check for updates (automatic on startup and manual button), open log folder and an "About" section (version, repository link, license).
 
 #### Scenario: Change theme
 - **WHEN** the user picks the `light` theme

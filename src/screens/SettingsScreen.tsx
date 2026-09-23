@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { FolderOpen, RefreshCw } from "lucide-react";
+import { ChevronDown, FolderOpen, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Language } from "@/bindings/Language";
 import type { Settings } from "@/bindings/Settings";
 import type { Theme } from "@/bindings/Theme";
 import { AboutSection } from "@/components/settings/AboutSection";
-import { CloseDelayField } from "@/components/settings/CloseDelayField";
-import { GracefulTimeoutField } from "@/components/settings/GracefulTimeoutField";
+import { SecondsField } from "@/components/settings/SecondsField";
 import { SettingRow } from "@/components/settings/SettingRow";
 import { SettingsSection } from "@/components/settings/SettingsSection";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Select,
   SelectContent,
@@ -22,7 +22,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { notifyError } from "@/lib/notify";
 import { commands, system } from "@/lib/tauri";
-import { languageSchema, themeSchema } from "@/schemas/settings";
+import {
+  closeDelaySchema,
+  gracefulTimeoutSchema,
+  languageSchema,
+  MAX_CLOSE_DELAY_MS,
+  MAX_GRACEFUL_TIMEOUT_MS,
+  MIN_GRACEFUL_TIMEOUT_MS,
+  themeSchema,
+} from "@/schemas/settings";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUpdatesStore } from "@/stores/updates-store";
 
@@ -93,25 +101,15 @@ export function SettingsScreen() {
             label={t("settings.closeDelay")}
             description={t("settings.closeDelayHint")}
           >
-            <CloseDelayField
+            <SecondsField
               id="close-delay"
               valueMs={settings.closeDelayMs}
+              schemaMs={closeDelaySchema}
+              minMs={0}
+              maxMs={MAX_CLOSE_DELAY_MS}
+              stepSeconds={10}
               onSave={(closeDelayMs) => {
                 save({ closeDelayMs });
-              }}
-            />
-          </SettingRow>
-          <Separator />
-          <SettingRow
-            id="graceful-timeout"
-            label={t("settings.gracefulTimeout")}
-            description={t("settings.gracefulTimeoutHint")}
-          >
-            <GracefulTimeoutField
-              id="graceful-timeout"
-              value={settings.gracefulTimeoutMs}
-              onSave={(gracefulTimeoutMs) => {
-                save({ gracefulTimeoutMs });
               }}
             />
           </SettingRow>
@@ -129,6 +127,33 @@ export function SettingsScreen() {
               }}
             />
           </SettingRow>
+          <Collapsible className="flex flex-col pb-2">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="group -ml-2 w-fit">
+                <ChevronDown className="transition-transform group-data-[state=open]:rotate-180" />
+                {t("settings.advanced")}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SettingRow
+                id="graceful-timeout"
+                label={t("settings.gracefulTimeout")}
+                description={t("settings.gracefulTimeoutHint")}
+              >
+                <SecondsField
+                  id="graceful-timeout"
+                  valueMs={settings.gracefulTimeoutMs}
+                  schemaMs={gracefulTimeoutSchema}
+                  minMs={MIN_GRACEFUL_TIMEOUT_MS}
+                  maxMs={MAX_GRACEFUL_TIMEOUT_MS}
+                  stepSeconds={1}
+                  onSave={(gracefulTimeoutMs) => {
+                    save({ gracefulTimeoutMs });
+                  }}
+                />
+              </SettingRow>
+            </CollapsibleContent>
+          </Collapsible>
         </SettingsSection>
 
         <SettingsSection title={t("settings.sections.notifications")}>

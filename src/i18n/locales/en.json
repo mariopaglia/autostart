@@ -148,7 +148,7 @@
     "exe": "Enter an executable, e.g. App.exe",
     "url": "Enter an http or https URL",
     "delay": "Use a number between 0 and 60000",
-    "timeout": "Use a value between 1000 and 60000 ms",
+    "timeout": "Use a value between 1 and 60 seconds",
     "closeDelay": "Use a value between 0 and 600 seconds",
     "triggers": "Keep between 1 and 5 simulators",
     "triggerDuplicate": "This simulator is already in the profile",
@@ -222,8 +222,8 @@
     "startWithWindowsHint": "Opens AutoStart when you sign in to Windows, without administrator rights.",
     "startMinimized": "Start minimized",
     "startMinimizedHint": "Shows only the tray icon, without opening the window.",
-    "gracefulTimeout": "Graceful close timeout (ms)",
-    "gracefulTimeoutHint": "After this delay, apps that did not close are force closed.",
+    "gracefulTimeout": "Time for an app to close on its own (seconds)",
+    "gracefulTimeoutHint": "Applies to apps set to “Close normally”. AutoStart asks the app to close; if it has not closed within this time (e.g. stuck on a “save changes” prompt), it is force closed.",
     "closeOnlyIfLaunchedByApp": "Only close what AutoStart opened",
     "closeOnlyIfLaunchedByAppHint": "Apps that were already open before the simulator stay open.",
     "theme": "Theme",
@@ -243,10 +243,11 @@
     "copyright": "© 2026 Mario Paglia.",
     "licenseNotice": "AutoStart is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 3 or (at your option) any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the license for more details.",
     "repository": "Repository",
-    "closeDelay": "Wait before closing (seconds)",
+    "closeDelay": "Wait after the simulator exits (seconds)",
     "closeDelayHint": "After the simulator exits, AutoStart waits this long before closing the apps. If the simulator is reopened meanwhile (e.g. after a crash), nothing is closed. 0 closes right away.",
     "showNotifications": "Show notifications",
-    "showNotificationsHint": "Windows notifications for failures, crashed apps and the countdown before closing, even while AutoStart is in the tray."
+    "showNotificationsHint": "Windows notifications for failures, crashed apps and the countdown before closing, even while AutoStart is in the tray.",
+    "advanced": "Advanced"
   },
   "onboarding": {
     "trigger": {

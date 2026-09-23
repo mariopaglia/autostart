@@ -148,7 +148,7 @@
     "exe": "Informe um executável, ex.: App.exe",
     "url": "Informe uma URL http ou https",
     "delay": "Use um número entre 0 e 60000",
-    "timeout": "Use um valor entre 1000 e 60000 ms",
+    "timeout": "Use um valor entre 1 e 60 segundos",
     "closeDelay": "Use um valor entre 0 e 600 segundos",
     "triggers": "Mantenha entre 1 e 5 simuladores",
     "triggerDuplicate": "Este simulador já está no perfil",
@@ -222,8 +222,8 @@
     "startWithWindowsHint": "Abre o AutoStart ao entrar no Windows, sem privilégios de administrador.",
     "startMinimized": "Iniciar minimizado",
     "startMinimizedHint": "Abre apenas o ícone na bandeja, sem mostrar a janela.",
-    "gracefulTimeout": "Tempo para fechar normalmente (ms)",
-    "gracefulTimeoutHint": "Depois desse prazo, os apps que não fecharem são encerrados à força.",
+    "gracefulTimeout": "Prazo para o app fechar sozinho (segundos)",
+    "gracefulTimeoutHint": "Vale para os apps configurados como “Fechar normalmente”. O AutoStart pede para o app fechar; se ele não fechar nesse prazo (por exemplo, preso em um aviso de “salvar alterações”), é encerrado à força.",
     "closeOnlyIfLaunchedByApp": "Fechar apenas o que o AutoStart abriu",
     "closeOnlyIfLaunchedByAppHint": "Apps que já estavam abertos antes do simulador continuam abertos.",
     "theme": "Tema",
@@ -243,10 +243,11 @@
     "copyright": "© 2026 Mario Paglia.",
     "licenseNotice": "O AutoStart é software livre: você pode redistribuí-lo e modificá-lo sob os termos da GNU General Public License, versão 3 ou (a seu critério) qualquer versão posterior. Ele é distribuído na esperança de ser útil, mas SEM NENHUMA GARANTIA; nem mesmo a garantia implícita de COMERCIALIZAÇÃO ou ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO. Veja a licença para mais detalhes.",
     "repository": "Repositório",
-    "closeDelay": "Esperar antes de fechar (segundos)",
+    "closeDelay": "Esperar após o simulador fechar (segundos)",
     "closeDelayHint": "Depois que o simulador fecha, o AutoStart espera esse tempo antes de fechar os apps. Se o simulador for reaberto nesse meio-tempo (por exemplo, após um crash), nada é fechado. 0 fecha na hora.",
     "showNotifications": "Mostrar notificações",
-    "showNotificationsHint": "Notificações do Windows para falhas, apps que travaram e a contagem antes de fechar, mesmo com o AutoStart na bandeja."
+    "showNotificationsHint": "Notificações do Windows para falhas, apps que travaram e a contagem antes de fechar, mesmo com o AutoStart na bandeja.",
+    "advanced": "Avançado"
   },
   "onboarding": {
     "trigger": {

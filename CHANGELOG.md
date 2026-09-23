@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Clearer closing settings: "Wait after the simulator exits" is the main option, and the time an app gets to close on its own is now set in seconds, explains that it only applies to apps set to "Close normally" and lives under "Advanced".
 - AutoStart is now licensed under the GNU GPL v3.0 or later (previously MIT). The installer and the About section in Settings show the license, and forks must use a different name and icon.
 
 ## [0.3.0] - 2026-09-23
