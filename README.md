@@ -15,8 +15,9 @@ AutoStart is a free Windows tray app for virtual pilots. Pick a trigger process 
 - **Profiles**: each profile has one or more triggers (simulator processes) and a list of items (apps or URLs). Every enabled profile is watched, so switching simulators needs no clicks.
 - **Ordered launch**: when the trigger appears, the enabled items open in list order, with a configurable delay before each one. Apps that are already running are skipped.
 - **Smart shutdown**: when the simulator exits, each app is closed normally (like clicking the X), force-closed, or kept open, as you choose. By default, only what AutoStart itself opened gets closed, and only after a short wait, so a simulator reopened after a crash keeps its apps.
+- **Start flight**: start the simulator from AutoStart (Steam, Microsoft Store or its `.exe`), with tools like head tracking opened before it.
 - **Crash recovery**: apps marked "Reopen if it crashes" are opened again if they crash mid-flight.
-- **Unobtrusive**: lives in the system tray, can start with Windows, shows Windows notifications when something needs your attention and keeps a log of every session.
+- **Unobtrusive**: lives in the system tray, can start with Windows, shows Windows notifications when something needs your attention and keeps a history of your last sessions.
 
 ## Installation
 
@@ -33,7 +34,7 @@ AutoStart checks for new versions on startup (you can turn this off in Settings)
 ## How to use
 
 1. On first run, a wizard creates the sample profile and asks which simulator you use (MSFS 2024, MSFS 2020, X-Plane 12 or custom).
-2. On the main screen, use **Add app** to pick one of your apps (see [Adding apps](#adding-apps)) or **Add URL** to open a website.
+2. On the main screen, use **Add app** to pick one of your apps (see [Adding apps](#adding-apps)) or **Add URL** to open a website or a Steam link.
 3. Drag the cards to set the order. The keyboard works too: focus the handle, press Space and use the arrow keys.
 4. Use **Test launch** and **Test close** to check everything without opening the simulator.
 5. Every **enabled** profile is watched (the switch next to the profile name, also available in the tray's profile menu). When a simulator starts, the profile that has it as a trigger runs.
@@ -42,7 +43,21 @@ AutoStart checks for new versions on startup (you can turn this off in Settings)
 
 A profile can have several triggers: add **MSFS 2020** and **MSFS 2024** to the same profile to use the same apps with both. Use **Add simulator** next to the profile name to pick a preset, a running process or type a process name.
 
+When a profile has more than one simulator, the **Only with** option on an app or URL limits it to some of them (e.g. an add-on made only for MSFS 2024). With nothing selected, the item opens with every simulator of the profile. Removing a simulator from the profile also removes it from the items restricted to it.
+
 Only one enabled profile can watch a given simulator. If you keep variations of the same setup (e.g. "MSFS Online" and "MSFS Offline"), enabling one turns off the other and AutoStart tells you which one was turned off. New, duplicated and imported profiles start turned off when their simulator is already watched by another profile.
+
+### Start flight
+
+AutoStart can also start the simulator for you. Click the simulator's name next to the profile name and choose how to start it: **Steam** or **Microsoft Store** (MSFS 2020 and 2024), **Choose executable…**, or type a Steam link (`steam://rungameid/…`) or a Store app (`shell:AppsFolder\…`). The top bar then shows **Start flight**, and the tray gets a **Start flight** menu with every simulator that can be started.
+
+When you start a flight:
+
+1. the apps marked **Open before the simulator** open first, in list order (handy for head tracking and hardware tools that must be running before the simulator);
+2. AutoStart starts the simulator, unless it is already running;
+3. once the simulator shows up, the other items open as usual.
+
+If the simulator does not show up within 5 minutes, or cannot be started, AutoStart tells you and closes the apps it opened after the [closing delay](#closing-delay), as if the simulator had exited. While it waits, **Cancel** (top bar or tray) does the same right away. "Start flight" also works for a disabled profile, which stays disabled afterwards. **Open before the simulator** is ignored when you open the simulator yourself and in **Test launch**; those items open in their list position.
 
 ### Closing delay
 
@@ -54,7 +69,15 @@ Turn on **Reopen if it crashes** on an app to have AutoStart open it again when 
 
 ### Notifications
 
-AutoStart shows Windows notifications when an app could not be opened, SimConnect did not become available, the closing countdown starts, and an app was reopened after a crash (or kept crashing). Successful launches and test sessions never notify. Turn them off in **Settings → Notifications**.
+AutoStart shows Windows notifications when an app could not be opened, SimConnect did not become available, a simulator started from AutoStart did not start, the closing countdown starts, and an app was reopened after a crash (or kept crashing). Successful launches and test sessions never notify. Turn them off in **Settings → Notifications**.
+
+### Steam links
+
+**Add URL** also accepts Steam launch links such as `steam://rungameid/1234560`, the kind Steam puts on desktop shortcuts. Dragging such a Steam shortcut onto the window adds it too. AutoStart opens these links but never closes what they open. Other kinds of links (anything that is not a website or a Steam game link) are not accepted, so a shared profile cannot run other programs through links.
+
+### Session history
+
+The **Logs** screen keeps your last 20 sessions and your latest test. Pick a session in the list at the top to see its timeline; each entry shows the profile, when it started and how many errors it had. **Clear history** removes the stored sessions.
 
 ### Adding apps
 
@@ -117,7 +140,7 @@ In a profile's `…` menu, **Export** saves a `.json` file you can share. **Impo
 
 | What                                        | Where                                            |
 | ------------------------------------------- | ------------------------------------------------ |
-| Profiles, settings and last session         | `%APPDATA%\com.mariopaglia.autostart\`           |
+| Profiles, settings and session history      | `%APPDATA%\com.mariopaglia.autostart\`           |
 | Technical logs (5 files of up to 5 MB each) | `%LOCALAPPDATA%\com.mariopaglia.autostart\logs\` |
 
 The Settings screen has an **Open log folder** button. Logs record app names and paths, but never their arguments. When reporting a problem, attach the most recent log file.

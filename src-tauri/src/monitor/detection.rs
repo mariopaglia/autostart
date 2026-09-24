@@ -26,6 +26,18 @@ pub fn any_trigger_running(profile: &Profile, is_running: impl Fn(&str) -> bool)
         .any(|trigger| is_running(&trigger.process_name))
 }
 
+/// While a flight starts, only the simulator the pilot picked counts as its arrival.
+pub fn session_simulator_running(
+    profile: &Profile,
+    awaited: Option<&Trigger>,
+    is_running: impl Fn(&str) -> bool,
+) -> bool {
+    match awaited {
+        Some(trigger) => is_running(&trigger.process_name),
+        None => any_trigger_running(profile, is_running),
+    }
+}
+
 pub fn close_delay_ticks(close_delay_ms: u32, poll_interval: Duration) -> u32 {
     let poll_ms = u32::try_from(poll_interval.as_millis()).unwrap_or(u32::MAX);
     close_delay_ms.div_ceil(poll_ms.max(1))
@@ -44,6 +56,7 @@ mod tests {
                 .map(|process_name| Trigger {
                     process_name: (*process_name).into(),
                     label: (*process_name).into(),
+                    launch_target: None,
                 })
                 .collect(),
             enabled,
@@ -112,6 +125,29 @@ mod tests {
             picked.map(|(profile, _)| profile.name).as_deref(),
             Some("X-Plane")
         );
+    }
+
+    #[test]
+    fn a_starting_flight_waits_only_for_the_chosen_simulator() {
+        let both = profile(
+            "MSFS",
+            &["FlightSimulator.exe", "FlightSimulator2024.exe"],
+            true,
+        );
+        let msfs_2024 = both.triggers[1].clone();
+        let only_2020 = running(&["FlightSimulator.exe"]);
+
+        assert!(!session_simulator_running(
+            &both,
+            Some(&msfs_2024),
+            &only_2020
+        ));
+        assert!(session_simulator_running(&both, None, &only_2020));
+        assert!(session_simulator_running(
+            &both,
+            Some(&msfs_2024),
+            running(&["FlightSimulator2024.exe"])
+        ));
     }
 
     #[test]

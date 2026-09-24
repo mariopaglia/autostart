@@ -2,4 +2,8 @@
 import type { ItemRuntime } from "./ItemRuntime";
 import type { MonitorState } from "./MonitorState";
 
-export type MonitorSnapshot = { state: MonitorState, sessionProfileId: string | null, isTestSession: boolean, items: Array<ItemRuntime>, closesAtMs: number | null, };
+export type MonitorSnapshot = { state: MonitorState, sessionProfileId: string | null, isTestSession: boolean, items: Array<ItemRuntime>, closesAtMs: number | null, 
+/**
+ * Label of the simulator being started while the state is `simStarting`.
+ */
+startingSimulator: string | null, };

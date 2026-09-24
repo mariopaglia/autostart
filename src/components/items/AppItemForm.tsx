@@ -5,6 +5,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { AppItem } from "@/bindings/AppItem";
 import type { OnClose } from "@/bindings/OnClose";
+import type { Trigger } from "@/bindings/Trigger";
 import { TextField } from "@/components/common/TextField";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { isAlreadyInProfile } from "@/lib/app-candidates";
 import { notifyError } from "@/lib/notify";
+import { supportsSimConnect } from "@/lib/trigger-presets";
 import {
   appFormSchema,
   EMPTY_APP_FORM,
@@ -27,6 +29,7 @@ import {
   type AppFormOutput,
 } from "./app-form";
 import { ItemIcon } from "./ItemIcon";
+import { OnlyForTriggersField } from "./OnlyForTriggersField";
 import { pickExecutable } from "./pick-executable";
 import { ProcessNameField } from "./ProcessNameField";
 import { SwitchField } from "./SwitchField";
@@ -37,7 +40,7 @@ interface AppItemFormProps {
   item?: AppItem;
   initial?: AppFormInput;
   otherExePaths: readonly string[];
-  simConnectSupported: boolean;
+  triggers: readonly Trigger[];
   onSubmit: (item: AppItem) => void;
   onCancel: () => void;
 }
@@ -46,7 +49,7 @@ export function AppItemForm({
   item,
   initial,
   otherExePaths,
-  simConnectSupported,
+  triggers,
   onSubmit,
   onCancel,
 }: AppItemFormProps) {
@@ -60,6 +63,7 @@ export function AppItemForm({
   const exePath = useWatch({ control: form.control, name: "exePath" });
   const isDuplicate = isAlreadyInProfile(exePath, otherExePaths);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const simConnectSupported = supportsSimConnect(triggers);
 
   // In automatic mode the process name follows the executable until AutoStart learns a better one.
   useEffect(() => {
@@ -172,6 +176,19 @@ export function AppItemForm({
             </Field>
           )}
         />
+        {triggers.length > 1 && (
+          <Controller
+            control={form.control}
+            name="onlyForTriggers"
+            render={({ field }) => (
+              <OnlyForTriggersField
+                triggers={triggers}
+                value={field.value ?? []}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        )}
         <div className="flex flex-col gap-3">
           <SwitchField control={form.control} name="runAsAdmin" label={t("itemForm.runAsAdmin")} />
           <SwitchField
@@ -190,6 +207,18 @@ export function AppItemForm({
                 : t("itemForm.waitForSimConnectUnsupported")
             }
             disabled={!simConnectSupported}
+            onToggle={(checked) => {
+              if (checked) form.setValue("launchBeforeSimulator", false);
+            }}
+          />
+          <SwitchField
+            control={form.control}
+            name="launchBeforeSimulator"
+            label={t("itemForm.launchBeforeSimulator")}
+            description={t("itemForm.launchBeforeSimulatorHint")}
+            onToggle={(checked) => {
+              if (checked) form.setValue("waitForSimConnect", false);
+            }}
           />
           <SwitchField
             control={form.control}

@@ -6,6 +6,13 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Unreleased]
 
+### Adicionado
+
+- "Iniciar voo": defina como cada simulador é iniciado (Steam, Microsoft Store ou o executável) e inicie o voo pela barra superior ou pela bandeja. Os apps marcados com "Abrir antes do simulador" abrem primeiro, depois o simulador e depois o restante.
+- Histórico de sessões: a tela de Logs guarda suas últimas 20 sessões e o teste mais recente, com seletor de sessão, contagem de erros por sessão e "Limpar histórico".
+- Itens de URL aceitam links do Steam (`steam://rungameid/…`), e atalhos do Steam na área de trabalho podem ser arrastados para a janela.
+- "Só com" em apps e URLs: num perfil com vários simuladores, um item pode abrir só com alguns deles.
+
 ## [0.4.0] - 2026-09-23
 
 ### Adicionado

@@ -67,6 +67,14 @@ export function notificationFor(
         body: t("notifications.closeDelayedBody", { seconds: entry.detail ?? "" }),
         key: `closeDelayed-${String(entry.timestampMs)}`,
       };
+    case "simulatorNotStarted":
+      return {
+        title: t("notifications.simulatorNotStartedTitle", { simulator: entry.detail ?? "" }),
+        body: entry.error
+          ? translateError(t, entry.error)
+          : t("notifications.simulatorNotStartedBody"),
+        key: `simulatorNotStarted-${String(entry.timestampMs)}`,
+      };
     case "relaunched":
       return {
         title: t("notifications.relaunchedTitle", { name: entry.itemName ?? "" }),

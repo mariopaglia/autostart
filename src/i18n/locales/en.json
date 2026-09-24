@@ -14,7 +14,8 @@
       "simRunning": "Simulator running",
       "closing": "Closing apps",
       "paused": "Paused",
-      "closePending": "Closing soon"
+      "closePending": "Closing soon",
+      "simStarting": "Starting {{simulator}}"
     },
     "pause": "Pause monitoring",
     "resume": "Resume monitoring",
@@ -28,7 +29,9 @@
     },
     "closingIn": "Simulator closed. Closing apps in {{seconds}} s",
     "closeNow": "Close now",
-    "keepApps": "Keep apps open"
+    "keepApps": "Keep apps open",
+    "startFlight": "Start flight",
+    "cancelStart": "Cancel"
   },
   "profiles": {
     "title": "Profiles",
@@ -68,7 +71,19 @@
     "useCustom": "Use \"{{processName}}\"",
     "add": "Add simulator",
     "remove": "Remove {{label}}",
-    "listLabel": "Simulators"
+    "listLabel": "Simulators",
+    "launchTarget": {
+      "edit": "How to start {{label}}",
+      "set": "Can be started from AutoStart",
+      "title": "How to start {{label}}",
+      "description": "Lets you start the flight from AutoStart: it opens the apps marked \"Open before the simulator\", then the simulator, then the rest.",
+      "steam": "Steam",
+      "microsoftStore": "Microsoft Store",
+      "chooseExe": "Choose executable…",
+      "field": "Executable, Steam link or Store app",
+      "fieldHint": "E.g. D:\\X-Plane 12\\X-Plane.exe or steam://rungameid/2537590",
+      "remove": "Don't start from AutoStart"
+    }
   },
   "items": {
     "addApp": "Add app",
@@ -103,7 +118,9 @@
     },
     "dragHint": "Tip: you can also drag app shortcuts, .exe files or web shortcuts into this window.",
     "dragUnavailableAsAdmin": "Dragging files into AutoStart is unavailable while it runs as administrator. Use \"Add app\" instead.",
-    "restartOnCrash": "Reopens if it crashes"
+    "restartOnCrash": "Reopens if it crashes",
+    "onlyFor": "Only {{simulators}}",
+    "beforeSimulator": "Before the simulator"
   },
   "itemForm": {
     "addTitle": "Add item",
@@ -119,7 +136,7 @@
     "workingDir": "Working folder",
     "workingDirHint": "Optional. Defaults to the executable's folder.",
     "processName": "Process name",
-    "url": "URL",
+    "url": "Address",
     "delay": "Wait before opening (ms)",
     "runAsAdmin": "Run as administrator",
     "onClose": "When the simulator closes",
@@ -140,19 +157,27 @@
     "processNameAutoHint": "AutoStart finds the real process on its own, even when the executable is just a launcher.",
     "processNameManualHint": "Set manually. AutoStart will not change this name.",
     "detectAutomatically": "Detect automatically",
-    "duplicate": "This app is already in this profile. You can still save it (e.g. with different arguments)."
+    "duplicate": "This app is already in this profile. You can still save it (e.g. with different arguments).",
+    "urlHint": "A website (https://…) or a Steam link (steam://rungameid/…). AutoStart opens it but never closes it.",
+    "onlyForTriggers": "Only with",
+    "onlyForTriggersHint": "Pick the simulators this item opens with. None selected: every simulator of the profile.",
+    "launchBeforeSimulator": "Open before the simulator",
+    "launchBeforeSimulatorHint": "When the flight is started from AutoStart, opens before the simulator starts (e.g. head tracking). When the simulator is opened some other way, opens in its list position."
   },
   "validation": {
     "required": "Required field",
     "name": "Enter a name with 1 to 80 characters",
     "exe": "Enter an executable, e.g. App.exe",
-    "url": "Enter an http or https URL",
+    "url": "Enter an http(s) address or a Steam link like steam://rungameid/123",
     "delay": "Use a number between 0 and 60000",
     "timeout": "Use a value between 1 and 60 seconds",
     "closeDelay": "Use a value between 0 and 600 seconds",
     "triggers": "Keep between 1 and 5 simulators",
     "triggerDuplicate": "This simulator is already in the profile",
-    "invalid": "Invalid value"
+    "invalid": "Invalid value",
+    "launchTarget": "Enter the full path of an .exe, a Steam link (steam://rungameid/…) or shell:AppsFolder\\<app id>",
+    "onlyForTriggers": "Pick only simulators of this profile",
+    "launchBeforeSimulator": "Cannot be combined with Wait for SimConnect"
   },
   "errors": {
     "io": "Could not read or write a file",
@@ -183,7 +208,6 @@
     "title": "Logs",
     "openFolder": "Open log folder",
     "test": "Test",
-    "startedAt": "Started at {{date}}",
     "inProgress": "In progress",
     "emptyTitle": "No session recorded",
     "emptyDescription": "When the simulator starts, or when you use the test buttons, the timeline shows up here.",
@@ -204,9 +228,17 @@
       "simulatorReturned": "Simulator returned, apps kept",
       "keptByUser": "Apps kept open by the user",
       "crashed": "Crashed",
-      "relaunched": "Reopened after a crash"
+      "relaunched": "Reopened after a crash",
+      "simulatorStarted": "Simulator started",
+      "simulatorNotStarted": "Simulator did not start"
     },
-    "seconds": "{{seconds}} s"
+    "seconds": "{{seconds}} s",
+    "session": "Session",
+    "errors_one": "{{count}} error",
+    "errors_other": "{{count}} errors",
+    "clearHistory": "Clear history",
+    "clearTitle": "Clear the session history?",
+    "clearDescription": "Every stored session is removed. A session in progress keeps being recorded."
   },
   "settings": {
     "title": "Settings",
@@ -323,7 +355,9 @@
     "relaunchedTitle": "{{name}} was reopened",
     "relaunchedBody": "The app crashed and AutoStart opened it again.",
     "gaveUpTitle": "{{name}} was not reopened",
-    "gaveUpBody": "The app kept crashing during this session."
+    "gaveUpBody": "The app kept crashing during this session.",
+    "simulatorNotStartedTitle": "{{simulator}} did not start",
+    "simulatorNotStartedBody": "It did not show up within 5 minutes. Your apps will be closed as if the simulator had exited."
   },
   "changelog": {
     "title": "What's new",

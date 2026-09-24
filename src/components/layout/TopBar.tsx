@@ -1,15 +1,22 @@
 import { useState } from "react";
-import { Pause, Play, PlayCircle, StopCircle } from "lucide-react";
+import { ChevronDown, Pause, Plane, Play, PlayCircle, StopCircle, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Profile } from "@/bindings/Profile";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { TriggerSelector } from "@/components/profiles/TriggerSelector";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { notifyError } from "@/lib/notify";
 import { commands } from "@/lib/tauri";
+import { withTriggers } from "@/lib/trigger-presets";
 import { useHasSession, useMonitorStore } from "@/stores/monitor-store";
 import { useProfilesStore } from "@/stores/profiles-store";
 
@@ -43,6 +50,54 @@ export function TopBar({ profile }: { profile: Profile }) {
     }
   }
 
+  function startFlight(triggerProcessName: string) {
+    void run(() => commands.startFlight(profile.id, triggerProcessName));
+  }
+
+  const startTargets = profile.triggers.filter((trigger) => trigger.launchTarget);
+  const canStartFlight = snapshot.state === "idle";
+  const [onlyTarget] = startTargets;
+
+  const flightButton =
+    snapshot.state === "simStarting" ? (
+      <Button variant="outline" onClick={() => void run(commands.cancelFlightStart)}>
+        <X />
+        {t("monitor.cancelStart")}
+      </Button>
+    ) : startTargets.length === 1 && onlyTarget ? (
+      <Button
+        disabled={!canStartFlight}
+        onClick={() => {
+          startFlight(onlyTarget.processName);
+        }}
+      >
+        <Plane />
+        {t("monitor.startFlight")}
+      </Button>
+    ) : startTargets.length > 1 ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button disabled={!canStartFlight}>
+            <Plane />
+            {t("monitor.startFlight")}
+            <ChevronDown />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {startTargets.map((trigger) => (
+            <DropdownMenuItem
+              key={trigger.processName}
+              onSelect={() => {
+                startFlight(trigger.processName);
+              }}
+            >
+              {trigger.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : null;
+
   const testButtons = (
     <div className="flex items-center gap-2">
       <Button
@@ -71,12 +126,13 @@ export function TopBar({ profile }: { profile: Profile }) {
         />
         <TriggerSelector
           triggers={profile.triggers}
-          onChange={(triggers) => void save({ ...profile, triggers })}
+          onChange={(triggers) => void save(withTriggers(profile, triggers))}
         />
       </div>
 
       <div className="flex items-center gap-2">
-        <StatusBadge state={snapshot.state} />
+        <StatusBadge state={snapshot.state} startingSimulator={snapshot.startingSimulator} />
+        {flightButton}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

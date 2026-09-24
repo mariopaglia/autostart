@@ -173,6 +173,16 @@ pub fn get_session_log(monitor: State<'_, MonitorHandle>) -> Option<SessionLog> 
 }
 
 #[tauri::command]
+pub fn get_session_history(state: State<'_, AppState>) -> Vec<SessionLog> {
+    state.session_history()
+}
+
+#[tauri::command]
+pub fn clear_session_history(state: State<'_, AppState>) -> AppResult<()> {
+    state.clear_session_history()
+}
+
+#[tauri::command]
 pub async fn pause_monitor(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
     monitor.pause().await;
     Ok(())
@@ -193,6 +203,22 @@ pub async fn close_apps_now(monitor: State<'_, MonitorHandle>) -> AppResult<()> 
 #[tauri::command]
 pub async fn keep_apps_open(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
     monitor.keep_apps_open().await;
+    Ok(())
+}
+
+/// Starts in the background; progress arrives through the monitor events.
+#[tauri::command]
+pub async fn start_flight(
+    monitor: State<'_, MonitorHandle>,
+    profile_id: String,
+    trigger_process_name: String,
+) -> AppResult<()> {
+    monitor.start_flight(profile_id, trigger_process_name).await
+}
+
+#[tauri::command]
+pub async fn cancel_flight_start(monitor: State<'_, MonitorHandle>) -> AppResult<()> {
+    monitor.cancel_flight_start().await;
     Ok(())
 }
 

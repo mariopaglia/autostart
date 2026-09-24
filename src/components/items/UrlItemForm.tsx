@@ -1,21 +1,24 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import type { Trigger } from "@/bindings/Trigger";
 import type { UrlItem } from "@/bindings/UrlItem";
 import { TextField } from "@/components/common/TextField";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { FieldGroup } from "@/components/ui/field";
+import { OnlyForTriggersField } from "./OnlyForTriggersField";
 import { EMPTY_URL_FORM, urlFormSchema, type UrlFormInput, type UrlFormOutput } from "./url-form";
 
 interface UrlItemFormProps {
   item?: UrlItem;
   initial?: UrlFormInput;
+  triggers: readonly Trigger[];
   onSubmit: (item: UrlItem) => void;
   onCancel: () => void;
 }
 
-export function UrlItemForm({ item, initial, onSubmit, onCancel }: UrlItemFormProps) {
+export function UrlItemForm({ item, initial, triggers, onSubmit, onCancel }: UrlItemFormProps) {
   const { t } = useTranslation();
   const form = useForm<UrlFormInput, unknown, UrlFormOutput>({
     resolver: zodResolver(urlFormSchema),
@@ -37,7 +40,8 @@ export function UrlItemForm({ item, initial, onSubmit, onCancel }: UrlItemFormPr
           control={form.control}
           name="url"
           label={t("itemForm.url")}
-          inputProps={{ type: "url", placeholder: "https://" }}
+          description={t("itemForm.urlHint")}
+          inputProps={{ placeholder: "https://" }}
         />
         <TextField
           control={form.control}
@@ -46,6 +50,19 @@ export function UrlItemForm({ item, initial, onSubmit, onCancel }: UrlItemFormPr
           numeric
           inputProps={{ min: 0, max: 60_000, step: 100 }}
         />
+        {triggers.length > 1 && (
+          <Controller
+            control={form.control}
+            name="onlyForTriggers"
+            render={({ field }) => (
+              <OnlyForTriggersField
+                triggers={triggers}
+                value={field.value ?? []}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        )}
       </FieldGroup>
 
       <DialogFooter>

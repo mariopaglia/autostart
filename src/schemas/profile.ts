@@ -32,6 +32,34 @@ const optionalTextSchema = z
   .optional()
   .transform((value) => (value === "" ? undefined : value));
 
+const STEAM_LAUNCH_LINK = /^steam:\/\/(rungameid|run)\/\d+$/;
+
+export function isSteamLaunchLink(value: string): boolean {
+  return STEAM_LAUNCH_LINK.test(value);
+}
+
+function isWebUrl(value: string): boolean {
+  return z.url({ protocol: /^https?$/ }).safeParse(value).success;
+}
+
+/** Profiles are shared between pilots, so only schemes that cannot run arbitrary handlers pass. */
+export const itemUrlSchema = z
+  .string()
+  .trim()
+  .refine((value) => isWebUrl(value) || isSteamLaunchLink(value), { error: "validation.url" });
+
+const EXECUTABLE_PATH = /^([a-z]:\\|\\\\|\/).*\.exe$/i;
+const STORE_APP = /^shell:AppsFolder\\[^\s\\/:*?"<>|]*![^\s\\/:*?"<>|]*$/;
+
+/** How AutoStart starts a simulator: an absolute `.exe`, a Steam link or a Store app. */
+export const launchTargetSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => EXECUTABLE_PATH.test(value) || isSteamLaunchLink(value) || STORE_APP.test(value),
+    { error: "validation.launchTarget" },
+  );
+
 export const processNameModeSchema = z.enum([
   "auto",
   "manual",
@@ -42,6 +70,7 @@ export const onCloseSchema = z.enum(["graceful", "force", "keep"]) satisfies z.Z
 export const triggerSchema = z.object({
   processName: processNameSchema,
   label: nameSchema,
+  launchTarget: launchTargetSchema.optional(),
 }) satisfies z.ZodType<Trigger>;
 
 export const triggersSchema = z
@@ -69,6 +98,8 @@ export const appItemSchema = z.object({
   startMinimized: z.boolean().default(false),
   waitForSimConnect: z.boolean().default(false),
   restartOnCrash: z.boolean().default(false),
+  launchBeforeSimulator: z.boolean().default(false),
+  onlyForTriggers: z.array(processNameSchema).default([]),
   onClose: onCloseSchema.default("graceful"),
   enabled: z.boolean().default(true),
 }) satisfies z.ZodType<AppItem>;
@@ -76,8 +107,9 @@ export const appItemSchema = z.object({
 export const urlItemSchema = z.object({
   id: z.uuid(),
   name: nameSchema,
-  url: z.url({ protocol: /^https?$/, error: "validation.url" }),
+  url: itemUrlSchema,
   delayMs: delaySchema,
+  onlyForTriggers: z.array(processNameSchema).default([]),
   enabled: z.boolean().default(true),
 }) satisfies z.ZodType<UrlItem>;
 
@@ -95,13 +127,44 @@ function withTriggersList(raw: unknown): unknown {
   return { ...rest, triggers: [trigger] };
 }
 
+function checkItems(
+  profile: { triggers: Trigger[]; items: LaunchItem[] },
+  context: z.RefinementCtx,
+) {
+  const triggerNames = new Set(
+    profile.triggers.map((trigger) => trigger.processName.toLowerCase()),
+  );
+  profile.items.forEach((item, index) => {
+    const onlyFor = item.onlyForTriggers.map((processName) => processName.toLowerCase());
+    const unknownOrRepeated =
+      onlyFor.some((processName) => !triggerNames.has(processName)) ||
+      new Set(onlyFor).size !== onlyFor.length;
+    if (unknownOrRepeated) {
+      context.addIssue({
+        code: "custom",
+        path: ["items", index, "onlyForTriggers"],
+        message: "validation.onlyForTriggers",
+      });
+    }
+    if (item.type === "app" && item.launchBeforeSimulator && item.waitForSimConnect) {
+      context.addIssue({
+        code: "custom",
+        path: ["items", index, "launchBeforeSimulator"],
+        message: "validation.launchBeforeSimulator",
+      });
+    }
+  });
+}
+
 export const profileSchema = z.preprocess(
   withTriggersList,
-  z.object({
-    id: z.uuid(),
-    name: nameSchema,
-    triggers: triggersSchema,
-    items: z.array(launchItemSchema).default([]),
-    enabled: z.boolean().default(true),
-  }),
+  z
+    .object({
+      id: z.uuid(),
+      name: nameSchema,
+      triggers: triggersSchema,
+      items: z.array(launchItemSchema).default([]),
+      enabled: z.boolean().default(true),
+    })
+    .superRefine(checkItems),
 ) satisfies z.ZodType<Profile>;

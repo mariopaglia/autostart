@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::error::ErrorPayload;
+use crate::processes::normalize_process_name;
 
 pub const DEFAULT_DELAY_MS: u32 = 800;
 pub const MAX_DELAY_MS: u32 = 60_000;
@@ -18,6 +19,9 @@ pub const MAX_TRIGGERS: usize = 5;
 pub struct Trigger {
     pub process_name: String,
     pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub launch_target: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -69,6 +73,10 @@ pub struct AppItem {
     #[serde(default)]
     pub restart_on_crash: bool,
     #[serde(default)]
+    pub launch_before_simulator: bool,
+    #[serde(default)]
+    pub only_for_triggers: Vec<String>,
+    #[serde(default)]
     pub on_close: OnClose,
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -83,6 +91,8 @@ pub struct UrlItem {
     pub url: String,
     #[serde(default = "default_delay_ms")]
     pub delay_ms: u32,
+    #[serde(default)]
+    pub only_for_triggers: Vec<String>,
     #[serde(default = "default_true")]
     pub enabled: bool,
 }
@@ -122,6 +132,23 @@ impl LaunchItem {
             Self::App(item) => item.enabled,
             Self::Url(item) => item.enabled,
         }
+    }
+
+    pub fn only_for_triggers(&self) -> &[String] {
+        match self {
+            Self::App(item) => &item.only_for_triggers,
+            Self::Url(item) => &item.only_for_triggers,
+        }
+    }
+
+    /// An item without restrictions applies to every trigger of its profile.
+    pub fn applies_to(&self, trigger_process_name: &str) -> bool {
+        let wanted = normalize_process_name(trigger_process_name);
+        let only_for = self.only_for_triggers();
+        only_for.is_empty()
+            || only_for
+                .iter()
+                .any(|process_name| normalize_process_name(process_name) == wanted)
     }
 }
 
@@ -233,6 +260,7 @@ pub struct ItemRuntime {
 pub enum MonitorState {
     #[default]
     Idle,
+    SimStarting,
     SimRunning,
     ClosePending,
     Closing,
@@ -249,6 +277,8 @@ pub struct MonitorSnapshot {
     pub items: Vec<ItemRuntime>,
     #[ts(type = "number | null")]
     pub closes_at_ms: Option<u64>,
+    /// Label of the simulator being started while the state is `simStarting`.
+    pub starting_simulator: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -267,6 +297,8 @@ pub enum TimelineKind {
     SimConnectWaitSkipped,
     CloseDelayed,
     SimulatorReturned,
+    SimulatorStarted,
+    SimulatorNotStarted,
     KeptByUser,
     Crashed,
     Relaunched,
@@ -428,6 +460,34 @@ mod tests {
         assert!(!app.start_minimized);
         assert!(!app.wait_for_sim_connect);
         assert!(!app.restart_on_crash);
+        assert!(!app.launch_before_simulator);
+        assert!(app.only_for_triggers.is_empty());
+    }
+
+    #[test]
+    fn trigger_without_launch_target_keeps_its_json_shape() {
+        let json = r#"{"processName":"X-Plane.exe","label":"X-Plane 12"}"#;
+        let trigger: Trigger = serde_json::from_str(json).expect("valid trigger");
+
+        assert_eq!(trigger.launch_target, None);
+        assert_eq!(serde_json::to_string(&trigger).expect("serializable"), json);
+    }
+
+    #[test]
+    fn item_applies_to_its_listed_triggers_ignoring_case() {
+        let json = r#"{"type":"url","id":"1","name":"Site","url":"https://a.com","onlyForTriggers":["FlightSimulator2024.exe"]}"#;
+        let item: LaunchItem = serde_json::from_str(json).expect("valid url item");
+
+        assert!(item.applies_to("flightsimulator2024.EXE"));
+        assert!(!item.applies_to("FlightSimulator.exe"));
+    }
+
+    #[test]
+    fn unrestricted_item_applies_to_every_trigger() {
+        let json = r#"{"type":"url","id":"1","name":"Site","url":"https://a.com"}"#;
+        let item: LaunchItem = serde_json::from_str(json).expect("valid url item");
+
+        assert!(item.applies_to("X-Plane.exe"));
     }
 
     #[test]

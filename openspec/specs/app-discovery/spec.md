@@ -20,8 +20,8 @@ Every discovery source SHALL produce app candidates with: display name, executab
 Given a list of dropped file paths, the system SHALL return, for each path, either an app candidate, a URL candidate or a rejection reason:
 - `.exe` → app candidate;
 - `.lnk` → app candidate for the shortcut's target executable, keeping the shortcut's arguments and working folder;
-- `.url` whose address is http or https → URL candidate (name from the file name, the address as URL);
-- anything else (folders, non-executable files, shortcuts to non-`.exe` targets or missing targets, `.url` with other schemes) → rejected with a reason.
+- `.url` whose address is http, https or a Steam launch link (`steam://rungameid/<digits>` or `steam://run/<digits>`) → URL candidate (name from the file name, the address as URL);
+- anything else (folders, non-executable files, shortcuts to non-`.exe` targets or missing targets, `.url` with other schemes or other Steam links) → rejected with a reason.
 
 #### Scenario: Drop a desktop shortcut
 - **WHEN** the user drops `Navigraph Charts.lnk` whose target is `C:\Program Files\Navigraph\Charts\Navigraph Charts.exe`
@@ -35,14 +35,17 @@ Given a list of dropped file paths, the system SHALL return, for each path, eith
 - **WHEN** the user drops `SimBrief.url` pointing to `https://www.simbrief.com`
 - **THEN** the result is a URL candidate named "SimBrief" with that address
 
+#### Scenario: Steam shortcut
+- **WHEN** the user drops `SimHub.url`, created by Steam on the desktop, pointing to `steam://rungameid/1234560`
+- **THEN** the result is a URL candidate named "SimHub" with that address
+
 #### Scenario: Unsupported file
-- **WHEN** the user drops a `.pdf` file, a folder, a shortcut to a folder or a `.url` pointing to `steam://rungameid/123`
+- **WHEN** the user drops a `.pdf` file, a folder, a shortcut to a folder or a `.url` pointing to `steam://uninstall/123` or `ms-settings:display`
 - **THEN** that path is rejected with a reason and no candidate is produced for it
 
 #### Scenario: Broken shortcut
 - **WHEN** the dropped shortcut's target executable no longer exists
 - **THEN** that path is rejected with the "executable not found" reason
-
 ### Requirement: List installed apps
 The system SHALL list installed apps from the shortcuts in the all-users and current-user Start Menu (including subfolders) and on the all-users and current-user desktops. Only shortcuts whose target is an existing `.exe` SHALL be listed. Uninstallers (target or shortcut name matching uninstall patterns such as `unins*.exe` and "Uninstall"), executables under the Windows folder and duplicates (same target executable and arguments, compared case-insensitively) SHALL be excluded. The list SHALL be sorted by name, case-insensitively.
 

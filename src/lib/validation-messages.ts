@@ -11,6 +11,9 @@ const VALIDATION_KEYS = [
   "closeDelay",
   "triggers",
   "triggerDuplicate",
+  "launchTarget",
+  "onlyForTriggers",
+  "launchBeforeSimulator",
   "invalid",
 ] as const;
 type ValidationKey = (typeof VALIDATION_KEYS)[number];

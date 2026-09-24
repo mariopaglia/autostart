@@ -6,7 +6,7 @@ Defines the screens and interactions of the AutoStart interface: a modern stream
 ## Requirements
 
 ### Requirement: Main screen
-The main screen SHALL contain: a sidebar with the profile list (create, rename, duplicate, delete, export, import), showing for each profile whether it is enabled and which one is in the current session, always visible so that clicking a profile from any screen opens it on the Profiles screen; a top bar with the monitor status (Waiting for simulator / Simulator running / Closing soon / Closing apps / Paused), the enabled toggle and the triggers of the displayed profile, and the "Test launch" and "Test close" buttons; and a central area with the profile's items as cards. While the monitor is in `closePending`, the window SHALL show, above whichever screen is open, the countdown with the "Close now" and "Keep apps open" actions.
+The main screen SHALL contain: a sidebar with the profile list (create, rename, duplicate, delete, export, import), showing for each profile whether it is enabled and which one is in the current session, always visible so that clicking a profile from any screen opens it on the Profiles screen; a top bar with the monitor status (Waiting for simulator / Starting <simulator> / Simulator running / Closing soon / Closing apps / Paused), the enabled toggle and the triggers of the displayed profile, the "Start flight" button, and the "Test launch" and "Test close" buttons; and a central area with the profile's items as cards. "Start flight" SHALL be shown only when a trigger of the displayed profile has a start target. With several such triggers, it SHALL let the user pick the simulator. While the monitor is in `simStarting`, the top bar SHALL offer "Cancel". While the monitor is in `closePending`, the window SHALL show, above whichever screen is open, the countdown with the "Close now" and "Keep apps open" actions.
 
 #### Scenario: Live status
 - **WHEN** the monitor changes state
@@ -24,6 +24,13 @@ The main screen SHALL contain: a sidebar with the profile list (create, rename, 
 - **WHEN** the displayed profile has the triggers MSFS 2020 and MSFS 2024
 - **THEN** the top bar shows both, lets the user remove either one while at least one remains, and lets the user add another from the presets, the running processes or a typed name
 
+#### Scenario: Start flight with two simulators
+- **WHEN** the displayed profile has start targets for MSFS 2020 and MSFS 2024 and the user clicks "Start flight"
+- **THEN** a menu lets the user pick MSFS 2020 or MSFS 2024, and picking one starts the flight
+
+#### Scenario: Status while the simulator starts
+- **WHEN** the monitor is in `simStarting` for MSFS 2024
+- **THEN** the top bar shows "Starting MSFS 2024" and a "Cancel" button
 ### Requirement: Item cards
 Each card SHALL show the icon (or a generic/globe icon for URLs), name, shortened path or URL, badges (Admin, Minimized, SimConnect, Reopen if it crashes, delay in seconds, close behavior), the current session status when there is one (including "Waiting for SimConnect" and "Reopening"), and an enabled toggle. Cards SHALL be reorderable by drag and drop (mouse and keyboard). Clicking a card SHALL open it for editing.
 
@@ -51,7 +58,7 @@ A profile without items SHALL show an empty state with the "Add app" and "Add UR
 - **THEN** the central area shows the empty state with both actions and the drag-and-drop hint
 
 ### Requirement: Item form
-The form SHALL allow adding/editing an `app` item, choosing the `.exe` through the native dialog (filling in name, icon and process automatically), or a `url` item. The form SHALL also open pre-filled from an app or URL candidate (picker or drag and drop), with every field still editable before saving. Main app fields: name, path, arguments, delay, run as admin, start minimized, wait for SimConnect, reopen if it crashes and close behavior. An "Advanced" section, collapsed by default, SHALL contain the working folder and the process name, indicating when the name is detected automatically and offering an action to return to automatic mode when in manual mode. The "Wait for SimConnect" option SHALL be disabled, with a hint explaining why, when none of the profile's triggers is MSFS 2020 or 2024. URL fields: name, URL, delay. Validation SHALL use the same schemas as persistence and show per-field errors. When the executable path is already used by another item of the same profile, the form SHALL show a non-blocking "already in this profile" warning.
+The form SHALL allow adding/editing an `app` item, choosing the `.exe` through the native dialog (filling in name, icon and process automatically), or a `url` item. The form SHALL also open pre-filled from an app or URL candidate (picker or drag and drop), with every field still editable before saving. Main app fields: name, path, arguments, delay, run as admin, start minimized, wait for SimConnect, open before the simulator, reopen if it crashes and close behavior. An "Advanced" section, collapsed by default, SHALL contain the working folder and the process name, indicating when the name is detected automatically and offering an action to return to automatic mode when in manual mode. The "Wait for SimConnect" option SHALL be disabled, with a hint explaining why, when none of the profile's triggers is MSFS 2020 or 2024. Turning on "Open before the simulator" SHALL turn off "Wait for SimConnect", and turning on "Wait for SimConnect" SHALL turn off "Open before the simulator". URL fields: name, URL (web address or Steam launch link), delay. When the profile has two or more triggers, both app and URL forms SHALL show an "Only with" field listing the profile's simulators, where no selection means every simulator. Validation SHALL use the same schemas as persistence and show per-field errors. When the executable path is already used by another item of the same profile, the form SHALL show a non-blocking "already in this profile" warning.
 
 #### Scenario: Add an app through the dialog
 - **WHEN** the user opens the app picker, chooses "Browse for file…" and selects an `.exe`
@@ -81,6 +88,13 @@ The form SHALL allow adding/editing an `app` item, choosing the `.exe` through t
 - **WHEN** the user turns on "Reopen if it crashes" and saves the item
 - **THEN** the item is saved with `restartOnCrash = true` and the option's hint explains that apps closed normally are not reopened
 
+#### Scenario: Profile with a single simulator
+- **WHEN** the profile has only the MSFS 2024 trigger
+- **THEN** the form does not show the "Only with" field
+
+#### Scenario: Open before the simulator hint
+- **WHEN** the user turns on "Open before the simulator"
+- **THEN** the option's hint explains that it applies only when the flight is started from AutoStart
 ### Requirement: Settings screen
 The settings screen SHALL expose: start with Windows, start minimized, close delay after the simulator exits (in seconds), only close what AutoStart opened, the graceful close timeout (in seconds, inside a collapsed "Advanced" area of the closing section, explaining that it only applies to items set to close normally), show notifications, theme, language, check for updates (automatic on startup and manual button), open log folder and an "About" section (version, repository link, license, copyright and warranty notice, and a "What's new" action next to the version that opens the full version history bundled with the app, in the interface language).
 
@@ -177,3 +191,14 @@ Dropping SHALL be ignored while any dialog is open. When AutoStart runs as admin
 #### Scenario: Drop while a dialog is open
 - **WHEN** the item form is open and the user drops a file on the window
 - **THEN** nothing is added and the form stays unchanged
+
+### Requirement: Trigger start target editor
+Each trigger shown in the top bar SHALL offer a way to set, change or remove its start target. For MSFS 2020 and MSFS 2024, the editor SHALL offer "Steam" and "Microsoft Store" as one-click choices. For every trigger, it SHALL offer "Choose executable…" (native file dialog, `.exe` only) and a text field for a Steam link or a Microsoft Store app. A trigger with a start target SHALL show a visual mark. Invalid values SHALL show the validation message on the field.
+
+#### Scenario: Set MSFS 2020 from the Microsoft Store
+- **WHEN** the user opens the editor of the MSFS 2020 trigger and picks "Microsoft Store"
+- **THEN** the trigger is saved with the Microsoft Store start target for MSFS 2020, and "Start flight" appears in the top bar
+
+#### Scenario: Remove the start target
+- **WHEN** the user removes the only start target of the displayed profile
+- **THEN** the "Start flight" button disappears from the top bar

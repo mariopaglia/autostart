@@ -1,44 +1,124 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use tauri::AppHandle;
+use tokio::sync::{mpsc, Notify};
 
 use super::reporter::{lock, Reporter, SharedSession};
+use super::session::StartMode;
+use super::MonitorCommand;
 use super::{app_watch, crash_watch};
 use crate::closer::{self, CloseOutcome};
 use crate::error::AppError;
-use crate::launcher::{self, LaunchOutcome};
-use crate::models::{ItemRuntime, ItemStatus, LaunchItem, TimelineKind};
+use crate::launcher::{self, LaunchOutcome, SimulatorStart};
+use crate::models::{ItemRuntime, ItemStatus, LaunchItem, TimelineKind, Trigger};
 use crate::simconnect;
 
-pub async fn launch_items(app: AppHandle, session: SharedSession, reporter: Reporter) {
-    let (items, supports_simconnect, is_test) = {
+/// Signals from the monitor and back to it while a flight started from AutoStart waits for
+/// the simulator.
+pub struct FlightLink {
+    pub simulator_arrived: Arc<Notify>,
+    pub monitor: mpsc::Sender<MonitorCommand>,
+}
+
+pub async fn launch_items(
+    app: AppHandle,
+    session: SharedSession,
+    reporter: Reporter,
+    flight: FlightLink,
+) {
+    let (items, supports_simconnect, mode) = {
         let session = lock(&session);
         (
             session.enabled_items(),
             session.supports_simconnect(),
-            session.is_test(),
+            session.mode().clone(),
         )
     };
-    let (immediate, deferred) = split_launch_phases(items);
+    let is_test = mode == StartMode::Test;
+    let phases = split_launch_phases(items, matches!(mode, StartMode::Flight(_)));
 
-    for item in &immediate {
+    if let StartMode::Flight(trigger) = &mode {
+        for item in &phases.before_simulator {
+            launch_one(&app, &session, &reporter, item).await;
+        }
+        if !start_simulator(&session, &reporter, trigger, &flight).await {
+            return;
+        }
+    }
+    for item in &phases.immediate {
         launch_one(&app, &session, &reporter, item).await;
     }
-    if deferred.is_empty()
-        || !await_simconnect(&session, &reporter, &deferred, supports_simconnect, is_test).await
+    if phases.deferred.is_empty()
+        || !await_simconnect(
+            &session,
+            &reporter,
+            &phases.deferred,
+            supports_simconnect,
+            is_test,
+        )
+        .await
     {
         return;
     }
-    for item in &deferred {
+    for item in &phases.deferred {
         launch_one(&app, &session, &reporter, item).await;
     }
 }
 
-/// Items that need SimConnect move to a second phase; each phase keeps the list order.
-fn split_launch_phases(items: Vec<LaunchItem>) -> (Vec<LaunchItem>, Vec<LaunchItem>) {
-    items
-        .into_iter()
-        .partition(|item| !matches!(item, LaunchItem::App(app) if app.wait_for_sim_connect))
+#[derive(Debug, Default)]
+struct LaunchPhases {
+    before_simulator: Vec<LaunchItem>,
+    immediate: Vec<LaunchItem>,
+    deferred: Vec<LaunchItem>,
+}
+
+/// Each phase keeps the list order. Only flights started from AutoStart open items before
+/// the simulator; items that need SimConnect always go last.
+fn split_launch_phases(items: Vec<LaunchItem>, is_flight: bool) -> LaunchPhases {
+    let mut phases = LaunchPhases::default();
+    for item in items {
+        match &item {
+            LaunchItem::App(app) if is_flight && app.launch_before_simulator => {
+                phases.before_simulator.push(item);
+            }
+            LaunchItem::App(app) if app.wait_for_sim_connect => phases.deferred.push(item),
+            _ => phases.immediate.push(item),
+        }
+    }
+    phases
+}
+
+/// Returns whether the simulator showed up and the remaining items should be launched.
+async fn start_simulator(
+    session: &SharedSession,
+    reporter: &Reporter,
+    trigger: &Trigger,
+    flight: &FlightLink,
+) -> bool {
+    match launcher::start_simulator(trigger).await {
+        Ok(SimulatorStart::Started) => reporter.timeline_detail(
+            session,
+            TimelineKind::SimulatorStarted,
+            None,
+            trigger.label.clone(),
+        ),
+        Ok(SimulatorStart::AlreadyRunning) => {}
+        Err(error) => {
+            reporter.simulator_not_started(session, &trigger.label, Some(&error));
+            if flight
+                .monitor
+                .send(MonitorCommand::SimulatorFailed)
+                .await
+                .is_err()
+            {
+                log::error!("monitor task is not running");
+            }
+            return false;
+        }
+    }
+    flight.simulator_arrived.notified().await;
+    true
 }
 
 /// Returns whether the deferred items should be launched.
@@ -90,7 +170,7 @@ async fn launch_one(
 
     let watches_crashes = matches!(item, LaunchItem::App(app_item) if app_item.restart_on_crash)
         && !lock(session).is_test();
-    let outcome = match (launcher::launch_item(app, item).await, item) {
+    let outcome = match (launcher::launch_item(item).await, item) {
         (LaunchOutcome::AppLaunched(launched), LaunchItem::App(app_item)) => {
             let (app, session, reporter, app_item) = (
                 app.clone(),
@@ -109,14 +189,13 @@ async fn launch_one(
                 )
                 .await;
                 if watches_crashes {
-                    crash_watch::watch(app, session, reporter, app_item.id).await;
+                    crash_watch::watch(session, reporter, app_item.id).await;
                 }
             });
             LaunchOutcome::Launched
         }
         (LaunchOutcome::AlreadyRunning, _) if watches_crashes => {
             tauri::async_runtime::spawn(crash_watch::watch(
-                app.clone(),
                 session.clone(),
                 reporter.clone(),
                 item.id().to_owned(),
@@ -172,7 +251,7 @@ mod tests {
     use super::*;
     use crate::models::{AppItem, OnClose, ProcessNameMode, UrlItem};
 
-    fn app(id: &str, wait_for_sim_connect: bool) -> LaunchItem {
+    fn app(id: &str, wait_for_sim_connect: bool, launch_before_simulator: bool) -> LaunchItem {
         LaunchItem::App(AppItem {
             id: id.into(),
             name: id.into(),
@@ -187,6 +266,8 @@ mod tests {
             start_minimized: false,
             wait_for_sim_connect,
             restart_on_crash: false,
+            launch_before_simulator,
+            only_for_triggers: Vec::new(),
             on_close: OnClose::Graceful,
             enabled: true,
         })
@@ -198,6 +279,7 @@ mod tests {
             name: id.into(),
             url: "https://simbrief.com".into(),
             delay_ms: 0,
+            only_for_triggers: Vec::new(),
             enabled: true,
         })
     }
@@ -208,22 +290,50 @@ mod tests {
 
     #[test]
     fn simconnect_items_go_last_keeping_their_order() {
-        let (immediate, deferred) = split_launch_phases(vec![
-            app("a", false),
-            app("b", true),
-            url("c"),
-            app("d", true),
-        ]);
+        let phases = split_launch_phases(
+            vec![
+                app("a", false, false),
+                app("b", true, false),
+                url("c"),
+                app("d", true, false),
+            ],
+            false,
+        );
 
-        assert_eq!(ids(&immediate), ["a", "c"]);
-        assert_eq!(ids(&deferred), ["b", "d"]);
+        assert_eq!(ids(&phases.immediate), ["a", "c"]);
+        assert_eq!(ids(&phases.deferred), ["b", "d"]);
     }
 
     #[test]
     fn without_simconnect_items_there_is_a_single_phase() {
-        let (immediate, deferred) = split_launch_phases(vec![app("a", false), url("b")]);
+        let phases = split_launch_phases(vec![app("a", false, false), url("b")], false);
 
-        assert_eq!(ids(&immediate), ["a", "b"]);
-        assert!(deferred.is_empty());
+        assert_eq!(ids(&phases.immediate), ["a", "b"]);
+        assert!(phases.deferred.is_empty());
+    }
+
+    #[test]
+    fn a_flight_opens_the_marked_items_before_the_simulator() {
+        let items = vec![
+            app("a", false, false),
+            app("b", false, true),
+            url("c"),
+            app("d", true, false),
+        ];
+
+        let phases = split_launch_phases(items, true);
+
+        assert_eq!(ids(&phases.before_simulator), ["b"]);
+        assert_eq!(ids(&phases.immediate), ["a", "c"]);
+        assert_eq!(ids(&phases.deferred), ["d"]);
+    }
+
+    #[test]
+    fn a_detected_simulator_opens_the_marked_items_in_list_order() {
+        let phases =
+            split_launch_phases(vec![app("a", false, false), app("b", false, true)], false);
+
+        assert!(phases.before_simulator.is_empty());
+        assert_eq!(ids(&phases.immediate), ["a", "b"]);
     }
 }

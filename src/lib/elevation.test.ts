@@ -16,6 +16,8 @@ function profileWith(overrides: Partial<AppItem>): Profile {
     startMinimized: false,
     waitForSimConnect: false,
     restartOnCrash: false,
+    launchBeforeSimulator: false,
+    onlyForTriggers: [],
     onClose: "graceful",
     enabled: true,
     ...overrides,

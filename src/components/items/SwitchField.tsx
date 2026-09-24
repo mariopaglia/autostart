@@ -3,7 +3,12 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import type { AppFormInput, AppFormOutput } from "./app-form";
 
-type BooleanField = "runAsAdmin" | "startMinimized" | "waitForSimConnect" | "restartOnCrash";
+type BooleanField =
+  | "runAsAdmin"
+  | "startMinimized"
+  | "waitForSimConnect"
+  | "launchBeforeSimulator"
+  | "restartOnCrash";
 
 interface SwitchFieldProps {
   control: Control<AppFormInput, unknown, AppFormOutput>;
@@ -11,9 +16,17 @@ interface SwitchFieldProps {
   label: string;
   description?: string;
   disabled?: boolean;
+  onToggle?: (checked: boolean) => void;
 }
 
-export function SwitchField({ control, name, label, description, disabled }: SwitchFieldProps) {
+export function SwitchField({
+  control,
+  name,
+  label,
+  description,
+  disabled,
+  onToggle,
+}: SwitchFieldProps) {
   return (
     <Controller
       control={control}
@@ -24,7 +37,10 @@ export function SwitchField({ control, name, label, description, disabled }: Swi
             id={name}
             checked={field.value ?? false}
             disabled={disabled}
-            onCheckedChange={field.onChange}
+            onCheckedChange={(checked) => {
+              field.onChange(checked);
+              onToggle?.(checked);
+            }}
             aria-describedby={description ? `${name}-description` : undefined}
           />
           <div className="flex flex-col gap-0.5">

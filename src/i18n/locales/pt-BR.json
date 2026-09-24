@@ -14,7 +14,8 @@
       "simRunning": "Simulador rodando",
       "closing": "Fechando apps",
       "paused": "Pausado",
-      "closePending": "Fechando em breve"
+      "closePending": "Fechando em breve",
+      "simStarting": "Iniciando {{simulator}}"
     },
     "pause": "Pausar monitoramento",
     "resume": "Retomar monitoramento",
@@ -28,7 +29,9 @@
     },
     "closingIn": "Simulador fechado. Fechando apps em {{seconds}} s",
     "closeNow": "Fechar agora",
-    "keepApps": "Manter apps abertos"
+    "keepApps": "Manter apps abertos",
+    "startFlight": "Iniciar voo",
+    "cancelStart": "Cancelar"
   },
   "profiles": {
     "title": "Perfis",
@@ -68,7 +71,19 @@
     "useCustom": "Usar \"{{processName}}\"",
     "add": "Adicionar simulador",
     "remove": "Remover {{label}}",
-    "listLabel": "Simuladores"
+    "listLabel": "Simuladores",
+    "launchTarget": {
+      "edit": "Como iniciar o {{label}}",
+      "set": "Pode ser iniciado pelo AutoStart",
+      "title": "Como iniciar o {{label}}",
+      "description": "Permite iniciar o voo pelo AutoStart: ele abre os apps marcados com \"Abrir antes do simulador\", depois o simulador e depois o restante.",
+      "steam": "Steam",
+      "microsoftStore": "Microsoft Store",
+      "chooseExe": "Escolher executável…",
+      "field": "Executável, link do Steam ou app da Store",
+      "fieldHint": "Ex.: D:\\X-Plane 12\\X-Plane.exe ou steam://rungameid/2537590",
+      "remove": "Não iniciar pelo AutoStart"
+    }
   },
   "items": {
     "addApp": "Adicionar app",
@@ -103,7 +118,9 @@
     },
     "dragHint": "Dica: você também pode arrastar atalhos de apps, arquivos .exe ou atalhos de sites para esta janela.",
     "dragUnavailableAsAdmin": "Arrastar arquivos para o AutoStart não funciona enquanto ele roda como administrador. Use \"Adicionar app\".",
-    "restartOnCrash": "Reabre se travar"
+    "restartOnCrash": "Reabre se travar",
+    "onlyFor": "Só {{simulators}}",
+    "beforeSimulator": "Antes do simulador"
   },
   "itemForm": {
     "addTitle": "Adicionar item",
@@ -119,7 +136,7 @@
     "workingDir": "Pasta de trabalho",
     "workingDirHint": "Opcional. Padrão: a pasta do executável.",
     "processName": "Nome do processo",
-    "url": "URL",
+    "url": "Endereço",
     "delay": "Espera antes de abrir (ms)",
     "runAsAdmin": "Executar como administrador",
     "onClose": "Ao fechar o simulador",
@@ -140,19 +157,27 @@
     "processNameAutoHint": "O AutoStart descobre sozinho o processo real, mesmo quando o executável é só um launcher.",
     "processNameManualHint": "Definido manualmente. O AutoStart não vai alterar este nome.",
     "detectAutomatically": "Detectar automaticamente",
-    "duplicate": "Este app já está neste perfil. Você ainda pode salvar (por exemplo, com outros argumentos)."
+    "duplicate": "Este app já está neste perfil. Você ainda pode salvar (por exemplo, com outros argumentos).",
+    "urlHint": "Um site (https://…) ou um link do Steam (steam://rungameid/…). O AutoStart abre, mas nunca fecha.",
+    "onlyForTriggers": "Só com",
+    "onlyForTriggersHint": "Escolha com quais simuladores este item abre. Nenhum selecionado: todos os simuladores do perfil.",
+    "launchBeforeSimulator": "Abrir antes do simulador",
+    "launchBeforeSimulatorHint": "Quando o voo é iniciado pelo AutoStart, abre antes do simulador (ex.: head tracking). Quando o simulador é aberto de outro jeito, abre na sua posição da lista."
   },
   "validation": {
     "required": "Campo obrigatório",
     "name": "Informe um nome de 1 a 80 caracteres",
     "exe": "Informe um executável, ex.: App.exe",
-    "url": "Informe uma URL http ou https",
+    "url": "Informe um endereço http(s) ou um link do Steam como steam://rungameid/123",
     "delay": "Use um número entre 0 e 60000",
     "timeout": "Use um valor entre 1 e 60 segundos",
     "closeDelay": "Use um valor entre 0 e 600 segundos",
     "triggers": "Mantenha entre 1 e 5 simuladores",
     "triggerDuplicate": "Este simulador já está no perfil",
-    "invalid": "Valor inválido"
+    "invalid": "Valor inválido",
+    "launchTarget": "Informe o caminho completo de um .exe, um link do Steam (steam://rungameid/…) ou shell:AppsFolder\\<id do app>",
+    "onlyForTriggers": "Escolha apenas simuladores deste perfil",
+    "launchBeforeSimulator": "Não pode ser combinado com Aguardar SimConnect"
   },
   "errors": {
     "io": "Erro ao ler ou gravar um arquivo",
@@ -183,7 +208,6 @@
     "title": "Logs",
     "openFolder": "Abrir pasta de logs",
     "test": "Teste",
-    "startedAt": "Iniciada em {{date}}",
     "inProgress": "Em andamento",
     "emptyTitle": "Nenhuma sessão registrada",
     "emptyDescription": "Quando o simulador abrir, ou ao usar os botões de teste, a linha do tempo aparece aqui.",
@@ -204,9 +228,17 @@
       "simulatorReturned": "Simulador voltou, apps mantidos",
       "keptByUser": "Apps mantidos abertos pelo usuário",
       "crashed": "Travou",
-      "relaunched": "Reaberto após travar"
+      "relaunched": "Reaberto após travar",
+      "simulatorStarted": "Simulador iniciado",
+      "simulatorNotStarted": "O simulador não iniciou"
     },
-    "seconds": "{{seconds}} s"
+    "seconds": "{{seconds}} s",
+    "session": "Sessão",
+    "errors_one": "{{count}} erro",
+    "errors_other": "{{count}} erros",
+    "clearHistory": "Limpar histórico",
+    "clearTitle": "Limpar o histórico de sessões?",
+    "clearDescription": "Todas as sessões guardadas são removidas. Uma sessão em andamento continua sendo registrada."
   },
   "settings": {
     "title": "Configurações",
@@ -323,7 +355,9 @@
     "relaunchedTitle": "{{name}} foi reaberto",
     "relaunchedBody": "O app travou e o AutoStart o abriu de novo.",
     "gaveUpTitle": "{{name}} não foi reaberto",
-    "gaveUpBody": "O app continuou travando nesta sessão."
+    "gaveUpBody": "O app continuou travando nesta sessão.",
+    "simulatorNotStartedTitle": "{{simulator}} não iniciou",
+    "simulatorNotStartedBody": "Ele não apareceu em 5 minutos. Seus apps serão fechados como se o simulador tivesse sido encerrado."
   },
   "changelog": {
     "title": "Novidades",

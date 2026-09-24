@@ -313,3 +313,125 @@ fn exit_watcher_sees_a_killed_process_as_failing() {
     assert!(wait_until(|| watcher.exit_codes() != [None]));
     assert_ne!(watcher.exit_codes(), [Some(0)]);
 }
+
+/// A URL scheme registered for the current user only, removed even when an assertion fails.
+struct TestUrlScheme(&'static str);
+
+impl TestUrlScheme {
+    fn register(scheme: &'static str, command: &str) -> Self {
+        let key = format!(r"HKCU\Software\Classes\{scheme}");
+        let registered = Self(scheme);
+        reg(&["add", &key, "/ve", "/d", &format!("URL:{scheme}"), "/f"]);
+        reg(&["add", &key, "/v", "URL Protocol", "/d", "", "/f"]);
+        reg(&[
+            "add",
+            &format!(r"{key}\shell\open\command"),
+            "/ve",
+            "/d",
+            command,
+            "/f",
+        ]);
+        registered
+    }
+}
+
+impl Drop for TestUrlScheme {
+    fn drop(&mut self) {
+        let key = format!(r"HKCU\Software\Classes\{}", self.0);
+        let _ = std::process::Command::new("reg")
+            .args(["delete", &key, "/f"])
+            .status();
+    }
+}
+
+fn reg(args: &[&str]) {
+    let status = std::process::Command::new("reg")
+        .args(args)
+        .status()
+        .unwrap();
+    assert!(status.success(), "reg {args:?} failed");
+}
+
+#[test]
+fn url_item_with_a_registered_scheme_is_handed_to_its_program() {
+    let dir = tempfile::tempdir().unwrap();
+    let marker = dir.path().join("opened.txt");
+    let command = format!(
+        r#""{}" /c echo %1> "{}""#,
+        system32().join("cmd.exe").display(),
+        marker.display()
+    );
+    let _scheme = TestUrlScheme::register("autostart-test", &command);
+    let item = crate::models::LaunchItem::Url(crate::models::UrlItem {
+        id: "link".into(),
+        name: "Link".into(),
+        url: "autostart-test://run/42".into(),
+        delay_ms: 0,
+        only_for_triggers: Vec::new(),
+        enabled: true,
+    });
+
+    let outcome = tauri::async_runtime::block_on(crate::launcher::launch_item(&item));
+
+    assert!(
+        matches!(outcome, crate::launcher::LaunchOutcome::Launched),
+        "{outcome:?}"
+    );
+    assert!(wait_until(|| std::fs::read_to_string(&marker).is_ok_and(
+        |content| content.contains("autostart-test://run/42")
+    )));
+}
+
+fn simulator(process_name: &str, launch_target: &Path) -> crate::models::Trigger {
+    crate::models::Trigger {
+        process_name: process_name.into(),
+        label: "Test simulator".into(),
+        launch_target: Some(launch_target.display().to_string()),
+    }
+}
+
+#[test]
+fn simulator_is_started_from_its_executable() {
+    // hostname.exe exits by itself, so the test leaves nothing running behind.
+    let trigger = simulator(
+        "AutoStartTestSimulator.exe",
+        &system32().join("hostname.exe"),
+    );
+
+    let started = tauri::async_runtime::block_on(crate::launcher::start_simulator(&trigger));
+
+    assert_eq!(started.unwrap(), crate::launcher::SimulatorStart::Started);
+}
+
+#[test]
+fn running_simulator_is_not_started_again() {
+    let this_test = std::env::current_exe().unwrap();
+    let process_name = this_test
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let trigger = simulator(&process_name, &notepad());
+
+    let started = tauri::async_runtime::block_on(crate::launcher::start_simulator(&trigger));
+
+    assert_eq!(
+        started.unwrap(),
+        crate::launcher::SimulatorStart::AlreadyRunning
+    );
+}
+
+#[test]
+fn missing_simulator_executable_is_reported() {
+    let trigger = simulator(
+        "AutoStartTestSimulator.exe",
+        &system32().join("autostart-missing-simulator.exe"),
+    );
+
+    let started = tauri::async_runtime::block_on(crate::launcher::start_simulator(&trigger));
+
+    assert!(
+        matches!(started, Err(crate::error::AppError::ExecutableNotFound(_))),
+        "{started:?}"
+    );
+}

@@ -61,6 +61,24 @@ pub fn launch(
     Ok((pid != 0).then_some(pid))
 }
 
+/// Hands a web address, a Steam link or a `shell:` path to the program Windows associates with it.
+pub fn open_link(link: &str) -> AppResult<()> {
+    let file = HSTRING::from(link);
+    let mut info = SHELLEXECUTEINFOW {
+        cbSize: size_of::<SHELLEXECUTEINFOW>() as u32,
+        fMask: SEE_MASK_NOASYNC,
+        lpFile: PCWSTR(file.as_ptr()),
+        nShow: SW_SHOWNORMAL.0,
+        ..Default::default()
+    };
+
+    // SAFETY: `lpFile` borrows an HSTRING that lives until this call returns.
+    unsafe { ShellExecuteExW(&mut info) }.map_err(|error| AppError::LaunchFailed {
+        name: link.to_owned(),
+        reason: error.message(),
+    })
+}
+
 fn map_launch_error(error: &::windows::core::Error, exe_path: &Path) -> AppError {
     if error.code() == ERROR_CANCELLED.to_hresult() {
         return AppError::ElevationDenied;

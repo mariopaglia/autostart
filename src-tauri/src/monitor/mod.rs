@@ -11,22 +11,29 @@ use std::time::Duration;
 
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Manager};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot, Notify};
 use tokio::time::MissedTickBehavior;
 
 use crate::error::{AppError, AppResult};
-use crate::models::{MonitorSnapshot, Profile, SessionLog, TimelineKind, Trigger};
-use crate::processes::ProcessTable;
+use crate::models::{MonitorSnapshot, Profile, SessionLog, TimelineKind};
+use crate::processes::{normalize_process_name, ProcessTable};
 use crate::state::AppState;
 pub use app_watch::PROFILE_CHANGED_EVENT;
 use reporter::{lock, Reporter, SharedSession};
-use session::{now_ms, Session};
+use session::{now_ms, Session, StartMode};
 use state_machine::{Input, SessionAction, State};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
 const COMMAND_BUFFER: usize = 32;
 
 enum MonitorCommand {
+    StartFlight {
+        profile_id: String,
+        trigger_process_name: String,
+        reply: oneshot::Sender<AppResult<()>>,
+    },
+    CancelStart,
+    SimulatorFailed,
     Pause,
     Resume,
     CloseNow,
@@ -51,7 +58,7 @@ pub struct MonitorHandle {
 
 impl MonitorHandle {
     pub fn spawn(app: AppHandle) -> Self {
-        let last_session_log = app.state::<AppState>().load_last_session();
+        let last_session_log = app.state::<AppState>().session_history().into_iter().next();
         let reporter = Reporter::new(app.clone(), last_session_log);
         let (commands, receiver) = mpsc::channel(COMMAND_BUFFER);
 
@@ -63,6 +70,7 @@ impl MonitorHandle {
             processes: ProcessTable::snapshot(),
             session: None,
             pending_start: None,
+            simulator_arrived: Arc::new(Notify::new()),
             launch_task: None,
             test_session: None,
             test_task: None,
@@ -96,6 +104,25 @@ impl MonitorHandle {
         self.send(MonitorCommand::KeepApps).await;
     }
 
+    pub async fn start_flight(
+        &self,
+        profile_id: String,
+        trigger_process_name: String,
+    ) -> AppResult<()> {
+        let (reply, response) = oneshot::channel();
+        self.send(MonitorCommand::StartFlight {
+            profile_id,
+            trigger_process_name,
+            reply,
+        })
+        .await;
+        response.await.unwrap_or(Err(AppError::SessionInProgress))
+    }
+
+    pub async fn cancel_flight_start(&self) {
+        self.send(MonitorCommand::CancelStart).await;
+    }
+
     pub async fn test_launch(&self, profile_id: String) -> AppResult<()> {
         let (reply, response) = oneshot::channel();
         self.send(MonitorCommand::TestLaunch { profile_id, reply })
@@ -124,7 +151,8 @@ struct Monitor {
     state: State,
     processes: ProcessTable,
     session: Option<SharedSession>,
-    pending_start: Option<(Profile, Trigger)>,
+    pending_start: Option<(Profile, StartMode)>,
+    simulator_arrived: Arc<Notify>,
     launch_task: Option<JoinHandle<()>>,
     test_session: Option<SharedSession>,
     test_task: Option<JoinHandle<()>>,
@@ -155,10 +183,16 @@ impl Monitor {
 
         // A running session keeps watching its own profile even if the profiles change meanwhile.
         let seen = match &self.session {
-            Some(session) => detection::any_trigger_running(lock(session).profile(), is_running),
+            Some(session) => {
+                let session = lock(session);
+                let starting = matches!(self.state, State::SimStarting { .. });
+                let awaited = session.mode().trigger().filter(|_| starting);
+                detection::session_simulator_running(session.profile(), awaited, is_running)
+            }
             None => {
                 let profiles = self.app.state::<AppState>().profiles();
-                self.pending_start = detection::first_running_profile(&profiles, is_running);
+                self.pending_start = detection::first_running_profile(&profiles, is_running)
+                    .map(|(profile, trigger)| (profile, StartMode::Detected(trigger)));
                 self.pending_start.is_some()
             }
         };
@@ -171,6 +205,16 @@ impl Monitor {
 
     fn handle(&mut self, command: MonitorCommand) {
         match command {
+            MonitorCommand::StartFlight {
+                profile_id,
+                trigger_process_name,
+                reply,
+            } => {
+                let _ = reply.send(self.start_flight(&profile_id, &trigger_process_name));
+            }
+            MonitorCommand::CancelStart | MonitorCommand::SimulatorFailed => {
+                self.apply(Input::SimulatorFailed);
+            }
             MonitorCommand::Pause => self.apply(Input::Pause),
             MonitorCommand::Resume => self.apply(Input::Resume),
             MonitorCommand::CloseNow => self.apply(Input::CloseNow),
@@ -197,6 +241,8 @@ impl Monitor {
 
         match action {
             Some(SessionAction::Start) => self.start_session(),
+            Some(SessionAction::SimulatorArrived) => self.simulator_arrived.notify_one(),
+            Some(SessionAction::StartFailed) => self.start_failed(input),
             Some(SessionAction::DelayClose) => self.delay_close(),
             Some(SessionAction::Continue) => self.continue_session(),
             Some(SessionAction::End) => self.end_session(),
@@ -210,12 +256,12 @@ impl Monitor {
         abort(self.test_task.take());
         self.test_session = None;
 
-        let Some((profile, trigger)) = self.pending_start.take() else {
+        let Some((profile, mode)) = self.pending_start.take() else {
             self.state = State::Idle;
             self.reporter.set_state(self.state.public());
             return;
         };
-        let session = self.attach(Session::start(profile, Some(trigger), false));
+        let session = self.attach(Session::start(profile, mode));
         self.launch_task = Some(self.spawn_launch(session.clone()));
         self.session = Some(session);
     }
@@ -230,7 +276,28 @@ impl Monitor {
             .close_delayed(session, now_ms() + u64::from(delay_ms), delay_ms / 1000);
     }
 
+    /// Timing out records it here; a failed start or a cancel was already reported.
+    fn start_failed(&mut self, input: Input) {
+        if input == Input::TriggerMissing {
+            if let Some(session) = &self.session {
+                let label = lock(session)
+                    .mode()
+                    .trigger()
+                    .map(|trigger| trigger.label.clone())
+                    .unwrap_or_default();
+                self.reporter.simulator_not_started(session, &label, None);
+            }
+        }
+        if self.state == State::Closing {
+            self.end_session();
+        } else {
+            self.delay_close();
+        }
+    }
+
     fn continue_session(&mut self) {
+        // A simulator that shows up late, during the close delay, still lets a flight go on.
+        self.simulator_arrived.notify_one();
         let Some(session) = &self.session else {
             return;
         };
@@ -272,11 +339,36 @@ impl Monitor {
         }
     }
 
+    fn start_flight(&mut self, profile_id: &str, trigger_process_name: &str) -> AppResult<()> {
+        if self.state != State::Idle {
+            return Err(AppError::SessionInProgress);
+        }
+        let profile = self.profile(profile_id)?;
+        let trigger = profile
+            .triggers
+            .iter()
+            .find(|trigger| {
+                normalize_process_name(&trigger.process_name)
+                    == normalize_process_name(trigger_process_name)
+            })
+            .filter(|trigger| trigger.launch_target.is_some())
+            .cloned()
+            .ok_or_else(|| {
+                AppError::Validation(format!("{trigger_process_name} has no launch target"))
+            })?;
+
+        abort(self.test_task.take());
+        self.test_session = None;
+        self.pending_start = Some((profile, StartMode::Flight(trigger)));
+        self.apply(Input::StartFlight);
+        Ok(())
+    }
+
     fn start_test_launch(&mut self, profile_id: &str) -> AppResult<()> {
         self.ensure_no_session()?;
         abort(self.test_task.take());
 
-        let session = self.attach(Session::start(self.profile(profile_id)?, None, true));
+        let session = self.attach(Session::start(self.profile(profile_id)?, StartMode::Test));
         let launch = self.spawn_launch(session.clone());
         let reporter = self.reporter.clone();
         let finished_session = session.clone();
@@ -302,7 +394,7 @@ impl Monitor {
                 session
             }
             None => {
-                let mut session = Session::start(self.profile(profile_id)?, None, true);
+                let mut session = Session::start(self.profile(profile_id)?, StartMode::Test);
                 session.assume_all_launched();
                 self.attach(session)
             }
@@ -330,11 +422,17 @@ impl Monitor {
         session
     }
 
-    fn spawn_launch(&self, session: SharedSession) -> JoinHandle<()> {
+    fn spawn_launch(&mut self, session: SharedSession) -> JoinHandle<()> {
+        self.simulator_arrived = Arc::new(Notify::new());
+        let flight = runner::FlightLink {
+            simulator_arrived: self.simulator_arrived.clone(),
+            monitor: self.commands.clone(),
+        };
         tauri::async_runtime::spawn(runner::launch_items(
             self.app.clone(),
             session,
             self.reporter.clone(),
+            flight,
         ))
     }
 

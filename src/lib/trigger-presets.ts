@@ -1,3 +1,4 @@
+import type { Profile } from "@/bindings/Profile";
 import type { Trigger } from "@/bindings/Trigger";
 
 export const TRIGGER_PRESETS: readonly Trigger[] = [
@@ -7,6 +8,45 @@ export const TRIGGER_PRESETS: readonly Trigger[] = [
 ];
 
 export const MAX_TRIGGERS = 5;
+
+export interface LaunchTargetPreset {
+  source: "steam" | "microsoftStore";
+  target: string;
+}
+
+const LAUNCH_TARGET_PRESETS: Readonly<Record<string, readonly LaunchTargetPreset[]>> = {
+  "flightsimulator.exe": [
+    { source: "steam", target: "steam://rungameid/1250410" },
+    {
+      source: "microsoftStore",
+      target: "shell:AppsFolder\\Microsoft.FlightSimulator_8wekyb3d8bbwe!App",
+    },
+  ],
+  "flightsimulator2024.exe": [
+    { source: "steam", target: "steam://rungameid/2537590" },
+    {
+      source: "microsoftStore",
+      target: "shell:AppsFolder\\Microsoft.Limitless_8wekyb3d8bbwe!App",
+    },
+  ],
+};
+
+/** Ready-made ways to start the known simulators; other simulators have none. */
+export function launchTargetPresets(trigger: Trigger): readonly LaunchTargetPreset[] {
+  return LAUNCH_TARGET_PRESETS[trigger.processName.toLowerCase()] ?? [];
+}
+
+export function withLaunchTarget(
+  triggers: readonly Trigger[],
+  processName: string,
+  launchTarget: string | undefined,
+): Trigger[] {
+  return triggers.map((trigger) => {
+    if (trigger.processName.toLowerCase() !== processName.toLowerCase()) return trigger;
+    const withoutTarget: Trigger = { processName: trigger.processName, label: trigger.label };
+    return launchTarget ? { ...withoutTarget, launchTarget } : withoutTarget;
+  });
+}
 
 function sameProcess(first: Trigger, second: Trigger): boolean {
   return first.processName.toLowerCase() === second.processName.toLowerCase();
@@ -26,6 +66,32 @@ export function addTrigger(triggers: readonly Trigger[], trigger: Trigger): Trig
 export function removeTrigger(triggers: readonly Trigger[], trigger: Trigger): Trigger[] {
   if (triggers.length <= 1) return [...triggers];
   return triggers.filter((existing) => !sameProcess(existing, trigger));
+}
+
+/** Items restricted to a removed simulator lose that restriction; with none left they apply to all. */
+export function withTriggers(profile: Profile, triggers: Trigger[]): Profile {
+  const kept = new Set(triggers.map((trigger) => trigger.processName.toLowerCase()));
+  return {
+    ...profile,
+    triggers,
+    items: profile.items.map((item) => ({
+      ...item,
+      onlyForTriggers: item.onlyForTriggers.filter((processName) =>
+        kept.has(processName.toLowerCase()),
+      ),
+    })),
+  };
+}
+
+/** Labels of the simulators an item is restricted to, in the profile's order. */
+export function restrictionLabels(
+  triggers: readonly Trigger[],
+  onlyFor: readonly string[],
+): string[] {
+  const restricted = new Set(onlyFor.map((processName) => processName.toLowerCase()));
+  return triggers
+    .filter((trigger) => restricted.has(trigger.processName.toLowerCase()))
+    .map((trigger) => trigger.label);
 }
 
 const SIMCONNECT_TRIGGERS: readonly string[] = ["flightsimulator.exe", "flightsimulator2024.exe"];

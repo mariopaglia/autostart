@@ -58,6 +58,23 @@ pub fn launch(
         })
 }
 
+pub fn open_link(link: &str) -> AppResult<()> {
+    Command::new("open")
+        .arg(link)
+        .status()
+        .map_err(|error| error.to_string())
+        .and_then(|status| {
+            status
+                .success()
+                .then_some(())
+                .ok_or_else(|| status.to_string())
+        })
+        .map_err(|reason| AppError::LaunchFailed {
+            name: link.to_owned(),
+            reason,
+        })
+}
+
 pub fn minimize_new_windows(_pids: &HashSet<u32>, _already_minimized: &mut HashSet<isize>) {}
 
 /// Lets the SimConnect launch phase run end to end on development hosts.

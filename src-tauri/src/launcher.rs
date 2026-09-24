@@ -2,11 +2,8 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use tauri::{AppHandle, Runtime};
-use tauri_plugin_opener::OpenerExt;
-
 use crate::error::{AppError, AppResult};
-use crate::models::{AppItem, ItemRuntime, ItemStatus, LaunchItem, UrlItem};
+use crate::models::{AppItem, ItemRuntime, ItemStatus, LaunchItem, Trigger, UrlItem};
 use crate::platform::LaunchOptions;
 use crate::process_tracker::{any_tracked_alive, expand_tracked, ProcessSample};
 use crate::{platform, processes};
@@ -30,10 +27,10 @@ pub struct LaunchedApp {
     pub baseline: HashSet<u32>,
 }
 
-pub async fn launch_item<R: Runtime>(app: &AppHandle<R>, item: &LaunchItem) -> LaunchOutcome {
+pub async fn launch_item(item: &LaunchItem) -> LaunchOutcome {
     let result = match item {
         LaunchItem::App(app_item) => launch_app(app_item).await,
-        LaunchItem::Url(url_item) => open_url(app, url_item).map(|()| LaunchOutcome::Launched),
+        LaunchItem::Url(url_item) => open_url(url_item).await.map(|()| LaunchOutcome::Launched),
     };
     result.unwrap_or_else(LaunchOutcome::Failed)
 }
@@ -100,13 +97,57 @@ fn has_process_named(samples: &[ProcessSample], process_name: &str) -> bool {
         .any(|sample| processes::normalize_process_name(&sample.name) == wanted)
 }
 
-fn open_url<R: Runtime>(app: &AppHandle<R>, item: &UrlItem) -> AppResult<()> {
-    app.opener()
-        .open_url(&item.url, None::<&str>)
+async fn open_url(item: &UrlItem) -> AppResult<()> {
+    let url = item.url.clone();
+    tauri::async_runtime::spawn_blocking(move || platform::open_link(&url))
+        .await
         .map_err(|error| AppError::LaunchFailed {
             name: item.name.clone(),
             reason: error.to_string(),
+        })?
+        .map_err(|error| match error {
+            AppError::LaunchFailed { reason, .. } => AppError::LaunchFailed {
+                name: item.name.clone(),
+                reason,
+            },
+            other => other,
         })
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum SimulatorStart {
+    Started,
+    AlreadyRunning,
+}
+
+/// The simulator is never tracked like an item: AutoStart starts it but never closes it.
+pub async fn start_simulator(trigger: &Trigger) -> AppResult<SimulatorStart> {
+    if processes::is_running(&trigger.process_name) {
+        return Ok(SimulatorStart::AlreadyRunning);
+    }
+    let target = trigger
+        .launch_target
+        .clone()
+        .ok_or_else(|| AppError::Validation(format!("{} has no launch target", trigger.label)))?;
+    tauri::async_runtime::spawn_blocking(move || open_launch_target(&target))
+        .await
+        .map_err(|error| AppError::LaunchFailed {
+            name: trigger.label.clone(),
+            reason: error.to_string(),
+        })??;
+    Ok(SimulatorStart::Started)
+}
+
+fn open_launch_target(target: &str) -> AppResult<()> {
+    if !target.to_lowercase().ends_with(".exe") {
+        return platform::open_link(target);
+    }
+    let exe_path = PathBuf::from(target);
+    if !exe_path.is_file() {
+        return Err(AppError::ExecutableNotFound(target.to_owned()));
+    }
+    let working_dir = exe_path.parent().map(Path::to_path_buf).unwrap_or_default();
+    platform::launch(&exe_path, None, &working_dir, LaunchOptions::default()).map(drop)
 }
 
 fn launch_failed(item: &AppItem, error: impl std::fmt::Display) -> AppError {
@@ -138,6 +179,38 @@ mod tests {
 
     use super::*;
     use crate::process_tracker::{choose_process_name, LaunchTrace};
+
+    fn trigger_for(process_name: &str, launch_target: &Path) -> Trigger {
+        Trigger {
+            process_name: process_name.into(),
+            label: "Sim".into(),
+            launch_target: Some(launch_target.display().to_string()),
+        }
+    }
+
+    #[tokio::test]
+    async fn running_simulator_is_not_started_again() {
+        let running = processes::list_running()
+            .into_iter()
+            .next()
+            .expect("some process is running");
+        let trigger = trigger_for(&running.name, Path::new("/missing/Sim.exe"));
+
+        assert_eq!(
+            start_simulator(&trigger).await.expect("skipped"),
+            SimulatorStart::AlreadyRunning
+        );
+    }
+
+    #[tokio::test]
+    async fn missing_simulator_executable_is_reported() {
+        let trigger = trigger_for("NotRunningSim.exe", Path::new("/missing/Sim.exe"));
+
+        assert!(matches!(
+            start_simulator(&trigger).await,
+            Err(AppError::ExecutableNotFound(_))
+        ));
+    }
 
     #[tokio::test]
     async fn learns_the_child_of_a_launcher_that_exits() {

@@ -12,6 +12,8 @@ use crate::window;
 
 const TRAY_ID: &str = "main";
 const PROFILE_ID_PREFIX: &str = "profile:";
+const FLIGHT_ID_PREFIX: &str = "flight:";
+const CANCEL_START_ID: &str = "cancel-start";
 const TOGGLE_PAUSE_ID: &str = "toggle-pause";
 const CLOSE_NOW_ID: &str = "close-now";
 const KEEP_APPS_ID: &str = "keep-apps";
@@ -24,6 +26,8 @@ const PAUSED_ICON: &[u8] = include_bytes!("../icons/tray-paused.png");
 
 // The tray menu exists before the webview loads, so its few strings live here instead of i18n.
 struct TrayLabels {
+    start_flight: &'static str,
+    cancel_start: &'static str,
     profiles: &'static str,
     pause: &'static str,
     resume: &'static str,
@@ -34,6 +38,7 @@ struct TrayLabels {
     watching_one: &'static str,
     watching_many: &'static str,
     idle: &'static str,
+    sim_starting: &'static str,
     sim_running: &'static str,
     close_pending: &'static str,
     closing: &'static str,
@@ -41,6 +46,8 @@ struct TrayLabels {
 }
 
 const PT_BR_LABELS: TrayLabels = TrayLabels {
+    start_flight: "Iniciar voo",
+    cancel_start: "Cancelar início do simulador",
     profiles: "Perfis",
     pause: "Pausar monitoramento",
     resume: "Retomar monitoramento",
@@ -51,6 +58,7 @@ const PT_BR_LABELS: TrayLabels = TrayLabels {
     watching_one: "1 perfil monitorado",
     watching_many: "{count} perfis monitorados",
     idle: "Aguardando simulador",
+    sim_starting: "Iniciando simulador",
     sim_running: "Simulador em execução",
     close_pending: "Fechando apps em breve",
     closing: "Fechando apps",
@@ -58,6 +66,8 @@ const PT_BR_LABELS: TrayLabels = TrayLabels {
 };
 
 const EN_LABELS: TrayLabels = TrayLabels {
+    start_flight: "Start flight",
+    cancel_start: "Cancel simulator start",
     profiles: "Profiles",
     pause: "Pause monitoring",
     resume: "Resume monitoring",
@@ -68,6 +78,7 @@ const EN_LABELS: TrayLabels = TrayLabels {
     watching_one: "Watching 1 profile",
     watching_many: "Watching {count} profiles",
     idle: "Waiting for simulator",
+    sim_starting: "Starting simulator",
     sim_running: "Simulator running",
     close_pending: "Closing apps soon",
     closing: "Closing apps",
@@ -104,9 +115,10 @@ impl TrayView {
     fn icon(&self) -> tauri::Result<Image<'static>> {
         let bytes = match self.snapshot.state {
             MonitorState::Idle => IDLE_ICON,
-            MonitorState::SimRunning | MonitorState::ClosePending | MonitorState::Closing => {
-                RUNNING_ICON
-            }
+            MonitorState::SimStarting
+            | MonitorState::SimRunning
+            | MonitorState::ClosePending
+            | MonitorState::Closing => RUNNING_ICON,
             MonitorState::Paused => PAUSED_ICON,
         };
         Image::from_bytes(bytes)
@@ -164,7 +176,36 @@ impl TrayView {
         let keep_apps =
             MenuItem::with_id(app, KEEP_APPS_ID, self.labels.keep_apps, true, None::<&str>)?;
 
-        let mut entries: Vec<&dyn IsMenuItem<Wry>> = vec![&profiles, &separator];
+        let flight_items = flight_starts(&self.profiles)
+            .into_iter()
+            .map(|start| MenuItem::with_id(app, start.menu_id, start.label, true, None::<&str>))
+            .collect::<tauri::Result<Vec<_>>>()?;
+        let flight_refs: Vec<&dyn IsMenuItem<Wry>> = flight_items
+            .iter()
+            .map(|item| item as &dyn IsMenuItem<Wry>)
+            .collect();
+        let start_flight = Submenu::with_items(
+            app,
+            self.labels.start_flight,
+            self.snapshot.state == MonitorState::Idle,
+            &flight_refs,
+        )?;
+        let cancel_start = MenuItem::with_id(
+            app,
+            CANCEL_START_ID,
+            self.labels.cancel_start,
+            true,
+            None::<&str>,
+        )?;
+
+        let mut entries: Vec<&dyn IsMenuItem<Wry>> = Vec::new();
+        if !flight_items.is_empty() {
+            entries.push(&start_flight);
+        }
+        entries.extend([&profiles as &dyn IsMenuItem<Wry>, &separator]);
+        if self.snapshot.state == MonitorState::SimStarting {
+            entries.extend([&cancel_start as &dyn IsMenuItem<Wry>, &separator]);
+        }
         if self.snapshot.state == MonitorState::ClosePending {
             entries.extend([&close_now as &dyn IsMenuItem<Wry>, &keep_apps, &separator]);
         }
@@ -181,8 +222,34 @@ impl TrayView {
 fn has_session(state: MonitorState) -> bool {
     matches!(
         state,
-        MonitorState::SimRunning | MonitorState::ClosePending | MonitorState::Closing
+        MonitorState::SimStarting
+            | MonitorState::SimRunning
+            | MonitorState::ClosePending
+            | MonitorState::Closing
     )
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct FlightStart {
+    menu_id: String,
+    label: String,
+}
+
+/// One entry per simulator that AutoStart knows how to start, in sidebar order.
+fn flight_starts(profiles: &[Profile]) -> Vec<FlightStart> {
+    profiles
+        .iter()
+        .flat_map(|profile| {
+            profile
+                .triggers
+                .iter()
+                .filter(|trigger| trigger.launch_target.is_some())
+                .map(move |trigger| FlightStart {
+                    menu_id: format!("{FLIGHT_ID_PREFIX}{}:{}", profile.id, trigger.process_name),
+                    label: format!("{} — {}", profile.name, trigger.label),
+                })
+        })
+        .collect()
 }
 
 fn watching_text(labels: &TrayLabels, count: usize) -> String {
@@ -195,6 +262,7 @@ fn watching_text(labels: &TrayLabels, count: usize) -> String {
 fn tooltip_text(labels: &TrayLabels, subject: &str, state: MonitorState) -> String {
     let state_label = match state {
         MonitorState::Idle => labels.idle,
+        MonitorState::SimStarting => labels.sim_starting,
         MonitorState::SimRunning => labels.sim_running,
         MonitorState::ClosePending => labels.close_pending,
         MonitorState::Closing => labels.closing,
@@ -249,9 +317,15 @@ fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
         TOGGLE_PAUSE_ID => toggle_pause(app),
         CLOSE_NOW_ID => end_close_delay(app, true),
         KEEP_APPS_ID => end_close_delay(app, false),
+        CANCEL_START_ID => cancel_start(app),
         id => {
             if let Some(profile_id) = id.strip_prefix(PROFILE_ID_PREFIX) {
                 toggle_profile(app, profile_id);
+            } else if let Some((profile_id, process_name)) = id
+                .strip_prefix(FLIGHT_ID_PREFIX)
+                .and_then(|rest| rest.split_once(':'))
+            {
+                start_flight(app, profile_id.to_owned(), process_name.to_owned());
             }
         }
     }
@@ -265,6 +339,22 @@ fn toggle_pause(app: &AppHandle) {
         } else {
             monitor.pause().await;
         }
+    });
+}
+
+fn start_flight(app: &AppHandle, profile_id: String, trigger_process_name: String) {
+    let monitor = app.state::<MonitorHandle>().inner().clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = monitor.start_flight(profile_id, trigger_process_name).await {
+            log::error!("could not start the flight from the tray: {error}");
+        }
+    });
+}
+
+fn cancel_start(app: &AppHandle) {
+    let monitor = app.state::<MonitorHandle>().inner().clone();
+    tauri::async_runtime::spawn(async move {
+        monitor.cancel_flight_start().await;
     });
 }
 
@@ -325,6 +415,34 @@ mod tests {
         assert_eq!(
             tooltip_text(&EN_LABELS, "MSFS 2024", MonitorState::ClosePending),
             "AutoStart · MSFS 2024 · Closing apps soon"
+        );
+    }
+
+    #[test]
+    fn tooltip_shows_the_simulator_starting() {
+        assert_eq!(
+            tooltip_text(&EN_LABELS, "MSFS", MonitorState::SimStarting),
+            "AutoStart · MSFS · Starting simulator"
+        );
+        assert!(has_session(MonitorState::SimStarting));
+    }
+
+    #[test]
+    fn flight_starts_list_only_simulators_with_a_start_target() {
+        let mut msfs = crate::storage::example_profile();
+        msfs.name = "MSFS".into();
+        msfs.triggers[0].launch_target = Some("steam://rungameid/2537590".into());
+        let mut xplane = crate::storage::example_profile();
+        xplane.triggers[0].process_name = "X-Plane.exe".into();
+
+        let starts = flight_starts(&[msfs.clone(), xplane]);
+
+        assert_eq!(
+            starts,
+            [FlightStart {
+                menu_id: format!("flight:{}:FlightSimulator2024.exe", msfs.id),
+                label: "MSFS — MSFS 2024".into(),
+            }]
         );
     }
 

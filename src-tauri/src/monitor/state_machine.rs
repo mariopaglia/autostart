@@ -2,11 +2,17 @@ use crate::models::MonitorState;
 
 /// Consecutive polls without the trigger before the session ends; absorbs brief restarts.
 const MISSED_TICKS_TO_CLOSE: u8 = 2;
+/// Five minutes of 2-second polls for a simulator started with "Start flight" to show up.
+pub const SIMULATOR_START_TICKS: u32 = 150;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum State {
     #[default]
     Idle,
+    /// A flight started from AutoStart, waiting for the chosen simulator to show up.
+    SimStarting {
+        remaining_ticks: u32,
+    },
     SimRunning {
         missed_ticks: u8,
     },
@@ -20,6 +26,9 @@ pub enum State {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Input {
+    StartFlight,
+    /// The simulator could not be started, or the user cancelled the start.
+    SimulatorFailed,
     TriggerSeen,
     TriggerMissing,
     ClosingFinished,
@@ -32,6 +41,9 @@ pub enum Input {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SessionAction {
     Start,
+    SimulatorArrived,
+    /// The simulator never showed up; the session closes like after a simulator exit.
+    StartFailed,
     DelayClose,
     Continue,
     End,
@@ -44,10 +56,32 @@ pub fn next(state: State, input: Input, close_delay_ticks: u32) -> (State, Optio
     match (state, input) {
         (State::Paused, Input::Resume) => (State::Idle, None),
         (State::Paused, _) => (State::Paused, None),
-        (State::SimRunning { .. } | State::ClosePending { .. }, Input::Pause) => {
-            (State::Paused, Some(SessionAction::Discard))
-        }
+        (
+            State::SimStarting { .. } | State::SimRunning { .. } | State::ClosePending { .. },
+            Input::Pause,
+        ) => (State::Paused, Some(SessionAction::Discard)),
         (_, Input::Pause) => (State::Paused, None),
+
+        (State::Idle, Input::StartFlight) => (
+            State::SimStarting {
+                remaining_ticks: SIMULATOR_START_TICKS,
+            },
+            Some(SessionAction::Start),
+        ),
+        (State::SimStarting { .. }, Input::TriggerSeen) => (
+            State::SimRunning { missed_ticks: 0 },
+            Some(SessionAction::SimulatorArrived),
+        ),
+        (State::SimStarting { remaining_ticks }, Input::TriggerMissing) if remaining_ticks > 1 => (
+            State::SimStarting {
+                remaining_ticks: remaining_ticks - 1,
+            },
+            None,
+        ),
+        (State::SimStarting { .. }, Input::TriggerMissing | Input::SimulatorFailed) => (
+            closing_state(close_delay_ticks),
+            Some(SessionAction::StartFailed),
+        ),
 
         (State::Idle, Input::TriggerSeen) => (
             State::SimRunning { missed_ticks: 0 },
@@ -99,10 +133,21 @@ pub fn next(state: State, input: Input, close_delay_ticks: u32) -> (State, Optio
     }
 }
 
+fn closing_state(close_delay_ticks: u32) -> State {
+    if close_delay_ticks == 0 {
+        State::Closing
+    } else {
+        State::ClosePending {
+            remaining_ticks: close_delay_ticks,
+        }
+    }
+}
+
 impl State {
     pub fn public(self) -> MonitorState {
         match self {
             Self::Idle => MonitorState::Idle,
+            Self::SimStarting { .. } => MonitorState::SimStarting,
             Self::SimRunning { .. } => MonitorState::SimRunning,
             Self::ClosePending { .. } => MonitorState::ClosePending,
             Self::Closing => MonitorState::Closing,
@@ -113,7 +158,10 @@ impl State {
     pub fn has_session(self) -> bool {
         matches!(
             self,
-            Self::SimRunning { .. } | Self::ClosePending { .. } | Self::Closing
+            Self::SimStarting { .. }
+                | Self::SimRunning { .. }
+                | Self::ClosePending { .. }
+                | Self::Closing
         )
     }
 }
@@ -315,5 +363,120 @@ mod tests {
         let (state, action) = step(State::Paused, Input::ClosingFinished);
 
         assert_eq!((state, action), (State::Paused, None));
+    }
+
+    const STARTING: State = State::SimStarting {
+        remaining_ticks: SIMULATOR_START_TICKS,
+    };
+
+    #[test]
+    fn start_flight_waits_for_the_simulator() {
+        let (state, action) = step(State::Idle, Input::StartFlight);
+
+        assert_eq!(state, STARTING);
+        assert_eq!(state.public(), MonitorState::SimStarting);
+        assert!(state.has_session());
+        assert_eq!(action, Some(SessionAction::Start));
+    }
+
+    #[test]
+    fn start_flight_is_ignored_outside_idle() {
+        for state in [
+            State::SimRunning { missed_ticks: 0 },
+            State::Closing,
+            State::Paused,
+            STARTING,
+        ] {
+            assert_eq!(step(state, Input::StartFlight), (state, None));
+        }
+    }
+
+    #[test]
+    fn simulator_showing_up_runs_the_session() {
+        let (state, action) = step(STARTING, Input::TriggerSeen);
+
+        assert_eq!(state, State::SimRunning { missed_ticks: 0 });
+        assert_eq!(action, Some(SessionAction::SimulatorArrived));
+    }
+
+    #[test]
+    fn missing_simulator_counts_down_while_starting() {
+        let (state, action) = step(STARTING, Input::TriggerMissing);
+
+        assert_eq!(
+            state,
+            State::SimStarting {
+                remaining_ticks: SIMULATOR_START_TICKS - 1
+            }
+        );
+        assert_eq!(action, None);
+    }
+
+    #[test]
+    fn simulator_that_never_shows_up_follows_the_close_delay() {
+        let last_tick = State::SimStarting { remaining_ticks: 1 };
+
+        assert_eq!(
+            next(last_tick, Input::TriggerMissing, DELAY),
+            (
+                State::ClosePending {
+                    remaining_ticks: DELAY
+                },
+                Some(SessionAction::StartFailed)
+            )
+        );
+        assert_eq!(
+            next(last_tick, Input::TriggerMissing, NO_DELAY),
+            (State::Closing, Some(SessionAction::StartFailed))
+        );
+    }
+
+    #[test]
+    fn failed_or_cancelled_start_follows_the_close_delay_right_away() {
+        assert_eq!(
+            next(STARTING, Input::SimulatorFailed, DELAY),
+            (
+                State::ClosePending {
+                    remaining_ticks: DELAY
+                },
+                Some(SessionAction::StartFailed)
+            )
+        );
+        assert_eq!(
+            next(STARTING, Input::SimulatorFailed, NO_DELAY),
+            (State::Closing, Some(SessionAction::StartFailed))
+        );
+    }
+
+    #[test]
+    fn late_simulator_during_the_close_delay_continues_the_session() {
+        let (pending, _) = next(STARTING, Input::SimulatorFailed, DELAY);
+
+        assert_eq!(
+            next(pending, Input::TriggerSeen, DELAY),
+            (
+                State::SimRunning { missed_ticks: 0 },
+                Some(SessionAction::Continue)
+            )
+        );
+    }
+
+    #[test]
+    fn pausing_while_starting_discards_the_session() {
+        assert_eq!(
+            step(STARTING, Input::Pause),
+            (State::Paused, Some(SessionAction::Discard))
+        );
+    }
+
+    #[test]
+    fn simulator_failure_is_ignored_outside_starting() {
+        let running = State::SimRunning { missed_ticks: 0 };
+
+        assert_eq!(step(running, Input::SimulatorFailed), (running, None));
+        assert_eq!(
+            step(State::Idle, Input::SimulatorFailed),
+            (State::Idle, None)
+        );
     }
 }

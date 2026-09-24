@@ -2,6 +2,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use crate::error::{AppError, AppResult};
 use crate::models::{LaunchItem, ProcessNameMode, Profile, ProfilesUpdate, SessionLog, Settings};
+use crate::session_history;
 use crate::storage::Storage;
 use crate::trigger_conflicts::{disable, profiles_to_disable, resolve_conflicts, shares_trigger};
 use crate::validation::{validate_profile, validate_settings};
@@ -9,6 +10,7 @@ use crate::validation::{validate_profile, validate_settings};
 struct AppData {
     profiles: Vec<Profile>,
     settings: Settings,
+    session_history: Vec<SessionLog>,
 }
 
 pub struct AppState {
@@ -28,10 +30,18 @@ impl AppState {
 
         storage.save_profiles(&profiles)?;
         storage.save_settings(&settings)?;
+        let session_history = storage.load_session_history().unwrap_or_else(|error| {
+            log::warn!("could not read the session history: {error}");
+            Vec::new()
+        });
 
         Ok(Self {
             storage,
-            data: Mutex::new(AppData { profiles, settings }),
+            data: Mutex::new(AppData {
+                profiles,
+                settings,
+                session_history,
+            }),
         })
     }
 
@@ -162,17 +172,23 @@ impl AppState {
         })
     }
 
-    pub fn load_last_session(&self) -> Option<SessionLog> {
-        self.storage.load_last_session().unwrap_or_else(|error| {
-            log::warn!("could not read the last session: {error}");
-            None
-        })
+    pub fn session_history(&self) -> Vec<SessionLog> {
+        self.data().session_history.clone()
     }
 
-    pub fn save_last_session(&self, log: &SessionLog) {
-        if let Err(error) = self.storage.save_last_session(log) {
-            log::error!("could not save the last session: {error}");
+    pub fn record_session(&self, log: SessionLog) {
+        let mut data = self.data();
+        session_history::record(&mut data.session_history, log);
+        if let Err(error) = self.storage.save_session_history(&data.session_history) {
+            log::error!("could not save the session history: {error}");
         }
+    }
+
+    pub fn clear_session_history(&self) -> AppResult<()> {
+        let mut data = self.data();
+        self.storage.save_session_history(&[])?;
+        data.session_history.clear();
+        Ok(())
     }
 
     fn data(&self) -> MutexGuard<'_, AppData> {
@@ -204,6 +220,7 @@ mod tests {
             triggers: vec![Trigger {
                 process_name: "X-Plane.exe".into(),
                 label: "X-Plane 12".into(),
+                launch_target: None,
             }],
             ..example_profile()
         }
@@ -325,6 +342,34 @@ mod tests {
         assert_eq!(enabled, ["Online"]);
     }
 
+    fn finished_session(is_test: bool) -> SessionLog {
+        SessionLog {
+            profile_id: "profile".into(),
+            profile_name: "MSFS".into(),
+            is_test,
+            started_at_ms: 1,
+            ended_at_ms: Some(2),
+            entries: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn recorded_sessions_survive_a_restart_until_cleared() {
+        let (dir, state) = state();
+        state.record_session(finished_session(false));
+        state.record_session(finished_session(true));
+
+        let reload = || {
+            AppState::load(Storage::new(dir.path().to_path_buf()).expect("storage"))
+                .expect("reload")
+        };
+        assert_eq!(reload().session_history().len(), 2);
+
+        state.clear_session_history().expect("clear");
+        assert!(state.session_history().is_empty());
+        assert!(reload().session_history().is_empty());
+    }
+
     #[test]
     fn last_profile_cannot_be_deleted() {
         let (_dir, state) = state();
@@ -354,6 +399,8 @@ mod tests {
             restart_on_crash: false,
             on_close: crate::models::OnClose::Graceful,
             enabled: true,
+            launch_before_simulator: false,
+            only_for_triggers: Vec::new(),
         })];
         profile
     }

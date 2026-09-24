@@ -17,7 +17,6 @@ import { useIsElevated } from "@/hooks/use-is-elevated";
 import { planDrop } from "@/lib/drop-plan";
 import { notifyError, notifySuccess, notifyWarning } from "@/lib/notify";
 import { commands } from "@/lib/tauri";
-import { supportsSimConnect } from "@/lib/trigger-presets";
 import { useProfilesStore, useSelectedProfile } from "@/stores/profiles-store";
 
 function useMissingExecutables(profile: Profile | undefined): ReadonlySet<string> {
@@ -129,6 +128,7 @@ export function MainScreen() {
             <ItemList
               profileId={profile.id}
               items={profile.items}
+              triggers={profile.triggers}
               missingExecutables={missingExecutables}
               onChange={saveItems}
               onEdit={(item) => {
@@ -155,7 +155,7 @@ export function MainScreen() {
       <ItemFormDialog
         target={formTarget}
         profileItems={profile.items}
-        simConnectSupported={supportsSimConnect(profile.triggers)}
+        triggers={profile.triggers}
         onSave={saveItem}
         onClose={() => {
           setFormTarget(null);

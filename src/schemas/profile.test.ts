@@ -112,12 +112,32 @@ describe("launchItemSchema", () => {
     });
   });
 
-  it("accepts only http and https urls", () => {
+  it("accepts web urls and Steam launch links only", () => {
     const base = { type: "url", id: ITEM_ID, name: "SimBrief" };
+    const accepted = [
+      "https://simbrief.com",
+      "http://localhost:8080/map",
+      "steam://rungameid/1234560",
+      "steam://run/1250410",
+    ];
+    const rejected = [
+      "ftp://example.com",
+      "not a url",
+      "steam://uninstall/123",
+      "steam://rungameid/",
+      "steam://rungameid/12a",
+      "steam://rungameid/1/extra",
+      "ms-msdt:/id PCWDiagnostic",
+      "file:///C:/Windows/notepad.exe",
+      "search-ms:query=x",
+    ];
 
-    expect(launchItemSchema.safeParse({ ...base, url: "https://simbrief.com" }).success).toBe(true);
-    expect(launchItemSchema.safeParse({ ...base, url: "ftp://example.com" }).success).toBe(false);
-    expect(launchItemSchema.safeParse({ ...base, url: "not a url" }).success).toBe(false);
+    for (const url of accepted) {
+      expect(launchItemSchema.safeParse({ ...base, url }).success, url).toBe(true);
+    }
+    for (const url of rejected) {
+      expect(launchItemSchema.safeParse({ ...base, url }).success, url).toBe(false);
+    }
   });
 
   it("rejects a delay outside the allowed range", () => {
@@ -136,5 +156,89 @@ describe("launchItemSchema", () => {
     const result = launchItemSchema.safeParse({ type: "script", id: ITEM_ID, name: "x" });
 
     expect(result.success).toBe(false);
+  });
+
+  it("accepts executables, Steam links and Store apps as launch targets", () => {
+    const accepted = [
+      "D:\\X-Plane 12\\X-Plane.exe",
+      "C:\\Games\\msfs.EXE",
+      "steam://rungameid/2537590",
+      "shell:AppsFolder\\Microsoft.Limitless_8wekyb3d8bbwe!App",
+    ];
+    const rejected = [
+      "X-Plane 12\\X-Plane.exe",
+      "X-Plane.exe",
+      "C:\\Games\\readme.txt",
+      "ms-msdt:/id PCWDiagnostic",
+      "https://example.com/setup.exe",
+      "steam://uninstall/2537590",
+      "shell:AppsFolder\\Microsoft.Limitless_8wekyb3d8bbwe",
+      "shell:AppsFolder\\..\\evil!App",
+      "shell:AppsFolder\\My App!App",
+    ];
+    const withTarget = (launchTarget: string) =>
+      buildProfile({ triggers: [{ ...MSFS_2024, launchTarget }] });
+
+    for (const target of accepted) {
+      expect(profileSchema.safeParse(withTarget(target)).success, target).toBe(true);
+    }
+    for (const target of rejected) {
+      expect(profileSchema.safeParse(withTarget(target)).success, target).toBe(false);
+    }
+  });
+
+  it("restricts items only to triggers of the profile, without repeats", () => {
+    const withOnlyFor = (onlyForTriggers: string[]) =>
+      buildProfile({
+        triggers: [MSFS_2020, MSFS_2024],
+        items: [{ type: "url", id: ITEM_ID, name: "Site", url: "https://a.com", onlyForTriggers }],
+      });
+
+    expect(profileSchema.safeParse(withOnlyFor([])).success).toBe(true);
+    expect(profileSchema.safeParse(withOnlyFor(["flightsimulator2024.EXE"])).success).toBe(true);
+    const unknown = profileSchema.safeParse(withOnlyFor(["X-Plane.exe"]));
+    expect(unknown.error?.issues[0]?.path).toEqual(["items", 0, "onlyForTriggers"]);
+    expect(
+      profileSchema.safeParse(withOnlyFor(["FlightSimulator.exe", "flightsimulator.exe"])).success,
+    ).toBe(false);
+  });
+
+  it("does not let an item open before the simulator and wait for SimConnect", () => {
+    const withApp = (waitForSimConnect: boolean) =>
+      buildProfile({
+        items: [
+          {
+            type: "app",
+            id: ITEM_ID,
+            name: "TrackIR",
+            exePath: "C:\\TrackIR\\TrackIR5.exe",
+            processName: "TrackIR5.exe",
+            launchBeforeSimulator: true,
+            waitForSimConnect,
+          },
+        ],
+      });
+
+    expect(profileSchema.safeParse(withApp(false)).success).toBe(true);
+    expect(profileSchema.safeParse(withApp(true)).success).toBe(false);
+  });
+
+  it("imports a v0.3.1 profile without the new fields", () => {
+    const profile = profileSchema.parse(
+      buildProfile({
+        items: [
+          {
+            type: "app",
+            id: ITEM_ID,
+            name: "Volanta",
+            exePath: "C:\\Volanta\\Volanta.exe",
+            processName: "Volanta.exe",
+          },
+        ],
+      }),
+    );
+
+    expect(profile.triggers[0]?.launchTarget).toBeUndefined();
+    expect(profile.items[0]).toMatchObject({ launchBeforeSimulator: false, onlyForTriggers: [] });
   });
 });

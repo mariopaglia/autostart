@@ -79,6 +79,7 @@ mod tests {
                 .map(|process_name| Trigger {
                     process_name: (*process_name).into(),
                     label: (*process_name).into(),
+                    launch_target: None,
                 })
                 .collect(),
             enabled,

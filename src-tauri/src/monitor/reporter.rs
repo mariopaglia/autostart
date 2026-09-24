@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use tauri::{AppHandle, Emitter, Manager};
 
-use super::session::Session;
+use super::session::{Session, StartMode};
 use crate::error::AppError;
 use crate::models::{ItemRuntime, MonitorSnapshot, MonitorState, SessionLog, TimelineKind};
 use crate::state::AppState;
@@ -53,6 +53,9 @@ impl Reporter {
             if state != MonitorState::ClosePending {
                 published.snapshot.closes_at_ms = None;
             }
+            if state != MonitorState::SimStarting {
+                published.snapshot.starting_simulator = None;
+            }
             published.snapshot.clone()
         };
         self.emit(STATE_EVENT, snapshot);
@@ -65,6 +68,14 @@ impl Reporter {
             let mut published = self.published();
             published.snapshot.session_profile_id = Some(session.profile().id.clone());
             published.snapshot.is_test_session = session.is_test();
+            published.snapshot.starting_simulator = match session.mode() {
+                StartMode::Flight(trigger)
+                    if published.snapshot.state == MonitorState::SimStarting =>
+                {
+                    Some(trigger.label.clone())
+                }
+                _ => None,
+            };
             published.snapshot.items = session.items().to_vec();
             published.session_log = Some(session.log().clone());
             (
@@ -137,7 +148,7 @@ impl Reporter {
         self.timeline_detail(
             session,
             TimelineKind::ProcessNameLearned,
-            item_id,
+            Some(item_id),
             process_name.to_owned(),
         );
     }
@@ -146,12 +157,12 @@ impl Reporter {
         &self,
         session: &SharedSession,
         kind: TimelineKind,
-        item_id: &str,
+        item_id: Option<&str>,
         detail: String,
     ) {
         let entry = {
             let mut session = lock(session);
-            let entry = session.record_detail(kind, Some(item_id), detail);
+            let entry = session.record_detail(kind, item_id, detail);
             self.published().session_log = Some(session.log().clone());
             entry
         };
@@ -163,6 +174,31 @@ impl Reporter {
         self.emit(LOG_EVENT, entry);
     }
 
+    /// `error` is the reason the start failed; without it the simulator simply never showed up.
+    pub fn simulator_not_started(
+        &self,
+        session: &SharedSession,
+        simulator: &str,
+        error: Option<&AppError>,
+    ) {
+        let entry = {
+            let mut session = lock(session);
+            let entry = session.push_entry(
+                TimelineKind::SimulatorNotStarted,
+                None,
+                error,
+                Some(simulator.to_owned()),
+            );
+            self.published().session_log = Some(session.log().clone());
+            entry
+        };
+        match error {
+            Some(error) => log::warn!("{simulator} could not be started: {error}"),
+            None => log::warn!("{simulator} did not show up after being started"),
+        }
+        self.emit(LOG_EVENT, entry);
+    }
+
     pub fn finish(&self, session: &SharedSession) {
         let (entry, log) = {
             let mut session = lock(session);
@@ -171,8 +207,9 @@ impl Reporter {
             self.published().session_log = Some(log.clone());
             (entry, log)
         };
+        // Recorded before the event so the UI refetching the history already finds the session.
+        self.app.state::<AppState>().record_session(log);
         self.emit(LOG_EVENT, entry);
-        self.app.state::<AppState>().save_last_session(&log);
     }
 
     fn emit<T: serde::Serialize + Clone>(&self, event: &str, payload: T) {

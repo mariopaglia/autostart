@@ -9,5 +9,6 @@ export const EMPTY_URL_FORM: UrlFormInput = {
   name: "",
   url: "https://",
   delayMs: DEFAULT_DELAY_MS,
+  onlyForTriggers: [],
   enabled: true,
 };

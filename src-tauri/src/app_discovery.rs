@@ -10,6 +10,7 @@ use crate::models::{
 use crate::platform::{self, ShortcutTarget};
 use crate::process_tracker::ProcessSample;
 use crate::processes;
+use crate::validation;
 
 const MAX_SHORTCUT_DEPTH: usize = 4;
 
@@ -191,7 +192,7 @@ fn app_candidate(
 fn url_from_internet_shortcut(path: &Path) -> Result<UrlCandidate, DropRejection> {
     let content = std::fs::read_to_string(path).map_err(|_| DropRejection::UnsupportedFile)?;
     let url = parse_internet_shortcut(&content).ok_or(DropRejection::UnsupportedUrl)?;
-    if !is_web_url(&url) {
+    if !validation::is_supported_item_url(&url) {
         return Err(DropRejection::UnsupportedUrl);
     }
     Ok(UrlCandidate {
@@ -215,10 +216,6 @@ fn parse_internet_shortcut(content: &str) -> Option<String> {
         }
     }
     None
-}
-
-fn is_web_url(value: &str) -> bool {
-    tauri::Url::parse(value).is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
 }
 
 fn find_shortcuts(folder: &Path, depth: usize) -> Vec<PathBuf> {
@@ -476,6 +473,27 @@ mod tests {
     }
 
     #[test]
+    fn dropped_steam_shortcut_becomes_a_url_candidate() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("SimHub.url");
+        std::fs::write(
+            &path,
+            "[{000214A0-0000-0000-C000-000000000046}]\nProp3=19,0\n[InternetShortcut]\nIDList=\nURL=steam://rungameid/1234560\n",
+        )
+        .expect("write url");
+
+        let dropped = classify_dropped_path(&path, no_shortcuts).expect("accepted");
+
+        assert_eq!(
+            dropped,
+            DroppedCandidate::Url(UrlCandidate {
+                name: "SimHub".into(),
+                url: "steam://rungameid/1234560".into(),
+            })
+        );
+    }
+
+    #[test]
     fn dropped_web_shortcut_becomes_a_url_candidate() {
         let dir = tempfile::tempdir().expect("temp dir");
         let path = dir.path().join("SimBrief.url");
@@ -498,8 +516,8 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let pdf = dir.path().join("manual.pdf");
         std::fs::write(&pdf, b"%PDF").expect("write pdf");
-        let steam = dir.path().join("Game.url");
-        std::fs::write(&steam, "[InternetShortcut]\nURL=steam://rungameid/123\n")
+        let steam = dir.path().join("Uninstall.url");
+        std::fs::write(&steam, "[InternetShortcut]\nURL=steam://uninstall/123\n")
             .expect("write url");
         let folder_shortcut = dir.path().join("Folder.lnk");
         let to_folder = |_: &Path| Some(target(dir.path()));

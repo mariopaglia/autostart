@@ -1,7 +1,5 @@
 use std::time::Duration;
 
-use tauri::AppHandle;
-
 use super::reporter::{lock, Reporter, SharedSession};
 use crate::error::AppError;
 use crate::launcher::{self, LaunchOutcome};
@@ -39,7 +37,7 @@ pub fn may_relaunch(relaunches: u32) -> bool {
 
 /// Follows an item with `restart_on_crash` for the rest of a real session and reopens it
 /// after a crash while the simulator is running.
-pub async fn watch(app: AppHandle, session: SharedSession, reporter: Reporter, item_id: String) {
+pub async fn watch(session: SharedSession, reporter: Reporter, item_id: String) {
     let mut relaunches = 0;
     loop {
         let Some(Verdict::Crashed { exit_code }) = wait_for_exit(&session, &item_id).await else {
@@ -51,7 +49,7 @@ pub async fn watch(app: AppHandle, session: SharedSession, reporter: Reporter, i
         reporter.timeline_detail(
             &session,
             TimelineKind::Crashed,
-            &item_id,
+            Some(&item_id),
             format!("{exit_code:#x}"),
         );
         if !may_relaunch(relaunches) {
@@ -64,7 +62,7 @@ pub async fn watch(app: AppHandle, session: SharedSession, reporter: Reporter, i
         let Some(item) = relaunchable_item(&session, &item_id) else {
             return;
         };
-        if !relaunch(&app, &session, &reporter, item).await {
+        if !relaunch(&session, &reporter, item).await {
             return;
         }
         relaunches += 1;
@@ -102,13 +100,8 @@ fn relaunchable_item(session: &SharedSession, item_id: &str) -> Option<AppItem> 
 }
 
 /// Returns whether the item is running again and should keep being watched.
-async fn relaunch(
-    app: &AppHandle,
-    session: &SharedSession,
-    reporter: &Reporter,
-    item: AppItem,
-) -> bool {
-    match launcher::launch_item(app, &LaunchItem::App(item.clone())).await {
+async fn relaunch(session: &SharedSession, reporter: &Reporter, item: AppItem) -> bool {
+    match launcher::launch_item(&LaunchItem::App(item.clone())).await {
         LaunchOutcome::Launched | LaunchOutcome::AppLaunched(_) => {
             reporter.timeline(session, TimelineKind::Relaunched, Some(&item.id), None);
             reporter.item(session, runtime(&item.id, ItemStatus::Running, true));

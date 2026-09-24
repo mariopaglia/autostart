@@ -10,6 +10,7 @@ mod monitor;
 mod platform;
 mod process_tracker;
 mod processes;
+mod session_history;
 mod simconnect;
 mod state;
 mod storage;
@@ -74,10 +75,14 @@ pub fn run() {
             commands::export_profile,
             commands::get_monitor_state,
             commands::get_session_log,
+            commands::get_session_history,
+            commands::clear_session_history,
             commands::pause_monitor,
             commands::resume_monitor,
             commands::close_apps_now,
             commands::keep_apps_open,
+            commands::start_flight,
+            commands::cancel_flight_start,
             commands::test_launch,
             commands::test_close,
         ])

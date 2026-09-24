@@ -13,6 +13,7 @@ function profileWithItem(): Profile {
         name: "SimBrief",
         url: "https://simbrief.com",
         delayMs: 0,
+        onlyForTriggers: [],
         enabled: true,
       },
     ],

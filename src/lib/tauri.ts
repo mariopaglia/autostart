@@ -52,10 +52,15 @@ export const commands = {
     invoke<null>("export_profile", { profileId, path }),
   getMonitorState: () => invoke<MonitorSnapshot>("get_monitor_state"),
   getSessionLog: () => invoke<SessionLog | null>("get_session_log"),
+  getSessionHistory: () => invoke<SessionLog[]>("get_session_history"),
+  clearSessionHistory: () => invoke<null>("clear_session_history"),
   pauseMonitor: () => invoke<null>("pause_monitor"),
   resumeMonitor: () => invoke<null>("resume_monitor"),
   closeAppsNow: () => invoke<null>("close_apps_now"),
   keepAppsOpen: () => invoke<null>("keep_apps_open"),
+  startFlight: (profileId: string, triggerProcessName: string) =>
+    invoke<null>("start_flight", { profileId, triggerProcessName }),
+  cancelFlightStart: () => invoke<null>("cancel_flight_start"),
   testLaunch: (profileId: string) => invoke<null>("test_launch", { profileId }),
   testClose: (profileId: string) => invoke<null>("test_close", { profileId }),
 };

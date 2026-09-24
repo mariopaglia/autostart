@@ -13,6 +13,7 @@ vi.mock("@/lib/tauri", () => ({
 
 const MSFS_2020 = { processName: "FlightSimulator.exe", label: "MSFS 2020" };
 const MSFS_2024 = { processName: "FlightSimulator2024.exe", label: "MSFS 2024" };
+const XPLANE = { processName: "X-Plane.exe", label: "X-Plane 12" };
 
 afterEach(cleanup);
 
@@ -48,5 +49,57 @@ describe("TriggerSelector", () => {
     expect(added?.getAttribute("aria-disabled")).toBe("true");
     if (available) fireEvent.click(available);
     expect(onChange).toHaveBeenCalledWith([MSFS_2024, MSFS_2020]);
+  });
+
+  it("sets a ready-made start target for MSFS", () => {
+    const onChange = vi.fn();
+    render(<TriggerSelector triggers={[MSFS_2024, MSFS_2020]} onChange={onChange} />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: i18n.t("trigger.launchTarget.edit", { label: "MSFS 2024" }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("trigger.launchTarget.steam") }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { ...MSFS_2024, launchTarget: "steam://rungameid/2537590" },
+      MSFS_2020,
+    ]);
+  });
+
+  it("rejects a typed target that is not an executable, Steam link or Store app", () => {
+    const onChange = vi.fn();
+    render(<TriggerSelector triggers={[XPLANE]} onChange={onChange} />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: i18n.t("trigger.launchTarget.edit", { label: "X-Plane 12" }),
+      }),
+    );
+    expect(screen.queryByRole("button", { name: i18n.t("trigger.launchTarget.steam") })).toBeNull();
+    fireEvent.change(screen.getByLabelText(i18n.t("trigger.launchTarget.field")), {
+      target: { value: "X-Plane.exe" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.save") }));
+
+    expect(screen.getByText(i18n.t("validation.launchTarget"))).toBeDefined();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("removes the start target", () => {
+    const onChange = vi.fn();
+    const withTarget = { ...MSFS_2024, launchTarget: "steam://rungameid/2537590" };
+    render(<TriggerSelector triggers={[withTarget]} onChange={onChange} />);
+
+    expect(screen.getByLabelText(i18n.t("trigger.launchTarget.set"))).toBeDefined();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: i18n.t("trigger.launchTarget.edit", { label: "MSFS 2024" }),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("trigger.launchTarget.remove") }));
+
+    expect(onChange).toHaveBeenCalledWith([MSFS_2024]);
   });
 });

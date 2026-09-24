@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Cpu, Plane, Plus, X } from "lucide-react";
+import { Check, Cpu, Plane, Plus, Rocket, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProcessInfo } from "@/bindings/ProcessInfo";
 import type { Trigger } from "@/bindings/Trigger";
@@ -23,8 +23,10 @@ import {
   removeTrigger,
   TRIGGER_PRESETS,
   triggerFromProcessName,
+  withLaunchTarget,
 } from "@/lib/trigger-presets";
 import { processNameSchema } from "@/schemas/profile";
+import { LaunchTargetEditor } from "./LaunchTargetEditor";
 
 interface TriggerSelectorProps {
   triggers: Trigger[];
@@ -92,8 +94,32 @@ export function TriggerSelector({ triggers, onChange }: TriggerSelectorProps) {
           className="h-7 gap-1.5 pr-1 pl-2"
           title={trigger.processName}
         >
-          <Plane />
-          <span className="max-w-40 truncate">{trigger.label}</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 rounded-sm hover:underline"
+                aria-label={t("trigger.launchTarget.edit", { label: trigger.label })}
+              >
+                <Plane />
+                <span className="max-w-40 truncate">{trigger.label}</span>
+                {trigger.launchTarget && (
+                  <Rocket
+                    className="size-3 text-sky-600 dark:text-sky-400"
+                    aria-label={t("trigger.launchTarget.set")}
+                  />
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96" align="start">
+              <LaunchTargetEditor
+                trigger={trigger}
+                onChange={(launchTarget) => {
+                  onChange(withLaunchTarget(triggers, trigger.processName, launchTarget));
+                }}
+              />
+            </PopoverContent>
+          </Popover>
           <button
             type="button"
             className="rounded-sm p-0.5 hover:bg-muted-foreground/20 disabled:opacity-40"

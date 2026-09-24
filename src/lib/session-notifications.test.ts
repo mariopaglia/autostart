@@ -52,6 +52,41 @@ describe.each(["pt-BR", "en"])("notificationFor (%s)", (language) => {
     expect(gaveUp?.title).toBe(i18n.t("notifications.gaveUpTitle", { name: "Volanta" }));
   });
 
+  it("names the simulator that did not show up", () => {
+    const notification = notificationFor(
+      entry({
+        kind: "simulatorNotStarted",
+        itemId: undefined,
+        itemName: undefined,
+        detail: "MSFS 2024",
+      }),
+      REAL_SESSION,
+    );
+
+    expect(notification?.title).toBe(
+      i18n.t("notifications.simulatorNotStartedTitle", { simulator: "MSFS 2024" }),
+    );
+    expect(notification?.body).toBe(i18n.t("notifications.simulatorNotStartedBody"));
+  });
+
+  it("explains why the simulator could not be started", () => {
+    const notification = notificationFor(
+      entry({
+        kind: "simulatorNotStarted",
+        itemId: undefined,
+        itemName: undefined,
+        detail: "X-Plane 12",
+        error: { kind: "executableNotFound", message: "D:\\X-Plane 12\\X-Plane.exe" },
+      }),
+      REAL_SESSION,
+    );
+
+    expect(notification?.title).toBe(
+      i18n.t("notifications.simulatorNotStartedTitle", { simulator: "X-Plane 12" }),
+    );
+    expect(notification?.body).toBe(i18n.t("errors.executableNotFound"));
+  });
+
   it("uses one key for every SimConnect timeout of a session", () => {
     const simConnect = (itemId: string) =>
       notificationFor(
@@ -71,6 +106,7 @@ describe("notificationFor filters", () => {
   it("ignores successes and closing errors", () => {
     expect(notificationFor(entry({ kind: "launched" }), REAL_SESSION)).toBeNull();
     expect(notificationFor(entry({ kind: "closedGracefully" }), REAL_SESSION)).toBeNull();
+    expect(notificationFor(entry({ kind: "simulatorStarted" }), REAL_SESSION)).toBeNull();
     expect(
       notificationFor(
         entry({ kind: "error", error: { kind: "closeTimedOut", message: "" } }),

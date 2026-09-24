@@ -111,6 +111,7 @@ describe("monitor store", () => {
       isTestSession: false,
       items: [],
       closesAtMs: 1_000,
+      startingSimulator: null,
     });
 
     expect(useMonitorStore.getState().snapshot.state).toBe("closePending");

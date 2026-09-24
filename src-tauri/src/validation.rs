@@ -20,6 +20,7 @@ pub fn validate_profile(profile: &Profile) -> AppResult<()> {
             return Err(invalid(&format!("items.{index}.id"), "is duplicated"));
         }
         validate_item(index, item)?;
+        validate_only_for_triggers(index, item, &profile.triggers)?;
     }
     Ok(())
 }
@@ -41,6 +42,32 @@ fn validate_triggers(triggers: &[Trigger]) -> AppResult<()> {
                 "is duplicated",
             ));
         }
+        if let Some(target) = &trigger.launch_target {
+            require_launch_target(&format!("triggers.{index}.launchTarget"), target)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_only_for_triggers(
+    index: usize,
+    item: &LaunchItem,
+    triggers: &[Trigger],
+) -> AppResult<()> {
+    let field = format!("items.{index}.onlyForTriggers");
+    let profile_triggers: HashSet<String> = triggers
+        .iter()
+        .map(|trigger| normalize_process_name(&trigger.process_name))
+        .collect();
+    let mut seen = HashSet::new();
+    for process_name in item.only_for_triggers() {
+        let normalized = normalize_process_name(process_name);
+        if !profile_triggers.contains(&normalized) {
+            return Err(invalid(&field, "must list triggers of the profile"));
+        }
+        if !seen.insert(normalized) {
+            return Err(invalid(&field, "is duplicated"));
+        }
     }
     Ok(())
 }
@@ -58,9 +85,15 @@ fn validate_item(index: usize, item: &LaunchItem) -> AppResult<()> {
             if app.exe_path.trim().is_empty() {
                 return Err(invalid(&field("exePath"), "is required"));
             }
+            if app.launch_before_simulator && app.wait_for_sim_connect {
+                return Err(invalid(
+                    &field("launchBeforeSimulator"),
+                    "cannot be combined with waitForSimConnect",
+                ));
+            }
             require_executable_name(&field("processName"), &app.process_name)
         }
-        LaunchItem::Url(url) => require_web_url(&field("url"), &url.url),
+        LaunchItem::Url(url) => require_item_url(&field("url"), &url.url),
     }
 }
 
@@ -98,11 +131,63 @@ fn require_executable_name(field: &str, value: &str) -> AppResult<()> {
     Ok(())
 }
 
-fn require_web_url(field: &str, value: &str) -> AppResult<()> {
-    match tauri::Url::parse(value) {
-        Ok(url) if matches!(url.scheme(), "http" | "https") => Ok(()),
-        _ => Err(invalid(field, "must be an http or https URL")),
+fn require_item_url(field: &str, value: &str) -> AppResult<()> {
+    if is_supported_item_url(value) {
+        return Ok(());
     }
+    Err(invalid(
+        field,
+        "must be an http(s) URL or a Steam launch link",
+    ))
+}
+
+/// Profiles are shared between pilots, so only schemes that cannot run arbitrary protocol
+/// handlers are accepted.
+pub fn is_supported_item_url(value: &str) -> bool {
+    tauri::Url::parse(value).is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
+        || is_steam_launch_link(value)
+}
+
+fn require_launch_target(field: &str, value: &str) -> AppResult<()> {
+    if is_executable_path(value) || is_steam_launch_link(value) || is_store_app(value) {
+        return Ok(());
+    }
+    Err(invalid(
+        field,
+        "must be an absolute .exe path, a Steam launch link or shell:AppsFolder\\<app id>",
+    ))
+}
+
+// Checked by hand too, so Windows paths validate the same way while developing on macOS.
+fn is_executable_path(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    let has_drive =
+        bytes.len() > 3 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && bytes[2] == b'\\';
+    (has_drive || std::path::Path::new(value).is_absolute())
+        && value.to_lowercase().ends_with(".exe")
+}
+
+/// Microsoft Store apps have no regular executable and start through their AppUserModelID.
+fn is_store_app(value: &str) -> bool {
+    let Some(app_id) = value.strip_prefix(r"shell:AppsFolder\") else {
+        return false;
+    };
+    app_id.contains('!')
+        && !app_id
+            .chars()
+            .any(|c| c.is_whitespace() || r#"\/:*?"<>|"#.contains(c))
+}
+
+pub fn is_steam_launch_link(value: &str) -> bool {
+    let Some(rest) = value.strip_prefix("steam://") else {
+        return false;
+    };
+    let Some((action, app_id)) = rest.split_once('/') else {
+        return false;
+    };
+    matches!(action, "rungameid" | "run")
+        && !app_id.is_empty()
+        && app_id.chars().all(|c| c.is_ascii_digit())
 }
 
 fn invalid(field: &str, reason: &str) -> AppError {
@@ -123,6 +208,7 @@ mod tests {
                 url: url.into(),
                 delay_ms: 0,
                 enabled: true,
+                only_for_triggers: Vec::new(),
             })],
             ..example_profile()
         }
@@ -152,6 +238,7 @@ mod tests {
         Trigger {
             process_name: process_name.into(),
             label: "Sim".into(),
+            launch_target: None,
         }
     }
 
@@ -184,10 +271,125 @@ mod tests {
     }
 
     #[test]
-    fn accepts_only_web_urls() {
-        assert!(validate_profile(&profile_with_url("https://simbrief.com")).is_ok());
-        assert!(validate_profile(&profile_with_url("ftp://example.com")).is_err());
-        assert!(validate_profile(&profile_with_url("not a url")).is_err());
+    fn accepts_web_urls_and_steam_launch_links_only() {
+        let accepted = [
+            "https://simbrief.com",
+            "http://localhost:8080/map",
+            "steam://rungameid/1234560",
+            "steam://run/1250410",
+        ];
+        let rejected = [
+            "ftp://example.com",
+            "not a url",
+            "steam://uninstall/123",
+            "steam://rungameid/",
+            "steam://rungameid/12a",
+            "steam://rungameid/1/extra",
+            "ms-msdt:/id PCWDiagnostic",
+            "file:///C:/Windows/notepad.exe",
+            "search-ms:query=x",
+        ];
+
+        for url in accepted {
+            assert!(validate_profile(&profile_with_url(url)).is_ok(), "{url}");
+        }
+        for url in rejected {
+            assert!(validate_profile(&profile_with_url(url)).is_err(), "{url}");
+        }
+    }
+
+    fn profile_with_launch_target(target: &str) -> Profile {
+        let mut profile = example_profile();
+        profile.triggers[0].launch_target = Some(target.into());
+        profile
+    }
+
+    #[test]
+    fn accepts_executables_steam_links_and_store_apps_as_launch_targets() {
+        let accepted = [
+            r"D:\X-Plane 12\X-Plane.exe",
+            r"C:\Games\msfs.EXE",
+            "steam://rungameid/2537590",
+            r"shell:AppsFolder\Microsoft.Limitless_8wekyb3d8bbwe!App",
+        ];
+        let rejected = [
+            r"X-Plane 12\X-Plane.exe",
+            "X-Plane.exe",
+            r"C:\Games\readme.txt",
+            "ms-msdt:/id PCWDiagnostic",
+            "https://example.com/setup.exe",
+            "steam://uninstall/2537590",
+            r"shell:AppsFolder\Microsoft.Limitless_8wekyb3d8bbwe",
+            r"shell:AppsFolder\..\evil!App",
+            r"shell:AppsFolder\My App!App",
+        ];
+
+        for target in accepted {
+            assert!(
+                validate_profile(&profile_with_launch_target(target)).is_ok(),
+                "{target}"
+            );
+        }
+        for target in rejected {
+            assert!(
+                validate_profile(&profile_with_launch_target(target)).is_err(),
+                "{target}"
+            );
+        }
+    }
+
+    fn profile_restricting_item_to(only_for: &[&str]) -> Profile {
+        let mut profile =
+            profile_with_triggers(&["FlightSimulator.exe", "FlightSimulator2024.exe"]);
+        profile.items = profile_with_url("https://simbrief.com").items;
+        if let Some(LaunchItem::Url(item)) = profile.items.first_mut() {
+            item.only_for_triggers = only_for.iter().map(|name| (*name).into()).collect();
+        }
+        profile
+    }
+
+    #[test]
+    fn item_triggers_must_belong_to_the_profile_without_repeats() {
+        assert!(validate_profile(&profile_restricting_item_to(&[])).is_ok());
+        assert!(
+            validate_profile(&profile_restricting_item_to(&["flightsimulator2024.EXE"])).is_ok()
+        );
+        assert!(validate_profile(&profile_restricting_item_to(&["X-Plane.exe"])).is_err());
+        assert!(validate_profile(&profile_restricting_item_to(&[
+            "FlightSimulator.exe",
+            "flightsimulator.exe"
+        ]))
+        .is_err());
+    }
+
+    #[test]
+    fn opening_before_the_simulator_excludes_waiting_for_simconnect() {
+        let mut profile = example_profile();
+        profile.items = vec![LaunchItem::App(crate::models::AppItem {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: "TrackIR".into(),
+            exe_path: r"C:\TrackIR\TrackIR5.exe".into(),
+            args: None,
+            working_dir: None,
+            process_name: "TrackIR5.exe".into(),
+            process_name_mode: crate::models::ProcessNameMode::Auto,
+            icon_base64: None,
+            delay_ms: 0,
+            run_as_admin: false,
+            start_minimized: false,
+            wait_for_sim_connect: false,
+            restart_on_crash: false,
+            launch_before_simulator: true,
+            only_for_triggers: Vec::new(),
+            on_close: crate::models::OnClose::Graceful,
+            enabled: true,
+        })];
+        assert!(validate_profile(&profile).is_ok());
+
+        if let Some(LaunchItem::App(item)) = profile.items.first_mut() {
+            item.wait_for_sim_connect = true;
+        }
+        assert!(validate_profile(&profile).is_err());
     }
 
     #[test]

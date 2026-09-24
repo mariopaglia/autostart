@@ -14,13 +14,21 @@ use crate::processes::normalize_process_name;
 const SCHEMA_VERSION: u32 = 2;
 const PROFILES_FILE: &str = "profiles.json";
 const SETTINGS_FILE: &str = "settings.json";
-const LAST_SESSION_FILE: &str = "last-session.json";
+const LEGACY_LAST_SESSION_FILE: &str = "last-session.json";
+const SESSION_HISTORY_FILE: &str = "session-history.json";
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ProfilesFile {
     schema_version: u32,
     profiles: Vec<Profile>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SessionHistoryFile {
+    schema_version: u32,
+    sessions: Vec<SessionLog>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -87,12 +95,27 @@ impl Storage {
         raw.get("activeProfileId")?.as_str().map(str::to_owned)
     }
 
-    pub fn load_last_session(&self) -> AppResult<Option<SessionLog>> {
-        self.read_or_recover(LAST_SESSION_FILE)
+    /// Up to v0.3.1 only the last session was kept; it becomes the first entry of the history.
+    pub fn load_session_history(&self) -> AppResult<Vec<SessionLog>> {
+        if let Some(file) = self.read_or_recover::<SessionHistoryFile>(SESSION_HISTORY_FILE)? {
+            return Ok(file.sessions);
+        }
+        let Some(last_session) = self.read_or_recover::<SessionLog>(LEGACY_LAST_SESSION_FILE)?
+        else {
+            return Ok(Vec::new());
+        };
+        let sessions = vec![last_session];
+        self.save_session_history(&sessions)?;
+        fs::remove_file(self.dir.join(LEGACY_LAST_SESSION_FILE))?;
+        Ok(sessions)
     }
 
-    pub fn save_last_session(&self, log: &SessionLog) -> AppResult<()> {
-        self.write_atomic(LAST_SESSION_FILE, log)
+    pub fn save_session_history(&self, sessions: &[SessionLog]) -> AppResult<()> {
+        let file = SessionHistoryFile {
+            schema_version: SCHEMA_VERSION,
+            sessions: sessions.to_vec(),
+        };
+        self.write_atomic(SESSION_HISTORY_FILE, &file)
     }
 
     fn read_or_recover<T: DeserializeOwned>(&self, file_name: &str) -> AppResult<Option<T>> {
@@ -206,6 +229,7 @@ pub fn example_profile() -> Profile {
         triggers: vec![Trigger {
             process_name: "FlightSimulator2024.exe".into(),
             label: "MSFS 2024".into(),
+            launch_target: None,
         }],
         items: vec![LaunchItem::Url(UrlItem {
             id: uuid::Uuid::new_v4().to_string(),
@@ -213,6 +237,7 @@ pub fn example_profile() -> Profile {
             url: "https://charts.navigraph.com".into(),
             delay_ms: 0,
             enabled: false,
+            only_for_triggers: Vec::new(),
         })],
         enabled: true,
     }
@@ -298,6 +323,63 @@ mod tests {
         assert!(quarantined);
     }
 
+    fn session(started_at_ms: u64) -> SessionLog {
+        SessionLog {
+            profile_id: "profile".into(),
+            profile_name: "MSFS".into(),
+            is_test: false,
+            started_at_ms,
+            ended_at_ms: Some(started_at_ms + 1),
+            entries: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn missing_history_is_empty() {
+        let (_dir, storage) = storage();
+
+        assert!(storage.load_session_history().expect("history").is_empty());
+    }
+
+    #[test]
+    fn session_history_round_trips() {
+        let (_dir, storage) = storage();
+        let sessions = vec![session(2), session(1)];
+
+        storage.save_session_history(&sessions).expect("save");
+
+        assert_eq!(storage.load_session_history().expect("history"), sessions);
+    }
+
+    #[test]
+    fn last_session_from_v031_becomes_the_history() {
+        let (dir, storage) = storage();
+        fs::write(
+            dir.path().join(LEGACY_LAST_SESSION_FILE),
+            serde_json::to_vec(&session(7)).expect("json"),
+        )
+        .expect("write");
+
+        assert_eq!(
+            storage.load_session_history().expect("history"),
+            [session(7)]
+        );
+        assert!(!dir.path().join(LEGACY_LAST_SESSION_FILE).exists());
+        assert_eq!(
+            storage.load_session_history().expect("reloaded"),
+            [session(7)]
+        );
+    }
+
+    #[test]
+    fn corrupt_history_is_quarantined() {
+        let (dir, storage) = storage();
+        fs::write(dir.path().join(SESSION_HISTORY_FILE), "{ not json").expect("write");
+
+        assert!(storage.load_session_history().expect("history").is_empty());
+        assert!(!dir.path().join(SESSION_HISTORY_FILE).exists());
+    }
+
     #[test]
     fn atomic_write_leaves_no_temp_file() {
         let (dir, storage) = storage();
@@ -352,6 +434,7 @@ mod tests {
             [Trigger {
                 process_name: "FlightSimulator2024.exe".into(),
                 label: "MSFS 2024".into(),
+                launch_target: None,
             }]
         );
     }

@@ -1,6 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Filter,
   GripVertical,
   Minimize2,
   MoreVertical,
@@ -8,11 +9,13 @@ import {
   Plug,
   RotateCcw,
   ShieldAlert,
+  SkipBack,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { LaunchItem } from "@/bindings/LaunchItem";
+import type { Trigger } from "@/bindings/Trigger";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { shortenPath } from "@/lib/paths";
+import { restrictionLabels } from "@/lib/trigger-presets";
 import { cn } from "@/lib/utils";
 import { useItemRuntime } from "@/stores/monitor-store";
 import { ItemIcon } from "./ItemIcon";
@@ -31,6 +35,7 @@ import { ItemStatusBadge } from "./ItemStatusBadge";
 interface ItemCardProps {
   profileId: string;
   item: LaunchItem;
+  triggers: readonly Trigger[];
   executableMissing: boolean;
   onToggle: (enabled: boolean) => void;
   onEdit: () => void;
@@ -40,6 +45,7 @@ interface ItemCardProps {
 export function ItemCard({
   profileId,
   item,
+  triggers,
   executableMissing,
   onToggle,
   onEdit,
@@ -58,6 +64,7 @@ export function ItemCard({
   } = useSortable({ id: item.id });
 
   const subtitle = item.type === "app" ? shortenPath(item.exePath) : item.url;
+  const onlyFor = restrictionLabels(triggers, item.onlyForTriggers);
 
   return (
     <li
@@ -103,6 +110,18 @@ export function ItemCard({
               <Badge variant="outline" className="gap-1">
                 <Minimize2 className="size-3" />
                 {t("items.minimized")}
+              </Badge>
+            )}
+            {onlyFor.length > 0 && (
+              <Badge variant="outline" className="gap-1">
+                <Filter className="size-3" />
+                {t("items.onlyFor", { simulators: onlyFor.join(", ") })}
+              </Badge>
+            )}
+            {item.type === "app" && item.launchBeforeSimulator && (
+              <Badge variant="outline" className="gap-1">
+                <SkipBack className="size-3" />
+                {t("items.beforeSimulator")}
               </Badge>
             )}
             {item.type === "app" && item.waitForSimConnect && (

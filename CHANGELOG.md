@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- "Start flight": set how each simulator starts (Steam, Microsoft Store or its executable) and start the flight from the top bar or the tray. Apps marked "Open before the simulator" open first, then the simulator, then the rest.
+- Session history: the Logs screen keeps your last 20 sessions and your latest test, with a session picker, an error count per session and "Clear history".
+- URL items accept Steam links (`steam://rungameid/…`), and Steam desktop shortcuts can be dragged onto the window.
+- "Only with" on apps and URLs: in a profile with several simulators, an item can open only with some of them.
+
 ## [0.4.0] - 2026-09-23
 
 ### Added

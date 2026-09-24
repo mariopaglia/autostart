@@ -15,11 +15,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { LaunchItem } from "@/bindings/LaunchItem";
+import type { Trigger } from "@/bindings/Trigger";
 import { ItemCard } from "./ItemCard";
 
 interface ItemListProps {
   profileId: string;
   items: LaunchItem[];
+  triggers: readonly Trigger[];
   missingExecutables: ReadonlySet<string>;
   onChange: (items: LaunchItem[]) => void;
   onEdit: (item: LaunchItem) => void;
@@ -28,6 +30,7 @@ interface ItemListProps {
 export function ItemList({
   profileId,
   items,
+  triggers,
   missingExecutables,
   onChange,
   onEdit,
@@ -62,6 +65,7 @@ export function ItemList({
               key={item.id}
               profileId={profileId}
               item={item}
+              triggers={triggers}
               executableMissing={item.type === "app" && missingExecutables.has(item.exePath)}
               onToggle={(enabled) => {
                 replace({ ...item, enabled });

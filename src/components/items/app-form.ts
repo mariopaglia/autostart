@@ -17,6 +17,8 @@ export const EMPTY_APP_FORM: AppFormInput = {
   startMinimized: false,
   waitForSimConnect: false,
   restartOnCrash: false,
+  launchBeforeSimulator: false,
+  onlyForTriggers: [],
   onClose: "graceful",
   enabled: true,
 };
