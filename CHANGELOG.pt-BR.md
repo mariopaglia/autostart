@@ -6,6 +6,8 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-24
+
 ### Adicionado
 
 - "Iniciar voo": defina como cada simulador é iniciado (Steam, Microsoft Store ou o executável) e inicie o voo pela barra superior ou pela bandeja. Os apps marcados com "Abrir antes do simulador" abrem primeiro, depois o simulador e depois o restante.
@@ -84,7 +86,8 @@ Primeira versão pública.
 - Assistente de primeira execução.
 - Instalador por usuário (sem precisar de administrador) e atualizações automáticas assinadas.
 
-[Unreleased]: https://github.com/mariopaglia/autostart/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/mariopaglia/autostart/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/mariopaglia/autostart/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/mariopaglia/autostart/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/mariopaglia/autostart/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/mariopaglia/autostart/compare/v0.2.0...v0.3.0
